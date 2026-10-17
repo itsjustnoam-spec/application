@@ -14,3 +14,10 @@ export const handleNetworkError = (error: unknown): string => {
   }
   return UNKNOWN_ERROR_MESSAGE
 }
+
+export const getErrorDetail = (error: unknown): string | null => {
+  if (error instanceof ApiError) {
+    return error.detail
+  }
+  return null
+}
