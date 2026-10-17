@@ -51,13 +51,14 @@ describe('Admin: sites', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     server.use(
       http.get('/api/atlas/sites', ({ request }) => {
-        const query = new URL(request.url).searchParams.get('q') ?? ''
+        const query = new URL(request.url).searchParams.get('q')
+        const searchText = query === null ? '' : query
         const allSites = [
           makeSite({ id: 1, name: 'North Depot' }),
           makeSite({ id: 2, name: 'South Depot' }),
         ]
         return HttpResponse.json(
-          makeSitePage(allSites.filter((site) => site.name.toLowerCase().includes(query.toLowerCase()))),
+          makeSitePage(allSites.filter((site) => site.name.toLowerCase().includes(searchText.toLowerCase()))),
         )
       }),
     )
@@ -153,7 +154,7 @@ describe('Admin: sites', () => {
     let releaseNorthRequest: () => void = () => {}
     server.use(
       http.get('/api/atlas/sites', async ({ request }) => {
-        const query = new URL(request.url).searchParams.get('q') ?? ''
+        const query = new URL(request.url).searchParams.get('q')
         if (query === 'north') {
           await new Promise<void>((resolve) => {
             releaseNorthRequest = resolve
@@ -220,5 +221,23 @@ describe('Admin: sites', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('North Depot')
+  })
+
+  it('shows the server message when archiving a site with active assets fails', async () => {
+    server.use(
+      http.delete('/api/atlas/sites/:siteId', () =>
+        HttpResponse.json({ detail: 'Site has active assets' }, { status: 409 }),
+      ),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="archive-site-button"]').trigger('click')
+    const confirmDialog = wrapper.findComponent(ConfirmDeleteDialog)
+    await confirmDialog.get('[data-testid="confirm-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog.get('[data-testid="confirm-delete-error"]').text()).toContain(
+      'Site has active assets',
+    )
   })
 })

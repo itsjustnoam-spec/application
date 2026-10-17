@@ -60,11 +60,11 @@
 <script lang="ts">
 import type { AssetType } from '@/models/asset-type'
 
-interface AssetTypeFormProps {
+interface Props {
   assetType: AssetType | null
 }
 
-interface AssetTypeFormEmits {
+interface Emits {
   'saved': [AssetType]
   'cancel': []
 }
@@ -74,27 +74,23 @@ const INSPECTION_INTERVAL_MIN_DAYS = 1
 const INSPECTION_INTERVAL_MAX_DAYS = 3650
 const REQUIRED_MESSAGE = 'This field is required.'
 const INTERVAL_RANGE_MESSAGE = 'Enter a whole number of days from 1 to 3650.'
-
-export type { AssetTypeFormEmits, AssetTypeFormProps }
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeMount, ref } from 'vue'
 
 import { createAssetType, updateAssetType } from '@/api/asset-types'
-import { getErrorDetail, handleNetworkError } from '@/api/errors'
+import { describeRequestError } from '@/api/errors'
 import EasyToolTip from '@/components/EasyToolTip.vue'
 import { ASSET_CATEGORIES, type AssetCategory, type AssetTypeInput } from '@/models/asset-type'
 
-const emit = defineEmits<AssetTypeFormEmits>()
+const emit = defineEmits<Emits>()
 
-const props = defineProps<AssetTypeFormProps>()
+const props = defineProps<Props>()
 
-const name = ref<string>(props.assetType?.name ?? '')
-const category = ref<AssetCategory | null>(props.assetType?.category ?? null)
-const intervalText = ref<string>(
-  props.assetType === null ? '' : String(props.assetType.inspection_interval_days),
-)
+const name = ref<string>('')
+const category = ref<AssetCategory | null>(null)
+const intervalText = ref<string>('')
 const hasSubmitAttempted = ref<boolean>(false)
 const isSaving = ref<boolean>(false)
 const errorMessage = ref<string | null>(null)
@@ -143,14 +139,28 @@ const submitForm = async (): Promise<void> => {
   isSaving.value = true
   errorMessage.value = null
   try {
-    const savedAssetType = props.assetType === null
-      ? await createAssetType(input)
-      : await updateAssetType(props.assetType.id, input)
-    emit('saved', savedAssetType)
+    if (props.assetType === null) {
+      emit('saved', await createAssetType(input))
+    } else {
+      emit('saved', await updateAssetType(props.assetType.id, input))
+    }
   } catch (error: unknown) {
-    errorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+    errorMessage.value = describeRequestError(error)
   } finally {
     isSaving.value = false
   }
 }
+
+function fillFormFromAssetType() {
+  if (props.assetType === null) {
+    return
+  }
+  name.value = props.assetType.name
+  category.value = props.assetType.category
+  intervalText.value = String(props.assetType.inspection_interval_days)
+}
+
+onBeforeMount(() => {
+  fillFormFromAssetType()
+})
 </script>

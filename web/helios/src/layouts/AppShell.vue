@@ -38,9 +38,6 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   { title: 'Inspections', path: '/inspections', icon: 'mdi-magnify' },
   { title: 'Admin', path: '/admin', icon: 'mdi-cog' },
 ]
-
-export type { NavigationItem }
-export { NAVIGATION_ITEMS }
 </script>
 
 <script setup lang="ts">

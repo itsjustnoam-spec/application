@@ -6,6 +6,8 @@ SQLModel table definitions for the Atlas service.
 """
 # ----- Imports ----- #
 
+from atlas.entities.asset import Asset as Asset
+from atlas.entities.asset import AssetStatus as AssetStatus
 from atlas.entities.asset_type import AssetCategory as AssetCategory
 from atlas.entities.asset_type import AssetType as AssetType
 from atlas.entities.site import Site as Site

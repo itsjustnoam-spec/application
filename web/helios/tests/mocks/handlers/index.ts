@@ -1,3 +1,4 @@
+import { archiveAssetHandler, createAssetHandler, listAssetsHandler } from './assets'
 import { atlasHealthHandler } from './health'
 import {
   archiveAssetTypeHandler,
@@ -14,6 +15,9 @@ const handlers = [
   listAssetTypesHandler,
   createAssetTypeHandler,
   archiveAssetTypeHandler,
+  listAssetsHandler,
+  createAssetHandler,
+  archiveAssetHandler,
 ]
 
 export { handlers }

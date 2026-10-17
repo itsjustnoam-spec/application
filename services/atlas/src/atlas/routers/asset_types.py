@@ -34,7 +34,7 @@ def list_asset_types(
     ] = None,
 ) -> Page[AssetTypeOut]:
     """
-    Lists active asset types matching the search text, one page at a time.
+    List active asset types matching the search text, one page at a time.
     """
     asset_types, total = asset_type_manager.list_asset_types(
         session,
@@ -59,7 +59,7 @@ def create_asset_type(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssetTypeOut:
     """
-    Creates an asset type.
+    Create an asset type.
     """
     asset_type = asset_type_manager.create_asset_type(
         session,
@@ -74,7 +74,7 @@ def read_asset_type(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssetTypeOut:
     """
-    Reads one active asset type.
+    Read one active asset type.
     """
     asset_type = asset_type_manager.read_asset_type(
         session,
@@ -90,7 +90,7 @@ def update_asset_type(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssetTypeOut:
     """
-    Replaces the name, category, and interval of an active asset type.
+    Replace the name, category, and interval of an active asset type.
     """
     asset_type = asset_type_manager.update_asset_type(
         session,
@@ -109,6 +109,6 @@ def archive_asset_type(
     session: Annotated[Session, Depends(get_session)],
 ):
     """
-    Archives an active asset type.
+    Archive an active asset type.
     """
     asset_type_manager.archive_asset_type(session, asset_type_id)

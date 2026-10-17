@@ -122,7 +122,7 @@ const CONFIRM_DIALOG_MAX_WIDTH = '26rem'
 import { computed, onMounted, ref } from 'vue'
 
 import { deleteAssetType, listAssetTypes } from '@/api/asset-types'
-import { getErrorDetail, handleNetworkError } from '@/api/errors'
+import { describeRequestError } from '@/api/errors'
 import AssetTypeFormDialog from '@/components/AssetTypeFormDialog.vue'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
 import EasyToolTip from '@/components/EasyToolTip.vue'
@@ -166,7 +166,7 @@ const closeFormDialog = (): void => {
 
 const onAssetTypeSaved = (): void => {
   closeFormDialog()
-  void loadPage()
+  loadPage()
 }
 
 const openDeleteDialog = (assetType: AssetType): void => {
@@ -190,7 +190,7 @@ const confirmArchive = async (): Promise<void> => {
       closeDeleteDialog()
       await loadPage()
     } catch (error: unknown) {
-      archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+      archiveErrorMessage.value = describeRequestError(error)
     } finally {
       isArchiving.value = false
     }
@@ -198,6 +198,6 @@ const confirmArchive = async (): Promise<void> => {
 }
 
 onMounted(() => {
-  void loadPage()
+  loadPage()
 })
 </script>

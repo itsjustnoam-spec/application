@@ -22,7 +22,16 @@ const getErrorDetail = (error: unknown): string | null => {
   return null
 }
 
+const describeRequestError = (error: unknown): string => {
+  const errorDetail = getErrorDetail(error)
+  if (errorDetail !== null) {
+    return errorDetail
+  }
+  return handleNetworkError(error)
+}
+
 export {
+  describeRequestError,
   getErrorDetail,
   handleNetworkError,
   NETWORK_UNREACHABLE_MESSAGE,

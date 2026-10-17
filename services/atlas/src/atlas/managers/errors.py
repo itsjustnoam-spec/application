@@ -20,3 +20,17 @@ class DuplicateNameError(Exception):
     Raised when an active row already uses the requested name.
     """
     pass
+
+
+class DuplicateSerialNumberError(Exception):
+    """
+    Raised when an active asset already uses the requested serial number.
+    """
+    pass
+
+
+class EntityInUseError(Exception):
+    """
+    Raised when an archive is blocked because active rows still reference the entity.
+    """
+    pass

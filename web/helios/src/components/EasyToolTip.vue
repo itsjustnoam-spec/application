@@ -17,17 +17,14 @@
 <script lang="ts">
 const DEFAULT_TOOLTIP_ICON = 'mdi-information'
 
-interface EasyToolTipProps {
+interface Props {
   text: string
   icon?: string
 }
-
-export type { EasyToolTipProps }
-export { DEFAULT_TOOLTIP_ICON }
 </script>
 
 <script setup lang="ts">
-withDefaults(defineProps<EasyToolTipProps>(), {
+withDefaults(defineProps<Props>(), {
   icon: DEFAULT_TOOLTIP_ICON,
 })
 </script>

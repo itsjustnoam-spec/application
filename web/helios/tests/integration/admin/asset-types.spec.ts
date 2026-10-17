@@ -73,4 +73,22 @@ describe('Admin: asset types', () => {
 
     expect(wrapper.text()).not.toContain('Pump')
   })
+
+  it('shows the server message when archiving an asset type with active assets fails', async () => {
+    server.use(
+      http.delete('/api/atlas/asset-types/:assetTypeId', () =>
+        HttpResponse.json({ detail: 'Asset type has active assets' }, { status: 409 }),
+      ),
+    )
+    const wrapper = await mountAssetTypesView()
+
+    await wrapper.get('[data-testid="archive-asset-type-button"]').trigger('click')
+    const confirmDialog = wrapper.findComponent(ConfirmDeleteDialog)
+    await confirmDialog.get('[data-testid="confirm-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog.get('[data-testid="confirm-delete-error"]').text()).toContain(
+      'Asset type has active assets',
+    )
+  })
 })

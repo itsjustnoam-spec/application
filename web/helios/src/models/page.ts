@@ -5,10 +5,15 @@ interface Page<Item> {
   offset: number
 }
 
+type ListFilterValue = string | number | null
+
 interface ListParams {
   limit: number
   offset: number
   query: string | null
+  filters?: Record<string, ListFilterValue>
+  sort?: string
+  direction?: 'asc' | 'desc'
 }
 
-export type { ListParams, Page }
+export type { ListFilterValue, ListParams, Page }

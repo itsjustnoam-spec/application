@@ -10,14 +10,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import SessionTransaction
 from sqlmodel import Session, col, func, select
 
-from atlas.entities import AssetType
-from atlas.managers.errors import DuplicateNameError, EntityNotFoundError
+from atlas.entities import Asset, AssetType
+from atlas.managers.errors import (
+    DuplicateNameError,
+    EntityInUseError,
+    EntityNotFoundError,
+)
 from atlas.schemas.asset_type import AssetTypeInput
 
 # ----- Consts ----- #
 
 ASSET_TYPE_NOT_FOUND_MESSAGE = "Asset type not found"
 ASSET_TYPE_NAME_TAKEN = "An asset type with this name already exists"
+ASSET_TYPE_HAS_ACTIVE_ASSETS = "Asset type has active assets"
 
 # ----- Functions ----- #
 
@@ -29,7 +34,7 @@ def list_asset_types(
     query: str | None,
 ) -> tuple[list[AssetType], int]:
     """
-    Lists active asset types, optionally filtered by name, one page at a time.
+    List active asset types, optionally filtered by name, one page at a time.
 
     :param session: The request's database session.
     :param limit: The maximum number of asset types to return.
@@ -55,9 +60,31 @@ def list_asset_types(
     return list(asset_types), total
 
 
+def lock_asset_type(session: Session, asset_type_id: int, exclusive: bool):
+    """
+    Lock an asset type row so an archive and an asset reference to it cannot race.
+
+    :param session: The request's database session.
+    :param asset_type_id: The id of the asset type.
+    :param exclusive: True to block other writers and references (archive), False to only block archives.
+    """
+    statement = (
+        select(AssetType)
+        .where(col(AssetType.id) == asset_type_id)
+        .with_for_update(
+            read=not exclusive,
+        )
+    )
+    session.exec(
+        statement.execution_options(
+            populate_existing=True,
+        ),
+    ).first()
+
+
 def read_asset_type(session: Session, asset_type_id: int) -> AssetType:
     """
-    Reads one active asset type.
+    Read one active asset type.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
@@ -79,7 +106,7 @@ def flush_asset_type_changes(
     transaction: SessionTransaction,
 ):
     """
-    Writes the asset type changes made inside a nested transaction, and closes it.
+    Write the asset type changes made inside a nested transaction, and close it.
 
     :param session: The request's database session.
     :param transaction: The nested transaction opened before the changes were made.
@@ -99,7 +126,7 @@ def create_asset_type(
     asset_type_input: AssetTypeInput,
 ) -> AssetType:
     """
-    Creates an asset type.
+    Create an asset type.
 
     :param session: The request's database session.
     :param asset_type_input: The values of the new asset type.
@@ -123,7 +150,7 @@ def update_asset_type(
     asset_type_input: AssetTypeInput,
 ) -> AssetType:
     """
-    Replaces the name, category, and interval of an active asset type.
+    Replace the name, category, and interval of an active asset type.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
@@ -145,12 +172,27 @@ def update_asset_type(
 
 def archive_asset_type(session: Session, asset_type_id: int):
     """
-    Archives an active asset type, which hides it and frees its name.
+    Archive an active asset type, which hides it and frees its name.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
     :raises EntityNotFoundError: When it doesn't exist or is archived.
+    :raises EntityInUseError: When an active asset still has this asset type.
     """
+    lock_asset_type(
+        session,
+        asset_type_id,
+        exclusive=True,
+    )
     asset_type = read_asset_type(session, asset_type_id)
+    active_assets = select(Asset.id).where(
+        col(Asset.asset_type_id) == asset_type_id,
+        col(Asset.archived).is_(False),
+    )
+    first_active_asset = session.exec(active_assets.limit(1)).first()
+    has_active_assets = first_active_asset is not None
+    if has_active_assets:
+        raise EntityInUseError(ASSET_TYPE_HAS_ACTIVE_ASSETS)
+
     asset_type.archived = True
     session.flush()

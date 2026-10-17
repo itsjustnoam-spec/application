@@ -9,14 +9,20 @@ FastAPI application for the Atlas service, which owns the PostgreSQL data.
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from atlas.managers.errors import DuplicateNameError, EntityNotFoundError
-from atlas.routers import asset_types, sites
+from atlas.managers.errors import (
+    DuplicateNameError,
+    DuplicateSerialNumberError,
+    EntityInUseError,
+    EntityNotFoundError,
+)
+from atlas.routers import asset_types, assets, sites
 
 # ----- Consts ----- #
 
 app = FastAPI(title="FieldOps Atlas")
 app.include_router(sites.router)
 app.include_router(asset_types.router)
+app.include_router(assets.router)
 
 # ----- Functions ----- #
 
@@ -27,7 +33,7 @@ def handle_entity_not_found(
     error: EntityNotFoundError,
 ) -> JSONResponse:
     """
-    Turns a missing or archived row into a 404 response.
+    Turn a missing or archived row into a 404 response.
     """
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -41,7 +47,35 @@ def handle_duplicate_name(
     error: DuplicateNameError,
 ) -> JSONResponse:
     """
-    Turns a name conflict into a 409 response.
+    Turn a name conflict into a 409 response.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(error)},
+    )
+
+
+@app.exception_handler(DuplicateSerialNumberError)
+def handle_duplicate_serial_number(
+    request: Request,
+    error: DuplicateSerialNumberError,
+) -> JSONResponse:
+    """
+    Turn a serial number conflict into a 409 response.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(error)},
+    )
+
+
+@app.exception_handler(EntityInUseError)
+def handle_entity_in_use(
+    request: Request,
+    error: EntityInUseError,
+) -> JSONResponse:
+    """
+    Turn an archive blocked by active references into a 409 response.
     """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
@@ -54,6 +88,6 @@ def handle_duplicate_name(
 @app.get("/health")
 def read_health() -> dict[str, str]:
     """
-    Reports that the service is up.
+    Report that the service is up.
     """
     return {"status": "ok"}

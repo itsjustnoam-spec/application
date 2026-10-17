@@ -34,7 +34,7 @@ def list_sites(
     ] = None,
 ) -> Page[SiteOut]:
     """
-    Lists active sites matching the search text, one page at a time.
+    List active sites matching the search text, one page at a time.
     """
     sites, total = site_manager.list_sites(
         session,
@@ -59,7 +59,7 @@ def create_site(
     session: Annotated[Session, Depends(get_session)],
 ) -> SiteOut:
     """
-    Creates a site.
+    Create a site.
     """
     site = site_manager.create_site(session, site_input)
     return SiteOut.model_validate(site)
@@ -71,7 +71,7 @@ def read_site(
     session: Annotated[Session, Depends(get_session)],
 ) -> SiteOut:
     """
-    Reads one active site.
+    Read one active site.
     """
     site = site_manager.read_site(session, site_id)
     return SiteOut.model_validate(site)
@@ -84,7 +84,7 @@ def update_site(
     session: Annotated[Session, Depends(get_session)],
 ) -> SiteOut:
     """
-    Replaces the name, address, and timezone of an active site.
+    Replace the name, address, and timezone of an active site.
     """
     site = site_manager.update_site(
         session,
@@ -103,6 +103,6 @@ def archive_site(
     session: Annotated[Session, Depends(get_session)],
 ):
     """
-    Archives an active site.
+    Archive an active site.
     """
     site_manager.archive_site(session, site_id)

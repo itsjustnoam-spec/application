@@ -35,12 +35,15 @@ const readErrorDetail = async (response: Response): Promise<string | null> => {
 }
 
 const sendRequest = async (path: string, options: ApiRequestOptions): Promise<Response> => {
-  const hasBody = options.body !== undefined
-  const response = await fetch(`${API_BASE_PATH}${path}`, {
-    method: options.method ?? 'GET',
-    headers: hasBody ? { 'Content-Type': 'application/json' } : undefined,
-    body: hasBody ? JSON.stringify(options.body) : undefined,
-  })
+  const requestInit: RequestInit = { method: 'GET' }
+  if (options.method !== undefined) {
+    requestInit.method = options.method
+  }
+  if (options.body !== undefined) {
+    requestInit.headers = { 'Content-Type': 'application/json' }
+    requestInit.body = JSON.stringify(options.body)
+  }
+  const response = await fetch(`${API_BASE_PATH}${path}`, requestInit)
   if (!response.ok) {
     throw new ApiError(response.status, await readErrorDetail(response))
   }
