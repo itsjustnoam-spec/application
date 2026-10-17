@@ -48,10 +48,7 @@ def list_asset_types(
     total = session.exec(
         select(func.count()).select_from(statement.subquery()),
     ).one()
-    page_statement = statement.order_by(
-        col(AssetType.name),
-        col(AssetType.id),
-    )
+    page_statement = statement.order_by(AssetType.name)
     asset_types = session.exec(
         page_statement.offset(offset).limit(limit),
     ).all()
@@ -79,22 +76,22 @@ def read_asset_type(session: Session, asset_type_id: int) -> AssetType:
 
 def flush_asset_type_changes(
     session: Session,
-    savepoint: SessionTransaction,
+    transaction: SessionTransaction,
 ):
     """
-    Writes the asset type changes made inside a savepoint, and closes it.
+    Writes the asset type changes made inside a nested transaction, and closes it.
 
     :param session: The request's database session.
-    :param savepoint: The savepoint opened before the changes were made.
+    :param transaction: The nested transaction opened before the changes were made.
     :raises DuplicateNameError: When another active asset type has the same name.
     """
     try:
         session.flush()
     except IntegrityError as error:
-        savepoint.rollback()
+        transaction.rollback()
         raise DuplicateNameError(ASSET_TYPE_NAME_TAKEN) from error
 
-    savepoint.commit()
+    transaction.commit()
 
 
 def create_asset_type(
@@ -109,14 +106,14 @@ def create_asset_type(
     :return: The created asset type.
     :raises DuplicateNameError: When an active asset type has this name.
     """
-    savepoint = session.begin_nested()
+    transaction = session.begin_nested()
     asset_type = AssetType(
         name=asset_type_input.name,
         category=asset_type_input.category,
         inspection_interval_days=asset_type_input.inspection_interval_days,
     )
     session.add(asset_type)
-    flush_asset_type_changes(session, savepoint)
+    flush_asset_type_changes(session, transaction)
     return asset_type
 
 
@@ -136,13 +133,13 @@ def update_asset_type(
     :raises DuplicateNameError: When another active asset type has the name.
     """
     asset_type = read_asset_type(session, asset_type_id)
-    savepoint = session.begin_nested()
+    transaction = session.begin_nested()
     asset_type.name = asset_type_input.name
     asset_type.category = asset_type_input.category
     asset_type.inspection_interval_days = (
         asset_type_input.inspection_interval_days
     )
-    flush_asset_type_changes(session, savepoint)
+    flush_asset_type_changes(session, transaction)
     return asset_type
 
 

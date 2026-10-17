@@ -46,7 +46,7 @@ def list_sites(
     total = session.exec(
         select(func.count()).select_from(statement.subquery()),
     ).one()
-    page_statement = statement.order_by(col(Site.name), col(Site.id))
+    page_statement = statement.order_by(Site.name)
     sites = session.exec(
         page_statement.offset(offset).limit(limit),
     ).all()
@@ -71,22 +71,22 @@ def read_site(session: Session, site_id: int) -> Site:
 
 def flush_site_changes(
     session: Session,
-    savepoint: SessionTransaction,
+    transaction: SessionTransaction,
 ):
     """
-    Writes the site changes made inside a savepoint, and closes it.
+    Writes the site changes made inside a nested transaction, and closes it.
 
     :param session: The request's database session.
-    :param savepoint: The savepoint opened before the changes were made.
+    :param transaction: The nested transaction opened before the changes were made.
     :raises DuplicateNameError: When another active site has the same name.
     """
     try:
         session.flush()
     except IntegrityError as error:
-        savepoint.rollback()
+        transaction.rollback()
         raise DuplicateNameError(SITE_NAME_TAKEN) from error
 
-    savepoint.commit()
+    transaction.commit()
 
 
 def create_site(session: Session, site_input: SiteInput) -> Site:
@@ -98,14 +98,14 @@ def create_site(session: Session, site_input: SiteInput) -> Site:
     :return: The created site.
     :raises DuplicateNameError: When an active site already has this name.
     """
-    savepoint = session.begin_nested()
+    transaction = session.begin_nested()
     site = Site(
         name=site_input.name,
         address=site_input.address,
         timezone=site_input.timezone,
     )
     session.add(site)
-    flush_site_changes(session, savepoint)
+    flush_site_changes(session, transaction)
     return site
 
 
@@ -125,11 +125,11 @@ def update_site(
     :raises DuplicateNameError: When another active site has the new name.
     """
     site = read_site(session, site_id)
-    savepoint = session.begin_nested()
+    transaction = session.begin_nested()
     site.name = site_input.name
     site.address = site_input.address
     site.timezone = site_input.timezone
-    flush_site_changes(session, savepoint)
+    flush_site_changes(session, transaction)
     return site
 
 
