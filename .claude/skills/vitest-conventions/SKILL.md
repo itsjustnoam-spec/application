@@ -107,44 +107,9 @@ Vue Test Utils has no accessibility queries, so:
 
 ---
 
-## 7. Setup (one time, when Vitest is added)
+## 7. Setup
 
-```bash
-npm install -D vitest @vue/test-utils jsdom @vitest/coverage-v8 resize-observer-polyfill msw @pinia/testing
-```
-
-`vitest.config.ts`:
-```ts
-import { defineConfig, mergeConfig } from 'vitest/config'
-import viteConfig from './vite.config'
-
-export default mergeConfig(viteConfig, defineConfig({
-  test: {
-    environment: 'jsdom',
-    include: ['tests/unit/**/*.spec.ts', 'tests/integration/**/*.spec.ts'],
-    setupFiles: ['tests/setup.ts'],
-    restoreMocks: true,
-    unstubGlobals: true,
-    server: { deps: { inline: ['vuetify'] } },
-    coverage: { provider: 'v8', reporter: ['text', 'cobertura'], include: ['src/**'] },
-  },
-}))
-```
-
-`tests/setup.ts`:
-```ts
-import ResizeObserver from 'resize-observer-polyfill'
-import { afterAll, afterEach, beforeAll } from 'vitest'
-
-import { server } from './mocks/server'
-
-globalThis.ResizeObserver = ResizeObserver
-
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
-```
-`onUnhandledRequest: 'error'` makes any request without a handler fail the test. In component tests, where the API module is mocked, this also catches leaks to the real network.
+`vitest.config.ts` uses `jsdom`, includes `tests/unit/**` and `tests/integration/**`, sets `restoreMocks: true` and `unstubGlobals: true`, and inlines `vuetify`. `tests/setup.ts` polyfills `ResizeObserver` and starts the MSW server with `onUnhandledRequest: 'error'`, so any request without a handler fails the test. In component tests, where the API module is mocked, this also catches leaks to the real network.
 
 `tests/utils/mount.ts` exports `mountWithPlugins(component, options)`. It creates Vuetify with the app's **real** theme config (so semantic theme keys exist), passes `global.plugins` (Vuetify, plus the router/pinia given in the options), and sets `global.stubs: { teleport: true }`. Vuetify dialogs, menus, and snackbars teleport into `document.body`, so without this stub their content is outside the wrapper and `wrapper.get(...)` can't find it.
 

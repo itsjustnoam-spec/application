@@ -10,7 +10,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 ## File structure
 - [ ] TS-04 Order is imports, then local fixtures, then test functions
 - [ ] TS-27 (auto) No page docstring and no section banners in test files
-- [ ] TS-05 No test classes (unless strictly necessary)
+- [ ] TS-05 No test classes (unless strictly necessary), and no unittest `setUp`/`tearDown`
 - [ ] TS-06 No comments (no `# Arrange` / `# Act` / `# Assert` labels either), unless documenting an upstream workaround
 
 ## Test body
@@ -22,7 +22,6 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-12 Tests check behavior, not private implementation details
 
 ## Fixtures
-- [ ] TS-13 No `setUp`/`tearDown` or unittest classes
 - [ ] TS-14 Fixture scope is `function` unless the setup is expensive and read-only
 - [ ] TS-15 Setup that needs cleanup uses a `yield` fixture
 - [ ] TS-28 (auto) Test bodies never call `session.add/delete/commit/execute` (they use `env` or the app's own functions)
@@ -43,5 +42,4 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 ## Layers & coverage
 - [ ] TS-23 Each new endpoint has integration tests (service manager/reader) **and** API tests (test client)
 - [ ] TS-24 New code has 100% line coverage (`diff-cover`), except pure proxy pass-through routes
-- [ ] TS-25 Tests run with `uv run pytest`
 - [ ] TS-26 Tests run against a separate test database (never the application's), unless the user explicitly said otherwise

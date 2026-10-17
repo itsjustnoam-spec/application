@@ -47,7 +47,7 @@ def save_user_profile(user_id: str, email: str):
     """
     user_record: dict[str, str] = {"id": user_id, "email": email}
     active_tokens: list[str] = []  # Empty list where type is not obvious, type annotation required
-    db.insert(user_record)
+    user_store.insert(user_record)
 
 
 def deactivate_user(user: UserRecord):
@@ -64,7 +64,7 @@ def deactivate_user(user: UserRecord):
 def save_user_profile(user_id, email) -> None:  # Do NOT use -> None and do NOT leave parameters untyped
     count: int = 0  # Redundant typing on obvious literal assignment
     user_record = {"id": user_id, "email": email}
-    db.insert(user_record)
+    user_store.insert(user_record)
     return None  # Do NOT write return None (and no trailing return is needed at all)
 ```
 
@@ -418,7 +418,7 @@ def fetch_user_by_id(user_id: str) -> UserRecord:
     :return: The user record.
     :raises UserNotFoundError: When no user has this id.
     """
-    record: Optional[UserRecord] = db.find(user_id)
+    record: UserRecord | None = user_store.find(user_id)
     if record is None:
         raise UserNotFoundError(f"User {user_id} was not found.")
 

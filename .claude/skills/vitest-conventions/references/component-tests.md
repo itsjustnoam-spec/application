@@ -67,11 +67,3 @@ describe('EntityList', () => {
   })
 })
 ```
-
-## 6. Forbidden in component tests
-- `shallowMount` by default, or stubbing every child
-- Reading or setting `wrapper.vm.<anything>`, or calling component methods directly
-- Selecting by Vuetify classes or DOM structure
-- Snapshot-only tests, `expect(true)`, or tests without an assertion
-- Real network (MSW's `onUnhandledRequest: 'error'` will fail the test)
-- `setTimeout` waits or real timers in debounce tests

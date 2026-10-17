@@ -34,7 +34,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 - Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Use the project's test database (docker-compose service or testcontainers) as found in the reference tests.
 - Isolation: one transaction per test, rolled back at teardown (the `db_session` pattern in `pytest-conventions`), with the engine at `session` scope.
-- Data setup: the `env` fixture in `tests/conftest.py` creates every object tests rely on; the object under test is created through the app's managers (see `pytest-conventions` §8). No factory fixtures. Tests never add, delete, or commit through the session themselves, and never rely on rows created by another test.
+- Data setup: the `env` fixture (see `pytest-conventions` §8).
 - Migrations aren't tested; they're verified by running them (see `sql-conventions`).
 
 ## 3. FastAPI test client (API layer)

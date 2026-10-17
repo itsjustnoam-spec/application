@@ -83,10 +83,3 @@ describe('Entities: create flow', () => {
   })
 })
 ```
-
-## 6. Forbidden in integration tests
-- `vi.mock` of app modules (API client, stores, composables)
-- Stubbed store actions, or a hand-built fake router
-- Asserting MSW request details for requests that have visible effects
-- Asserting store internals instead of the DOM
-- Handlers that accept any payload for mutations (they must validate like the backend)

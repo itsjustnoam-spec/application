@@ -27,11 +27,10 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-16 `__init__` methods have no docstring
 - [ ] PY-29 No blank line between a class docstring and the class body
 - [ ] PY-17 Docstrings of business-logic functions have `:param` / `:return` / `:raises` as needed; small helpers may have only the description
-- [ ] PY-35 (auto) Every function and method has a docstring (except `__init__` and tests), and every endpoint has a description-only docstring
+- [ ] PY-35 (auto for presence) Every function and method has a docstring (except `__init__` and tests). Judge by hand that endpoint docstrings have only a description, with no `:param`/`:return`/`:raises`.
 - [ ] PY-18 Description is one concise sentence ending in `.` and doesn't mention raising errors
 - [ ] PY-41 (auto) Function, method, and endpoint descriptions are in the imperative mood (`Lock the resource.`, not `Locks the resource.`)
 - [ ] PY-42 (auto) Boolean returns say what the value means (`:return: Whether the asset is overdue.`), never `True when ..., False when ...`
-- [ ] PY-19 API endpoint docstrings have only a description (no `:param`/`:return`/`:raises`)
 - [ ] PY-20 Proxy pass-through functions have a single-line docstring only
 - [ ] PY-21 No docstring or comment mentions past implementations
 

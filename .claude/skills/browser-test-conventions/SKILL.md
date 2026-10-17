@@ -150,41 +150,10 @@ test.describe('Entities', () => {
 
 ---
 
-## 7. Setup (one time)
+## 7. Setup
 
-```bash
-npm install -D @playwright/test
-```
+`playwright.config.ts` runs the Vite dev server (`webServer`), uses Chromium (`devices['Desktop Chrome']`), keeps traces on first retry, and sets `serviceWorkers: 'block'`.
 
-```bash
-npx playwright install chromium --with-deps
-```
-
-`playwright.config.ts`:
-```ts
-import { defineConfig, devices } from '@playwright/test'
-
-const DEV_SERVER_PORT = 5173
-
-export default defineConfig({
-  testDir: 'tests/e2e',
-  fullyParallel: true,
-  forbidOnly: process.env.CI !== undefined,
-  retries: process.env.CI !== undefined ? 2 : 0,
-  reporter: [['list'], ['html', { open: 'never' }]],
-  use: {
-    baseURL: `http://localhost:${DEV_SERVER_PORT}`,
-    trace: 'on-first-retry',
-    serviceWorkers: 'block',
-  },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: 'npm run dev',
-    url: `http://localhost:${DEV_SERVER_PORT}`,
-    reuseExistingServer: process.env.CI === undefined,
-  },
-})
-```
 - Chromium only by default. Cross-browser runs have diminishing returns; add Firefox/WebKit projects only if the spec requires it.
 - Exclude `tests/e2e/**` from the Vitest `include`.
 - Run with `npx playwright test`. Debug with `npx playwright test --debug` or `--ui`. Open traces with `npx playwright show-report`.
