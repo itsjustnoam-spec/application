@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createAssetType } from '@/api/asset-types'
+import { createAssetType, getAssetType } from '@/api/asset-types'
 import { makeAssetType } from '../../mocks/factories/asset-type'
 
 describe('createAssetType', () => {
@@ -18,5 +18,17 @@ describe('createAssetType', () => {
     })
 
     expect(result).toEqual(createdAssetType)
+  })
+})
+
+
+describe('getAssetType', () => {
+  it('returns the asset type from the asset types path', async () => {
+    const assetType = makeAssetType({ id: 6, name: 'Compressor' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(assetType), { status: 200 })))
+
+    const result = await getAssetType(6)
+
+    expect(result).toEqual(assetType)
   })
 })

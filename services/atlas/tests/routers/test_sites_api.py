@@ -54,7 +54,7 @@ def test_create_site_duplicate_name_returns_409_with_detail(
     response = api_client.post("/sites", json=SITE_PAYLOAD)
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "A site with this name already exists."}
+    assert response.json() == {"detail": "A site with this name already exists"}
 
 
 def test_create_site_unknown_timezone_returns_422(api_client: TestClient):
@@ -83,7 +83,7 @@ def test_get_site_missing_id_returns_404_with_detail(api_client: TestClient):
     response = api_client.get(f"/sites/{MISSING_SITE_ID}")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Site not found."}
+    assert response.json() == {"detail": "Site not found"}
 
 
 def test_put_site_valid_body_returns_200_with_updated_site(

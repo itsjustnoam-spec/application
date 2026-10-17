@@ -51,7 +51,7 @@ def test_list_asset_types_query_matches_name_case_insensitively(
 
 
 def test_read_asset_type_missing_id_raises_entity_not_found_error(db_session: Session):
-    with pytest.raises(EntityNotFoundError, match="Asset type not found."):
+    with pytest.raises(EntityNotFoundError, match="Asset type not found"):
         read_asset_type(db_session, MISSING_ASSET_TYPE_ID)
 
 
@@ -63,7 +63,7 @@ def test_create_asset_type_duplicate_active_name_raises_duplicate_name_error(
 
     with pytest.raises(
         DuplicateNameError,
-        match="An asset type with this name already exists.",
+        match="An asset type with this name already exists",
     ):
         create_asset_type(
             db_session,
@@ -127,7 +127,7 @@ def test_update_asset_type_rename_to_taken_name_raises_duplicate_name_error(
 
     with pytest.raises(
         DuplicateNameError,
-        match="An asset type with this name already exists.",
+        match="An asset type with this name already exists",
     ):
         update_asset_type(
             db_session,
@@ -141,7 +141,7 @@ def test_update_asset_type_rename_to_taken_name_raises_duplicate_name_error(
 
 
 def test_update_asset_type_missing_id_raises_entity_not_found_error(db_session: Session):
-    with pytest.raises(EntityNotFoundError, match="Asset type not found."):
+    with pytest.raises(EntityNotFoundError, match="Asset type not found"):
         update_asset_type(
             db_session,
             MISSING_ASSET_TYPE_ID,
@@ -168,5 +168,5 @@ def test_archive_asset_type_sets_archived_and_keeps_row(
 
 
 def test_archive_asset_type_missing_id_raises_entity_not_found_error(db_session: Session):
-    with pytest.raises(EntityNotFoundError, match="Asset type not found."):
+    with pytest.raises(EntityNotFoundError, match="Asset type not found"):
         archive_asset_type(db_session, MISSING_ASSET_TYPE_ID)

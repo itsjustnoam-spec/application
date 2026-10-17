@@ -20,6 +20,10 @@ export const updateAssetType = (assetTypeId: number, input: AssetTypeInput): Pro
   })
 }
 
-export const archiveAssetType = (assetTypeId: number): Promise<void> => {
+export const getAssetType = (assetTypeId: number): Promise<AssetType> => {
+  return apiRequest<AssetType>(`${ASSET_TYPES_PATH}/${assetTypeId}`)
+}
+
+export const deleteAssetType = (assetTypeId: number): Promise<void> => {
   return apiRequest<void>(`${ASSET_TYPES_PATH}/${assetTypeId}`, { method: 'DELETE' })
 }

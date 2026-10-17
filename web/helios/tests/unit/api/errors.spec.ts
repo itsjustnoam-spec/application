@@ -31,9 +31,9 @@ describe('handleNetworkError', () => {
 
 describe('getErrorDetail', () => {
   it('returns the backend detail when the error is an ApiError with a detail', () => {
-    const detail = getErrorDetail(new ApiError(409, 'A site with this name already exists.'))
+    const detail = getErrorDetail(new ApiError(409, 'A site with this name already exists'))
 
-    expect(detail).toBe('A site with this name already exists.')
+    expect(detail).toBe('A site with this name already exists')
   })
 
   it('returns null when the error is not an ApiError', () => {

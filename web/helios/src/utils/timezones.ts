@@ -1,3 +1,3 @@
-const TIMEZONE_OPTIONS: string[] = Intl.supportedValuesOf('timeZone')
+const TIMEZONE_OPTIONS: string[] = ['UTC', ...Intl.supportedValuesOf('timeZone')]
 
 export { TIMEZONE_OPTIONS }

@@ -15,8 +15,8 @@ from atlas.schemas.site import SiteInput
 
 # ----- Consts ----- #
 
-SITE_NOT_FOUND_MESSAGE = "Site not found."
-SITE_NAME_TAKEN = "A site with this name already exists."
+SITE_NOT_FOUND_MESSAGE = "Site not found"
+SITE_NAME_TAKEN = "A site with this name already exists"
 
 # ----- Functions ----- #
 
@@ -30,7 +30,7 @@ def list_sites(
     statement = select(Site).where(col(Site.archived).is_(False))
     if query is not None:
         statement = statement.where(
-            col(Site.name).ilike(f"%{query}%"),
+            col(Site.name).icontains(query, autoescape=True),
         )
 
     total = session.exec(

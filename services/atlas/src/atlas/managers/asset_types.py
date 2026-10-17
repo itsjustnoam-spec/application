@@ -15,8 +15,8 @@ from atlas.schemas.asset_type import AssetTypeInput
 
 # ----- Consts ----- #
 
-ASSET_TYPE_NOT_FOUND_MESSAGE = "Asset type not found."
-ASSET_TYPE_NAME_TAKEN = "An asset type with this name already exists."
+ASSET_TYPE_NOT_FOUND_MESSAGE = "Asset type not found"
+ASSET_TYPE_NAME_TAKEN = "An asset type with this name already exists"
 
 # ----- Functions ----- #
 
@@ -32,7 +32,7 @@ def list_asset_types(
     )
     if query is not None:
         statement = statement.where(
-            col(AssetType.name).ilike(f"%{query}%"),
+            col(AssetType.name).icontains(query, autoescape=True),
         )
 
     total = session.exec(

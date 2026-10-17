@@ -10,7 +10,7 @@ import { mountWithPlugins } from '../../utils/mount'
 vi.mock('@/api/asset-types')
 
 const INTERVAL_RANGE_MESSAGE = 'Enter a whole number of days from 1 to 3650.'
-const ASSET_TYPE_NAME_TAKEN_DETAIL = 'An asset type with this name already exists.'
+const ASSET_TYPE_NAME_TAKEN_DETAIL = 'An asset type with this name already exists'
 
 describe('AssetTypeFormDialog', () => {
   it('shows the interval range message for an interval outside 1 to 3650', async () => {

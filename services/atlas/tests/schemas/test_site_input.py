@@ -34,3 +34,8 @@ def test_site_input_blank_name_raises_validation_error():
 def test_site_input_blank_address_raises_validation_error():
     with pytest.raises(ValidationError):
         SiteInput(name="HQ", address="", timezone="Europe/Berlin")
+
+
+def test_site_input_whitespace_only_name_raises_validation_error():
+    with pytest.raises(ValidationError):
+        SiteInput(name="   ", address="1 Main Street", timezone="Europe/Berlin")

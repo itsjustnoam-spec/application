@@ -1,3 +1,5 @@
+import type { Page } from '@/models/page'
+
 interface Site {
   id: number
   name: string
@@ -12,4 +14,6 @@ interface SiteInput {
   timezone: string
 }
 
-export type { Site, SiteInput }
+type SitePage = Page<Site>
+
+export type { Site, SiteInput, SitePage }

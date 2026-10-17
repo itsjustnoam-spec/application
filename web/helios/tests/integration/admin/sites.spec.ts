@@ -219,6 +219,70 @@ describe('Admin: sites', () => {
     expect(wrapper.text()).not.toContain('North Depot')
   })
 
+  it('shows only the results of the latest search when an older request finishes last', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let releaseNorthRequest: () => void = () => {}
+    server.use(
+      http.get('/api/atlas/sites', async ({ request }) => {
+        const query = new URL(request.url).searchParams.get('q') ?? ''
+        if (query === 'north') {
+          await new Promise<void>((resolve) => {
+            releaseNorthRequest = resolve
+          })
+          return HttpResponse.json(makeSitePage([makeSite({ id: 1, name: 'North Depot' })]))
+        }
+        return HttpResponse.json(makeSitePage([makeSite({ id: 2, name: 'South Depot' })]))
+      }),
+    )
+    const wrapper = await mountSitesView()
+    const searchInput = wrapper.get('[data-testid="site-search-input"] input')
+
+    await searchInput.setValue('north')
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS)
+    await flushPromises()
+    await searchInput.setValue('south')
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS)
+    await flushPromises()
+    releaseNorthRequest()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('South Depot')
+    expect(wrapper.text()).not.toContain('North Depot')
+  })
+
+  it('moves to the previous page when the last row of the last page is archived', async () => {
+    let isPageTwoArchived = false
+    server.use(
+      http.get('/api/atlas/sites', ({ request }) => {
+        const offset = Number(new URL(request.url).searchParams.get('offset'))
+        const total = isPageTwoArchived ? 20 : 21
+        if (offset === 0) {
+          return HttpResponse.json({
+            items: [makeSite({ id: 1, name: 'North Depot' })],
+            total,
+            limit: 20,
+            offset,
+          })
+        }
+        const items = isPageTwoArchived ? [] : [makeSite({ id: 21, name: 'Page Two Depot' })]
+        return HttpResponse.json({ items, total, limit: 20, offset })
+      }),
+      http.delete('/api/atlas/sites/:siteId', () => {
+        isPageTwoArchived = true
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const wrapper = await mountSitesView()
+    await wrapper.get('[data-testid="v-pagination-next"] button').trigger('click')
+    await flushPromises()
+
+    await wrapper.get('[data-testid="archive-site-button"]').trigger('click')
+    await wrapper.findComponent(ConfirmDeleteDialog).get('[data-testid="confirm-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('North Depot')
+  })
+
   it('keeps the site in the list when the archive confirmation is cancelled', async () => {
     const wrapper = await mountSitesView()
 

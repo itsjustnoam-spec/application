@@ -15,8 +15,11 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
   const isLoading = ref<boolean>(false)
   const errorMessage = ref<string | null>(null)
   let searchTimer: ReturnType<typeof setTimeout> | null = null
+  let latestRequestId = 0
 
   const loadPage = async (): Promise<void> => {
+    latestRequestId += 1
+    const requestId = latestRequestId
     isLoading.value = true
     errorMessage.value = null
     try {
@@ -25,12 +28,24 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
         offset: (page.value - FIRST_PAGE) * PAGE_SIZE,
         query: searchText.value,
       })
-      items.value = result.items
-      total.value = result.total
+      if (requestId === latestRequestId) {
+        const isPastLastPage = result.items.length === 0 && page.value > FIRST_PAGE
+        if (isPastLastPage) {
+          page.value = Math.max(FIRST_PAGE, Math.ceil(result.total / PAGE_SIZE))
+          await loadPage()
+          return
+        }
+        items.value = result.items
+        total.value = result.total
+      }
     } catch (error: unknown) {
-      errorMessage.value = handleNetworkError(error)
+      if (requestId === latestRequestId) {
+        errorMessage.value = handleNetworkError(error)
+      }
     } finally {
-      isLoading.value = false
+      if (requestId === latestRequestId) {
+        isLoading.value = false
+      }
     }
   }
 

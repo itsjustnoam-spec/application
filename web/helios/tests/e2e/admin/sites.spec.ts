@@ -4,7 +4,7 @@ import { makeSite, makeSitePage } from '../../mocks/factories/site'
 import { expect, test } from '../fixtures'
 
 const SITES_API_PATH = '/api/atlas/sites'
-const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists.'
+const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists'
 
 test.describe('Admin sites', () => {
   test('user creates a site and sees it in the list', async ({ page }) => {

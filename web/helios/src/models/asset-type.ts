@@ -1,3 +1,5 @@
+import type { Page } from '@/models/page'
+
 const ASSET_CATEGORIES = ['Electrical', 'Mechanical', 'HVAC', 'Safety', 'Other'] as const
 
 type AssetCategory = (typeof ASSET_CATEGORIES)[number]
@@ -16,5 +18,7 @@ interface AssetTypeInput {
   inspection_interval_days: number
 }
 
-export type { AssetCategory, AssetType, AssetTypeInput }
+type AssetTypePage = Page<AssetType>
+
+export type { AssetCategory, AssetType, AssetTypeInput, AssetTypePage }
 export { ASSET_CATEGORIES }

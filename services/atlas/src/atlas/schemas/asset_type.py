@@ -18,6 +18,8 @@ from atlas.entities.asset_type import (
 
 
 class AssetTypeInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(min_length=1, max_length=100)
     category: AssetCategory
     inspection_interval_days: int = Field(

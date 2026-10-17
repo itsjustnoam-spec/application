@@ -20,6 +20,8 @@ class InvalidTimezoneError(ValueError):
 
 
 class SiteInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(min_length=1, max_length=100)
     address: str = Field(min_length=1, max_length=500)
     timezone: str = Field(min_length=1, max_length=64)

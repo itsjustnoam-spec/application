@@ -17,6 +17,10 @@ export const updateSite = (siteId: number, input: SiteInput): Promise<Site> => {
   return apiRequest<Site>(`${SITES_PATH}/${siteId}`, { method: 'PUT', body: input })
 }
 
-export const archiveSite = (siteId: number): Promise<void> => {
+export const getSite = (siteId: number): Promise<Site> => {
+  return apiRequest<Site>(`${SITES_PATH}/${siteId}`)
+}
+
+export const deleteSite = (siteId: number): Promise<void> => {
   return apiRequest<void>(`${SITES_PATH}/${siteId}`, { method: 'DELETE' })
 }

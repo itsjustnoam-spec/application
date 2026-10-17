@@ -10,7 +10,7 @@ import { mountWithPlugins } from '../../utils/mount'
 vi.mock('@/api/sites')
 
 const REQUIRED_MESSAGE = 'This field is required.'
-const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists.'
+const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists'
 
 describe('SiteFormDialog', () => {
   it('shows the required message when submitted with an empty name', async () => {

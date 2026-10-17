@@ -34,6 +34,7 @@
     </v-alert>
     <v-data-table-server
       :headers="ASSET_TYPE_TABLE_HEADERS"
+      disable-sort
       :items="items"
       :items-length="total"
       :items-per-page="PAGE_SIZE"
@@ -108,7 +109,7 @@ const ARCHIVE_TITLE = 'Archive asset type'
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { archiveAssetType, listAssetTypes } from '@/api/asset-types'
+import { deleteAssetType, listAssetTypes } from '@/api/asset-types'
 import { getErrorDetail, handleNetworkError } from '@/api/errors'
 import AssetTypeFormDialog from '@/components/AssetTypeFormDialog.vue'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
@@ -168,7 +169,7 @@ const confirmArchive = async (): Promise<void> => {
     isArchiving.value = true
     archiveErrorMessage.value = null
     try {
-      await archiveAssetType(assetType.id)
+      await deleteAssetType(assetType.id)
       closeDeleteDialog()
       await loadPage()
     } catch (error: unknown) {

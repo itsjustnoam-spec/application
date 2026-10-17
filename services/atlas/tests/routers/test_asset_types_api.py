@@ -66,7 +66,7 @@ def test_create_asset_type_duplicate_name_returns_409_with_detail(
     response = api_client.post("/asset-types", json=ASSET_TYPE_PAYLOAD)
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "An asset type with this name already exists."}
+    assert response.json() == {"detail": "An asset type with this name already exists"}
 
 
 def test_get_asset_type_existing_id_returns_200_with_asset_type(
@@ -85,7 +85,7 @@ def test_get_asset_type_missing_id_returns_404_with_detail(api_client: TestClien
     response = api_client.get(f"/asset-types/{MISSING_ASSET_TYPE_ID}")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Asset type not found."}
+    assert response.json() == {"detail": "Asset type not found"}
 
 
 def test_put_asset_type_valid_body_returns_200_with_updated_asset_type(

@@ -29,6 +29,7 @@
     </v-alert>
     <v-data-table-server
       :headers="SITE_TABLE_HEADERS"
+      disable-sort
       :items="items"
       :items-length="total"
       :items-per-page="PAGE_SIZE"
@@ -103,7 +104,7 @@ const ARCHIVE_TITLE = 'Archive site'
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { archiveSite, listSites } from '@/api/sites'
+import { deleteSite, listSites } from '@/api/sites'
 import { getErrorDetail, handleNetworkError } from '@/api/errors'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
 import EasyToolTip from '@/components/EasyToolTip.vue'
@@ -161,7 +162,7 @@ const confirmArchive = async (): Promise<void> => {
     isArchiving.value = true
     archiveErrorMessage.value = null
     try {
-      await archiveSite(site.id)
+      await deleteSite(site.id)
       closeDeleteDialog()
       await loadPage()
     } catch (error: unknown) {

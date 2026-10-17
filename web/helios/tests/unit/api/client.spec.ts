@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { apiRequest, ApiError } from '@/api/client'
 
-const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists.'
+const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists'
 
 describe('apiRequest', () => {
   it('sends the method and a JSON body when posting a payload', async () => {
