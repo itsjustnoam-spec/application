@@ -41,7 +41,7 @@ All tests import `test`/`expect` from `tests/e2e/fixtures.ts`, never from `@play
 ```ts
 import { test as base, expect } from '@playwright/test'
 
-const API_PATH_PREFIX = '/api' // the proxy prefix from the service map
+const API_PATH_PREFIX = '/api' // the proxy prefix the frontend uses (see CLAUDE.md)
 
 type ApiMocks = {
   mock: (method: string, path: string, json: unknown, status?: number) => Promise<void>

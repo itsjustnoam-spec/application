@@ -10,6 +10,8 @@ from alembic import context
 from sqlmodel import SQLModel
 
 from atlas.database import DATABASE_URL, engine
+from atlas.entities.asset_type import AssetType  # noqa: F401
+from atlas.entities.site import Site  # noqa: F401
 
 # ----- Consts ----- #
 

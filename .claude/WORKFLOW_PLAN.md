@@ -1,6 +1,6 @@
 # Coding Workflow: Starting Plan
 
-> **Note:** this plan was written when the workflow was a plugin. It now lives in `.claude/` as project-level config. See `.claude/README.md`; commands are `/feature` and `/map-services`.
+> **Note:** this plan was written when the workflow was a plugin. It now lives in `.claude/` as project-level config. See `.claude/README.md`; commands are `/feature`, `/retro`, and `/review-mrs`. The service map was dropped in favor of the root `CLAUDE.md`.
 
 > **Status (16/10/26):** Build steps 1–7 are implemented as the `noam-workflow` plugin in this folder. See `README.md` for install and usage. Still open: generating the real service map in the monorepo (`/noam-workflow:map-services`), the first live run on your LiteLLM models, and the model benchmark (§5). The service map now lives in the monorepo (`.claude/skills/service-map/`), not in the plugin.
 

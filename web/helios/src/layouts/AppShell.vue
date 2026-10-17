@@ -24,23 +24,8 @@
   </v-layout>
 </template>
 
-<script lang="ts">
-export interface NavigationItem {
-  title: string
-  path: string
-  icon: string
-}
-
-export const NAVIGATION_ITEMS: NavigationItem[] = [
-  { title: 'Dashboard', path: '/dashboard', icon: 'mdi-view-dashboard' },
-  { title: 'Assets', path: '/assets', icon: 'mdi-factory' },
-  { title: 'Work Orders', path: '/work-orders', icon: 'mdi-clipboard-list' },
-  { title: 'Inspections', path: '/inspections', icon: 'mdi-magnify' },
-  { title: 'Admin', path: '/admin', icon: 'mdi-cog' },
-]
-</script>
-
 <script setup lang="ts">
+import { NAVIGATION_ITEMS } from '@/config/navigation'
 import { useNavigationStore } from '@/stores/navigation'
 
 const navigationStore = useNavigationStore()

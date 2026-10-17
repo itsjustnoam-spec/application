@@ -25,7 +25,8 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 |---|---|
 | `settings.json` | Hooks: post-edit convention/lint check, test-plan guard |
 | `commands/feature.md` | The orchestrator (`/feature`) |
-| `commands/map-services.md` | Generates `skills/service-map/` from the code (`/map-services`) |
+| `commands/retro.md` | End-of-session retrospective → improvements document (`/retro`) |
+| `commands/review-mrs.md` | Learns from GitLab merge requests via the GitLab MCP → improvements document (`/review-mrs`) |
 | `agents/explorer.md` | Pattern discovery before planning |
 | `agents/review-*.md` | The four reviewers |
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
@@ -33,6 +34,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 | `skills/browser-test-conventions` | Playwright browser tests with a fully mocked backend |
 | `skills/backend-test-infra` | Integration vs API layers; Postgres, Mongo, proxy, RabbitMQ, Temporal test setup |
 | `skills/grill-with-docs`, `write-spec`, `test-plan` | Workflow phases (with templates) |
+| `skills/workflow-improvement` | Where an improvement belongs, the document template, how to apply changes safely |
 | `scripts/` | Hook scripts, the convention checker, the mypy wrapper, and their tests |
 
 ---
@@ -41,7 +43,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 
 1. **Requirements:** `python` (3.10+) on PATH for the hooks. Per Python service: `uv`, plus `ruff`, `mypy`, `pytest-cov`, and `diff-cover` as dev dependencies. Frontend: Vitest + Vue Test Utils + MSW + `@pinia/testing` (see `skills/vitest-conventions` §7) and Playwright (see `skills/browser-test-conventions` §7).
 2. **Run from the project root:** `claude`. The first time, Claude Code asks you to trust the folder; the hooks in `settings.json` only run after you accept.
-3. **Generate the service map** once: `/map-services`. Review the generated `.claude/skills/service-map/SKILL.md` and commit it.
+3. **Keep a root `CLAUDE.md`** with the architecture, where things live, and the run/test commands. `/feature` reads it, and `/retro` recommends additions to it over time.
 
 ## LiteLLM models
 
@@ -83,3 +85,23 @@ python .claude/scripts/mypy_strict.py <paths>
 ```bash
 uv run --with pytest pytest .claude/scripts/tests
 ```
+
+## Improving the setup over time
+
+- **`/retro [focus]`** at the end of a session: reviews the conversation, the feature artifacts in `docs/features/`, and the diff, then writes `docs/improvements/<date>-session-<topic>.md`. Every recommendation has evidence, a destination (hook, convention skill + checklist, reviewer, workflow skill, `CLAUDE.md`, glossary/ADR, or a new skill/command), and the exact text to add. It then asks which `IMP-n` to apply and applies only those.
+- **`/review-mrs <MR URL or group/project!iid> ...`**: the same, but the evidence is GitLab merge requests (human review comments, fix-up commits, the diff). It's **read-only on GitLab**. It needs a GitLab MCP server connected to Claude Code, with a token that has the `read_api` scope.
+
+Both follow `skills/workflow-improvement/SKILL.md`.
+
+## Model invocation
+
+`disable-model-invocation: true` means Claude can't load the item on its own (its description isn't in context, and the Skill tool refuses it). You can still run it with `/name`, and commands read it by path.
+
+| Item | Setting | Why |
+|---|---|---|
+| `python-conventions`, `pytest-conventions`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`, `backend-test-infra` | model-invoked | Claude must pick them up by itself whenever it writes that kind of code, inside or outside `/feature`, and the review agents load them |
+| `grill-with-docs`, `write-spec`, `test-plan` | `true` | Phases of `/feature`. On their own they'd start a grill or create workflow files in the middle of unrelated work. `/feature` reads them by path |
+| `workflow-improvement` | `true` | Only meaningful inside `/retro` and `/review-mrs`, which read it by path |
+| `/feature`, `/retro`, `/review-mrs` | `true` | Long-running and write files, so you start them on purpose |
+
+When you add a skill, decide with the policy in `skills/workflow-improvement/SKILL.md` §6. `/retro` does this for the skills it proposes.

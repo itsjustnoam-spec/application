@@ -1,6 +1,7 @@
 ---
 name: grill-with-docs
 description: Use in the feature workflow after exploration and before writing the spec. Interviews the user in batches of up to 4 questions, each with a recommended answer, until every unknown about the feature is resolved. Updates the domain glossary and decision log as it goes.
+disable-model-invocation: true
 ---
 
 # Grill With Docs

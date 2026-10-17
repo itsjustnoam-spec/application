@@ -5,7 +5,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 # Backend Test Infrastructure
 
-`pytest-conventions` defines how a test is written. This skill defines **what each layer tests and how its dependencies are set up**. Always follow the project's existing fixtures first: find them in the reference test files listed in the service map, and only add new fixtures when none exist.
+`pytest-conventions` defines how a test is written. This skill defines **what each layer tests and how its dependencies are set up**. Always follow the project's existing fixtures first: find them in the existing tests (see `patterns.md` and the root `CLAUDE.md`), and only add new fixtures when none exist.
 
 ---
 

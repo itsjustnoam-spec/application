@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc -b",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:diff": "uvx diff-cover coverage/cobertura-coverage.xml --compare-branch=main --fail-under=100",
     "test:e2e": "playwright test"
   },
   "dependencies": {

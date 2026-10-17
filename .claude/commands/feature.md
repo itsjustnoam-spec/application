@@ -1,11 +1,14 @@
 ---
 description: "Spec-first feature workflow. Explore patterns, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan, tests, 4 parallel reviews, fix loop, summary."
+disable-model-invocation: true
 argument-hint: "<feature description> | resume <slug>"
 ---
 
 # Feature workflow
 
 Request: `$ARGUMENTS`
+
+**Workflow skills are read, not invoked.** `grill-with-docs`, `write-spec`, and `test-plan` are set to `disable-model-invocation: true`, so the Skill tool will refuse them. That's intended: always open them with the Read tool at the paths given below. Convention skills (`*-conventions`, `backend-test-infra`) are normal skills: load them with the Skill tool.
 
 You orchestrate the phases below **in order**. Each phase writes files to `docs/features/<slug>/`. Later phases read those files, not the chat, so keep them accurate. There is **one** human gate (phase 3). Before it, ask as much as needed. After it, **never ask the user anything**. Decide conservatively, log it, and keep going.
 
@@ -17,19 +20,19 @@ You orchestrate the phases below **in order**. Each phase writes files to `docs/
 3. Make sure `docs/features/` is in the root `.gitignore`. Add the line if it's missing.
 4. Write the slug to `docs/features/.active` (one line). A hook uses it to block tests that aren't in the test plan.
 5. Find the base branch: `git symbolic-ref --short refs/remotes/origin/HEAD` (strip `origin/`), or `main`. Remember it as `<base>`.
-6. Load the project skill `service-map` if it exists. If it doesn't exist or is mostly `TODO`, tell the user that `/map-services` gives better results, then continue.
+6. Read the root `CLAUDE.md` if it exists (architecture, run and test commands). If it's missing or thin, continue anyway and let `/retro` recommend what to add at the end of the session.
 
 ## Phase 1: Explore & discover patterns (mandatory)
 Run the `explorer` agent with: the feature description and the feature directory. Wait for it.
 Check that `context.md` and `patterns.md` exist and that `patterns.md` has at least one `P-n`. **Don't continue to phase 2 without `patterns.md`.**
 
 ## Phase 2: Grill
-Load the `grill-with-docs` skill and follow it fully with the user. It ends when `grill-notes.md` has no open or assumed unknowns and the user has confirmed the readback.
+Read `.claude/skills/grill-with-docs/SKILL.md` and follow it fully with the user. It ends when `grill-notes.md` has no open or assumed unknowns and the user has confirmed the readback.
 
 ## Phase 3: Spec, plan & ★ GATE
-Load the `write-spec` skill. Write `spec.md` and `plan.md`, run its self-check, and present them for approval.
+Read `.claude/skills/write-spec/SKILL.md`. Write `spec.md` and `plan.md`, run its self-check, and present them for approval.
 - On "I have changes", revise and ask again.
-- On approval, set `Status: APPROVED (<date>)` in both files, create `progress.md` from the write-spec template with every task unchecked, and set `Phase: IMPLEMENT`.
+- On approval, set `Status: APPROVED (<date>)` in both files, create `progress.md` from `.claude/skills/write-spec/templates/progress.md` with every task unchecked, and set `Phase: IMPLEMENT`.
 - Apply the git strategy from the spec (e.g. create the branch).
 
 From here on: **no questions to the user.**
@@ -46,7 +49,7 @@ For each task in `plan.md`, in order:
 If a task can't be completed (e.g. a broken environment), record why in `progress.md`, skip only what depends on it, and carry on.
 
 ## Phase 5: Test plan
-Set `Phase: TEST-PLAN`. Load the `test-plan` skill and write `test-plan.md` from its template, covering every REQ, EC, and new code path, with each row in one of the layers `be-unit`, `be-integration`, `be-api`, `fe-unit`, `fe-component`, `fe-integration`, `browser`. For layer guidance, load `backend-test-infra` (backend), and `vitest-conventions` plus `browser-test-conventions` when the frontend is touched.
+Set `Phase: TEST-PLAN`. Read `.claude/skills/test-plan/SKILL.md` and write `test-plan.md` from its template (`.claude/skills/test-plan/templates/test-plan.md`), covering every REQ, EC, and new code path, with each row in one of the layers `be-unit`, `be-integration`, `be-api`, `fe-unit`, `fe-component`, `fe-integration`, `browser`. For layer guidance, load `backend-test-infra` (backend), and `vitest-conventions` plus `browser-test-conventions` when the frontend is touched.
 
 ## Phase 6: Write tests
 Set `Phase: TESTS`. Write exactly the planned tests, layer by layer, loading the matching conventions before each layer:
@@ -56,7 +59,7 @@ Set `Phase: TESTS`. Write exactly the planned tests, layer by layer, loading the
 - `browser`: `browser-test-conventions`
 
 If the shared frontend test infrastructure is missing (mount helper, MSW server and handlers, factories, the Playwright `fixtures.ts`), create it first, exactly as the skills describe. If the hook blocks a test because it isn't in the plan, add the row to `test-plan.md` first (with a reason), then write the test.
-Run each layer and the changed-lines coverage (commands are in the service map): pytest + diff-cover, Vitest + diff-cover, and Playwright. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
+Run each layer and the changed-lines coverage (commands are in the root `CLAUDE.md`): pytest + diff-cover, Vitest + diff-cover, and Playwright. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
 
 ## Phase 7: Review
 Set `Phase: REVIEW`. Run these four agents **in parallel**, each with the feature directory and `<base>`:

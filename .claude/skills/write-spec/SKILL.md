@@ -1,6 +1,7 @@
 ---
 name: write-spec
 description: Use in the feature workflow after the grill. Turns context.md, patterns.md and grill-notes.md into spec.md and plan.md, which the user approves at the single gate before autonomous implementation.
+disable-model-invocation: true
 ---
 
 # Write Spec & Plan
@@ -21,7 +22,7 @@ Produce `spec.md` and `plan.md` in `docs/features/<slug>/` from the templates in
 ## Writing `plan.md`
 - Use `templates/plan.md`.
 - Order tasks by dependency: model/migration, then service manager/reader, then API route, then proxy route, then frontend types and client, then components/views. Async pieces (RabbitMQ, Temporal) come right after the code they depend on.
-- Every task lists: files, covered `REQ` IDs, **the pattern it follows (`P-n` plus a reference file)**, and a verify command from the service map.
+- Every task lists: files, covered `REQ` IDs, **the pattern it follows (`P-n` plus a reference file)**, and a verify command (from the root `CLAUDE.md`, or the service's own scripts).
 - A task that follows no existing pattern must say `Pattern: NEW, because <reason>`, so the user sees it at the gate.
 - Tasks are small: one layer of one service each. Prefer 5–15 tasks over 3 huge ones.
 - Tests aren't tasks here. They're planned later in `test-plan.md`, after implementation.

@@ -1,6 +1,7 @@
 ---
 name: test-plan
 description: Use in the feature workflow after implementation and before writing any test. Produces test-plan.md, one row per test (test name, file path, what it tests, expected result), covering every requirement, edge case, and new code path. Tests may only be written once they are listed here.
+disable-model-invocation: true
 ---
 
 # Test Plan
@@ -10,7 +11,7 @@ Write `docs/features/<slug>/test-plan.md` from `templates/test-plan.md`. **No te
 ## Inputs
 - `spec.md` (REQ and EC IDs), `plan.md`, `progress.md` (deviations).
 - The diff of the implementation: `git diff <base>...HEAD` plus uncommitted changes.
-- The reference test files from the service map and `patterns.md`.
+- The reference test files from `patterns.md`.
 
 ## Rules
 1. **One row per test function.** Parametrized tests are one row; list the cases in "What it tests".
@@ -47,4 +48,4 @@ Write `docs/features/<slug>/test-plan.md` from `templates/test-plan.md`. **No te
 - [ ] Names follow the naming conventions exactly
 
 ## After writing the tests
-Run the tests and the coverage of changed lines (commands are in the service map). Record the results at the bottom of `test-plan.md` under "Results". If a planned test turns out to be impossible or wrong, update its row with the reason instead of silently dropping it.
+Run the tests and the coverage of changed lines (commands are in the root `CLAUDE.md`). Record the results at the bottom of `test-plan.md` under "Results". If a planned test turns out to be impossible or wrong, update its row with the reason instead of silently dropping it.

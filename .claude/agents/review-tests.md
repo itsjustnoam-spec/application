@@ -11,9 +11,9 @@ You review **the tests**: whether they exist as planned, cover the new code, and
 - Feature directory `docs/features/<slug>/` and base branch `<base>`.
 
 ## Steps
-1. Read `test-plan.md`, `spec.md` (REQ/EC lists), and the reference test files from the service map.
+1. Read `test-plan.md`, `spec.md` (REQ/EC lists), and the reference test files from `patterns.md`.
 2. **Plan vs. reality:** for every row in `test-plan.md`, find the test by its exact name in its exact file. Mark it `present`, `missing`, `renamed`, or `moved`. Also list tests in the diff that aren't in the plan.
-3. **Run and measure:** run the commands from the service map for each touched service: `uv run pytest --cov=<pkg> --cov-report=xml`, then `uv run diff-cover coverage.xml --compare-branch=<base>`; for the frontend, `npx vitest run --coverage`, then diff-cover on the cobertura report, then `npx playwright test`. Record pass/fail per layer, the changed-line coverage %, and every uncovered changed line. If a tool is missing, say so in the report; don't skip silently.
+3. **Run and measure:** run the test commands from the root `CLAUDE.md` for each touched service (these defaults if it has none): `uv run pytest --cov=<pkg> --cov-report=xml`, then `uv run diff-cover coverage.xml --compare-branch=<base>`; for the frontend, `npx vitest run --coverage`, then diff-cover on the cobertura report, then `npx playwright test`. Record pass/fail per layer, the changed-line coverage %, and every uncovered changed line. If a tool is missing, say so in the report; don't skip silently.
 4. **Edge cases and layers:** every `EC-n` has at least one test that really exercises it. Then check each layer against the test-plan rules:
    - Every new endpoint has a `be-integration` test (service manager/reader) **and** a `be-api` test (test client).
    - Every new component has `fe-component` tests for props/emits and its loading, error, and empty states where they exist.

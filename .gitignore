@@ -7,3 +7,4 @@ coverage.xml
 coverage/
 .venv/
 docs/features/
+docs/improvements/
