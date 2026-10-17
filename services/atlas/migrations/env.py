@@ -9,6 +9,7 @@ Alembic environment that applies Atlas schema migrations to PostgreSQL.
 from alembic import context
 from sqlmodel import SQLModel
 
+import atlas.entities  # noqa: F401  # registers tables on SQLModel.metadata
 from atlas.database import DATABASE_URL, engine
 
 # ----- Consts ----- #
