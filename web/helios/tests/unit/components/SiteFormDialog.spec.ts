@@ -64,6 +64,21 @@ describe('SiteFormDialog', () => {
     expect(wrapper.emitted('cancel')).toHaveLength(1)
   })
 
+  it('disables the save button while the save is in flight', async () => {
+    let resolveSave: (value: ReturnType<typeof makeSite>) => void = () => {}
+    vi.mocked(updateSite).mockReturnValue(new Promise((resolve) => { resolveSave = resolve }))
+    const wrapper = mountWithPlugins(SiteFormDialog, {
+      props: { site: makeSite({ id: 3 }) },
+      global: { stubs: { teleport: true } },
+    })
+
+    await wrapper.get('[data-testid="site-form-save-button"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="site-form-save-button"]').attributes('disabled')).toBeDefined()
+    resolveSave(makeSite({ id: 3 }))
+    await flushPromises()
+  })
+
   it('pre-fills the fields when editing an existing site', () => {
     const wrapper = mountWithPlugins(SiteFormDialog, {
       props: { site: makeSite({ name: 'South Depot', address: '9 Dock Road' }) },

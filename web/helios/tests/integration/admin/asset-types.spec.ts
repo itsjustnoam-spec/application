@@ -29,7 +29,7 @@ describe('Admin: asset types', () => {
     )
   })
 
-  it('lists asset types with their category and inspection interval', async () => {
+  it('lists asset types with their category and interval', async () => {
     const wrapper = await mountAssetTypesView()
 
     expect(wrapper.text()).toContain('Pump')

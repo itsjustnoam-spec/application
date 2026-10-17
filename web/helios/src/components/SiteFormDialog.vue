@@ -43,6 +43,7 @@
       <v-btn
         color="primary"
         :loading="isSaving"
+        :disabled="isSaving"
         data-testid="site-form-save-button"
         @click="submitForm"
       >
