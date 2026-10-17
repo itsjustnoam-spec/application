@@ -37,7 +37,11 @@
       />
     </v-card-text>
     <v-card-actions class="justify-end">
-      <v-btn variant="text" data-testid="site-form-cancel-button" @click="emit('cancel')">
+      <v-btn
+        variant="text"
+        data-testid="site-form-cancel-button"
+        @click="emit('cancel')"
+      >
         Cancel
       </v-btn>
       <v-btn

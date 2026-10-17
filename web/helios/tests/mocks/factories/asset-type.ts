@@ -1,7 +1,7 @@
 import type { AssetType } from '@/models/asset-type'
 import type { Page } from '@/models/page'
 
-export const makeAssetType = (overrides: Partial<AssetType> = {}): AssetType => {
+const makeAssetType = (overrides: Partial<AssetType> = {}): AssetType => {
   return {
     id: 1,
     name: 'Pump',
@@ -12,7 +12,7 @@ export const makeAssetType = (overrides: Partial<AssetType> = {}): AssetType => 
   }
 }
 
-export const makeAssetTypePage = (items: AssetType[] = [makeAssetType()]): Page<AssetType> => {
+const makeAssetTypePage = (items: AssetType[] = [makeAssetType()]): Page<AssetType> => {
   return {
     items,
     total: items.length,
@@ -20,3 +20,5 @@ export const makeAssetTypePage = (items: AssetType[] = [makeAssetType()]): Page<
     offset: 0,
   }
 }
+
+export { makeAssetType, makeAssetTypePage }

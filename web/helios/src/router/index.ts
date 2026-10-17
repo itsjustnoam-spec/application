@@ -8,7 +8,7 @@ import InspectionsView from '@/views/InspectionsView.vue'
 import SitesView from '@/views/SitesView.vue'
 import WorkOrdersView from '@/views/WorkOrdersView.vue'
 
-export const APP_ROUTES: RouteRecordRaw[] = [
+const APP_ROUTES: RouteRecordRaw[] = [
   { path: '/', redirect: '/dashboard' },
   { path: '/dashboard', name: 'dashboard', component: DashboardView },
   { path: '/assets', name: 'assets', component: AssetsView },
@@ -26,9 +26,11 @@ export const APP_ROUTES: RouteRecordRaw[] = [
   },
 ]
 
-export const createAppRouter = (history: RouterHistory = createWebHistory()) => {
+const createAppRouter = (history: RouterHistory = createWebHistory()) => {
   return createRouter({
     history,
     routes: APP_ROUTES,
   })
 }
+
+export { APP_ROUTES, createAppRouter }

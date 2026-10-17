@@ -20,26 +20,33 @@ from atlas.schemas.site import SiteInput, SiteOut
 
 router = APIRouter()
 
-SessionDep = Annotated[Session, Depends(get_session)]
-
 # ----- Routes ----- #
 
 
 @router.get("/sites")
 def list_sites(
-    session: SessionDep,
+    session: Annotated[Session, Depends(get_session)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
-    q: Annotated[str | None, Query(max_length=100)] = None,
+    query: Annotated[
+        str | None,
+        Query(alias="q", max_length=100),
+    ] = None,
 ) -> Page[SiteOut]:
+    """
+    Lists active sites matching the search text, one page at a time.
+    """
     sites, total = site_manager.list_sites(
         session,
         limit,
         offset,
-        q,
+        query,
     )
     return Page[SiteOut](
-        items=[SiteOut.model_validate(site) for site in sites],
+        items=[
+            SiteOut.model_validate(site)
+            for site in sites
+        ],
         total=total,
         limit=limit,
         offset=offset,
@@ -47,13 +54,25 @@ def list_sites(
 
 
 @router.post("/sites", status_code=status.HTTP_201_CREATED)
-def create_site(data: SiteInput, session: SessionDep) -> SiteOut:
-    site = site_manager.create_site(session, data)
+def create_site(
+    site_input: SiteInput,
+    session: Annotated[Session, Depends(get_session)],
+) -> SiteOut:
+    """
+    Creates a site.
+    """
+    site = site_manager.create_site(session, site_input)
     return SiteOut.model_validate(site)
 
 
 @router.get("/sites/{site_id}")
-def read_site(site_id: int, session: SessionDep) -> SiteOut:
+def read_site(
+    site_id: int,
+    session: Annotated[Session, Depends(get_session)],
+) -> SiteOut:
+    """
+    Reads one active site.
+    """
     site = site_manager.read_site(session, site_id)
     return SiteOut.model_validate(site)
 
@@ -61,13 +80,16 @@ def read_site(site_id: int, session: SessionDep) -> SiteOut:
 @router.put("/sites/{site_id}")
 def update_site(
     site_id: int,
-    data: SiteInput,
-    session: SessionDep,
+    site_input: SiteInput,
+    session: Annotated[Session, Depends(get_session)],
 ) -> SiteOut:
+    """
+    Replaces the name, address, and timezone of an active site.
+    """
     site = site_manager.update_site(
         session,
         site_id,
-        data,
+        site_input,
     )
     return SiteOut.model_validate(site)
 
@@ -76,5 +98,11 @@ def update_site(
     "/sites/{site_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def archive_site(site_id: int, session: SessionDep):
+def archive_site(
+    site_id: int,
+    session: Annotated[Session, Depends(get_session)],
+):
+    """
+    Archives an active site.
+    """
     site_manager.archive_site(session, site_id)

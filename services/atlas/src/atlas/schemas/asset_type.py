@@ -18,6 +18,9 @@ from atlas.entities.asset_type import (
 
 
 class AssetTypeInput(BaseModel):
+    """
+    The values a client sends to create or update an asset type.
+    """
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=100)
@@ -29,6 +32,9 @@ class AssetTypeInput(BaseModel):
 
 
 class AssetTypeOut(BaseModel):
+    """
+    An asset type as the API returns it.
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id: int

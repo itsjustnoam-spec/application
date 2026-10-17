@@ -30,7 +30,13 @@
       :text="errorMessage"
       data-testid="asset-types-error"
     >
-      <v-btn variant="text" data-testid="retry-asset-types-button" @click="loadPage">Retry</v-btn>
+      <v-btn
+        variant="text"
+        data-testid="retry-asset-types-button"
+        @click="loadPage"
+      >
+        Retry
+      </v-btn>
     </v-alert>
     <v-data-table-server
       :headers="ASSET_TYPE_TABLE_HEADERS"
@@ -59,17 +65,22 @@
         />
       </template>
       <template #no-data>
-        <p class="py-4 text-center" data-testid="asset-types-empty">No asset types yet.</p>
+        <p
+          class="py-4 text-center"
+          data-testid="asset-types-empty"
+        >
+          No asset types yet.
+        </p>
       </template>
     </v-data-table-server>
 
     <v-dialog
       :model-value="isFormDialogOpen"
-      max-width="560"
+      :max-width="FORM_DIALOG_MAX_WIDTH"
       @update:model-value="closeFormDialog"
     >
       <AssetTypeFormDialog
-        v-if="isFormDialogOpen"
+        :key="formOpenCount"
         :asset-type="editingAssetType"
         @saved="onAssetTypeSaved"
         @cancel="closeFormDialog"
@@ -78,11 +89,10 @@
 
     <v-dialog
       :model-value="isDeleteDialogOpen"
-      max-width="420"
+      :max-width="CONFIRM_DIALOG_MAX_WIDTH"
       @update:model-value="closeDeleteDialog"
     >
       <ConfirmDeleteDialog
-        v-if="isDeleteDialogOpen && assetTypeToDelete !== null"
         :title="ARCHIVE_TITLE"
         :message="archiveMessage"
         :is-loading="isArchiving"
@@ -104,6 +114,8 @@ const ASSET_TYPE_TABLE_HEADERS: DataTableHeader[] = [
   { title: '', key: 'actions', sortable: false, align: 'end' },
 ]
 const ARCHIVE_TITLE = 'Archive asset type'
+const FORM_DIALOG_MAX_WIDTH = '35rem'
+const CONFIRM_DIALOG_MAX_WIDTH = '26rem'
 </script>
 
 <script setup lang="ts">
@@ -121,6 +133,7 @@ const { items, total, page, searchText, isLoading, errorMessage, loadPage, setPa
   usePagedList(listAssetTypes)
 
 const isFormDialogOpen = ref<boolean>(false)
+const formOpenCount = ref<number>(0)
 const editingAssetType = ref<AssetType | null>(null)
 const isDeleteDialogOpen = ref<boolean>(false)
 const assetTypeToDelete = ref<AssetType | null>(null)
@@ -133,14 +146,18 @@ const archiveMessage = computed<string>(() =>
     : `Archive "${assetTypeToDelete.value.name}"? It will be hidden from lists.`,
 )
 
-const openCreateDialog = (): void => {
-  editingAssetType.value = null
+const openFormDialog = (assetType: AssetType | null): void => {
+  editingAssetType.value = assetType
+  formOpenCount.value += 1
   isFormDialogOpen.value = true
 }
 
+const openCreateDialog = (): void => {
+  openFormDialog(null)
+}
+
 const openEditDialog = (assetType: AssetType): void => {
-  editingAssetType.value = assetType
-  isFormDialogOpen.value = true
+  openFormDialog(assetType)
 }
 
 const closeFormDialog = (): void => {

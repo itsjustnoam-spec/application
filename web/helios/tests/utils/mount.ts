@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 
 import { createAppVuetify } from '@/plugins/vuetify'
 
-export const mountWithPlugins = <Props>(
+const mountWithPlugins = <Props>(
   component: Component,
   options: ComponentMountingOptions<Props> = {},
 ) => {
@@ -16,3 +16,5 @@ export const mountWithPlugins = <Props>(
     },
   })
 }
+
+export { mountWithPlugins }

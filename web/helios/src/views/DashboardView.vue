@@ -10,7 +10,10 @@
       indeterminate
       data-testid="atlas-health-loading"
     />
-    <p v-else-if="atlasHealthStatus !== null" data-testid="atlas-health-status">
+    <p
+      v-else-if="atlasHealthStatus !== null"
+      data-testid="atlas-health-status"
+    >
       Atlas service: {{ atlasHealthStatus }}
     </p>
     <v-alert

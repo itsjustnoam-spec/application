@@ -12,6 +12,9 @@ from pydantic import BaseModel
 
 
 class Page[ItemT](BaseModel):
+    """
+    One page of a list, with the total number of matching rows.
+    """
     items: list[ItemT]
     total: int
     limit: int

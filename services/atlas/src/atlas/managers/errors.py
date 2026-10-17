@@ -12,9 +12,11 @@ class EntityNotFoundError(Exception):
     """
     Raised when the requested row does not exist or is archived.
     """
+    pass
 
 
 class DuplicateNameError(Exception):
     """
     Raised when an active row already uses the requested name.
     """
+    pass

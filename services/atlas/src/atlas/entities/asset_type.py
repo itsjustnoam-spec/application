@@ -20,6 +20,9 @@ MAX_INSPECTION_INTERVAL_DAYS = 3650
 
 
 class AssetCategory(StrEnum):
+    """
+    The kind of equipment an asset type describes.
+    """
     ELECTRICAL = "Electrical"
     MECHANICAL = "Mechanical"
     HVAC = "HVAC"

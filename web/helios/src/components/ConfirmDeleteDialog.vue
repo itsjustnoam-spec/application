@@ -1,6 +1,9 @@
 <template>
   <v-card>
-    <v-card-title class="text-center" data-testid="confirm-delete-title">
+    <v-card-title
+      class="text-center"
+      data-testid="confirm-delete-title"
+    >
       {{ title }}
     </v-card-title>
     <v-card-text>

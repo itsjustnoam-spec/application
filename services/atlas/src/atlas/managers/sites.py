@@ -7,6 +7,7 @@ Data access for sites: listing, reading, creating, updating, and archiving.
 # ----- Imports ----- #
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import SessionTransaction
 from sqlmodel import Session, col, func, select
 
 from atlas.entities import Site
@@ -27,6 +28,15 @@ def list_sites(
     offset: int,
     query: str | None,
 ) -> tuple[list[Site], int]:
+    """
+    Lists active sites, optionally filtered by name, one page at a time.
+
+    :param session: The request's database session.
+    :param limit: The maximum number of sites to return.
+    :param offset: How many sites to skip before the page starts.
+    :param query: Text the site name must contain, or None for all sites.
+    :return: The sites of the page, and the total number of matching sites.
+    """
     statement = select(Site).where(col(Site.archived).is_(False))
     if query is not None:
         statement = statement.where(
@@ -36,13 +46,22 @@ def list_sites(
     total = session.exec(
         select(func.count()).select_from(statement.subquery()),
     ).one()
+    page_statement = statement.order_by(col(Site.name), col(Site.id))
     sites = session.exec(
-        statement.order_by(Site.name).offset(offset).limit(limit),
+        page_statement.offset(offset).limit(limit),
     ).all()
     return list(sites), total
 
 
 def read_site(session: Session, site_id: int) -> Site:
+    """
+    Reads one active site.
+
+    :param session: The request's database session.
+    :param site_id: The id of the site.
+    :return: The site.
+    :raises EntityNotFoundError: When the site doesn't exist or is archived.
+    """
     site: Site | None = session.get(Site, site_id)
     if site is None or site.archived:
         raise EntityNotFoundError(SITE_NOT_FOUND_MESSAGE)
@@ -50,41 +69,78 @@ def read_site(session: Session, site_id: int) -> Site:
     return site
 
 
-def create_site(session: Session, data: SiteInput) -> Site:
-    site = Site(
-        name=data.name,
-        address=data.address,
-        timezone=data.timezone,
-    )
-    session.add(site)
+def flush_site_changes(
+    session: Session,
+    savepoint: SessionTransaction,
+):
+    """
+    Writes the site changes made inside a savepoint, and closes it.
+
+    :param session: The request's database session.
+    :param savepoint: The savepoint opened before the changes were made.
+    :raises DuplicateNameError: When another active site has the same name.
+    """
     try:
-        session.commit()
+        session.flush()
     except IntegrityError as error:
-        session.rollback()
+        savepoint.rollback()
         raise DuplicateNameError(SITE_NAME_TAKEN) from error
 
-    session.refresh(site)
+    savepoint.commit()
+
+
+def create_site(session: Session, site_input: SiteInput) -> Site:
+    """
+    Creates a site.
+
+    :param session: The request's database session.
+    :param site_input: The values of the new site.
+    :return: The created site.
+    :raises DuplicateNameError: When an active site already has this name.
+    """
+    savepoint = session.begin_nested()
+    site = Site(
+        name=site_input.name,
+        address=site_input.address,
+        timezone=site_input.timezone,
+    )
+    session.add(site)
+    flush_site_changes(session, savepoint)
     return site
 
 
-def update_site(session: Session, site_id: int, data: SiteInput) -> Site:
-    site = read_site(session, site_id)
-    site.name = data.name
-    site.address = data.address
-    site.timezone = data.timezone
-    session.add(site)
-    try:
-        session.commit()
-    except IntegrityError as error:
-        session.rollback()
-        raise DuplicateNameError(SITE_NAME_TAKEN) from error
+def update_site(
+    session: Session,
+    site_id: int,
+    site_input: SiteInput,
+) -> Site:
+    """
+    Replaces the name, address, and timezone of an active site.
 
-    session.refresh(site)
+    :param session: The request's database session.
+    :param site_id: The id of the site.
+    :param site_input: The new values of the site.
+    :return: The updated site.
+    :raises EntityNotFoundError: When the site doesn't exist or is archived.
+    :raises DuplicateNameError: When another active site has the new name.
+    """
+    site = read_site(session, site_id)
+    savepoint = session.begin_nested()
+    site.name = site_input.name
+    site.address = site_input.address
+    site.timezone = site_input.timezone
+    flush_site_changes(session, savepoint)
     return site
 
 
 def archive_site(session: Session, site_id: int):
+    """
+    Archives an active site, which hides it and frees its name.
+
+    :param session: The request's database session.
+    :param site_id: The id of the site.
+    :raises EntityNotFoundError: When the site doesn't exist or is archived.
+    """
     site = read_site(session, site_id)
     site.archived = True
-    session.add(site)
-    session.commit()
+    session.flush()

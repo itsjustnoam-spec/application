@@ -15,7 +15,12 @@
         data-testid="site-search-input"
         @update:model-value="setSearchText"
       />
-      <v-btn color="primary" prepend-icon="mdi-plus" data-testid="create-site-button" @click="openCreateDialog">
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-plus"
+        data-testid="create-site-button"
+        @click="openCreateDialog"
+      >
         Add site
       </v-btn>
     </div>
@@ -25,7 +30,13 @@
       :text="errorMessage"
       data-testid="sites-error"
     >
-      <v-btn variant="text" data-testid="retry-sites-button" @click="loadPage">Retry</v-btn>
+      <v-btn
+        variant="text"
+        data-testid="retry-sites-button"
+        @click="loadPage"
+      >
+        Retry
+      </v-btn>
     </v-alert>
     <v-data-table-server
       :headers="SITE_TABLE_HEADERS"
@@ -54,17 +65,22 @@
         />
       </template>
       <template #no-data>
-        <p class="py-4 text-center" data-testid="sites-empty">No sites yet.</p>
+        <p
+          class="py-4 text-center"
+          data-testid="sites-empty"
+        >
+          No sites yet.
+        </p>
       </template>
     </v-data-table-server>
 
     <v-dialog
       :model-value="isFormDialogOpen"
-      max-width="560"
+      :max-width="FORM_DIALOG_MAX_WIDTH"
       @update:model-value="closeFormDialog"
     >
       <SiteFormDialog
-        v-if="isFormDialogOpen"
+        :key="formOpenCount"
         :site="editingSite"
         @saved="onSiteSaved"
         @cancel="closeFormDialog"
@@ -73,11 +89,10 @@
 
     <v-dialog
       :model-value="isDeleteDialogOpen"
-      max-width="420"
+      :max-width="CONFIRM_DIALOG_MAX_WIDTH"
       @update:model-value="closeDeleteDialog"
     >
       <ConfirmDeleteDialog
-        v-if="isDeleteDialogOpen && siteToDelete !== null"
         :title="ARCHIVE_TITLE"
         :message="archiveMessage"
         :is-loading="isArchiving"
@@ -99,6 +114,8 @@ const SITE_TABLE_HEADERS: DataTableHeader[] = [
   { title: '', key: 'actions', sortable: false, align: 'end' },
 ]
 const ARCHIVE_TITLE = 'Archive site'
+const FORM_DIALOG_MAX_WIDTH = '35rem'
+const CONFIRM_DIALOG_MAX_WIDTH = '26rem'
 </script>
 
 <script setup lang="ts">
@@ -116,6 +133,7 @@ const { items, total, page, searchText, isLoading, errorMessage, loadPage, setPa
   usePagedList(listSites)
 
 const isFormDialogOpen = ref<boolean>(false)
+const formOpenCount = ref<number>(0)
 const editingSite = ref<Site | null>(null)
 const isDeleteDialogOpen = ref<boolean>(false)
 const siteToDelete = ref<Site | null>(null)
@@ -126,14 +144,18 @@ const archiveMessage = computed<string>(() =>
   siteToDelete.value === null ? '' : `Archive "${siteToDelete.value.name}"? It will be hidden from lists.`,
 )
 
-const openCreateDialog = (): void => {
-  editingSite.value = null
+const openFormDialog = (site: Site | null): void => {
+  editingSite.value = site
+  formOpenCount.value += 1
   isFormDialogOpen.value = true
 }
 
+const openCreateDialog = (): void => {
+  openFormDialog(null)
+}
+
 const openEditDialog = (site: Site): void => {
-  editingSite.value = site
-  isFormDialogOpen.value = true
+  openFormDialog(site)
 }
 
 const closeFormDialog = (): void => {

@@ -1,5 +1,8 @@
 <template>
-  <v-tooltip :text="text" location="top">
+  <v-tooltip
+    :text="text"
+    location="top"
+  >
     <template #activator="{ props: activatorProps }">
       <v-icon
         v-bind="activatorProps"
@@ -12,12 +15,15 @@
 </template>
 
 <script lang="ts">
-export const DEFAULT_TOOLTIP_ICON = 'mdi-information'
+const DEFAULT_TOOLTIP_ICON = 'mdi-information'
 
-export interface EasyToolTipProps {
+interface EasyToolTipProps {
   text: string
   icon?: string
 }
+
+export type { EasyToolTipProps }
+export { DEFAULT_TOOLTIP_ICON }
 </script>
 
 <script setup lang="ts">

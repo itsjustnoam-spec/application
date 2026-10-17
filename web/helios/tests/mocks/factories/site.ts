@@ -1,7 +1,7 @@
 import type { Page } from '@/models/page'
 import type { Site } from '@/models/site'
 
-export const makeSite = (overrides: Partial<Site> = {}): Site => {
+const makeSite = (overrides: Partial<Site> = {}): Site => {
   return {
     id: 1,
     name: 'North Depot',
@@ -12,7 +12,7 @@ export const makeSite = (overrides: Partial<Site> = {}): Site => {
   }
 }
 
-export const makeSitePage = (items: Site[] = [makeSite()]): Page<Site> => {
+const makeSitePage = (items: Site[] = [makeSite()]): Page<Site> => {
   return {
     items,
     total: items.length,
@@ -20,3 +20,5 @@ export const makeSitePage = (items: Site[] = [makeSite()]): Page<Site> => {
     offset: 0,
   }
 }
+
+export { makeSite, makeSitePage }

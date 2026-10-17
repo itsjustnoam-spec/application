@@ -6,7 +6,7 @@ import {
 } from './asset-types'
 import { archiveSiteHandler, createSiteHandler, listSitesHandler } from './sites'
 
-export const handlers = [
+const handlers = [
   atlasHealthHandler,
   listSitesHandler,
   createSiteHandler,
@@ -15,3 +15,5 @@ export const handlers = [
   createAssetTypeHandler,
   archiveAssetTypeHandler,
 ]
+
+export { handlers }

@@ -4,11 +4,11 @@ import type { AssetTypeInput } from '@/models/asset-type'
 
 import { makeAssetType, makeAssetTypePage } from '../factories/asset-type'
 
-export const listAssetTypesHandler = http.get('/api/atlas/asset-types', () => {
+const listAssetTypesHandler = http.get('/api/atlas/asset-types', () => {
   return HttpResponse.json(makeAssetTypePage())
 })
 
-export const createAssetTypeHandler = http.post('/api/atlas/asset-types', async ({ request }) => {
+const createAssetTypeHandler = http.post('/api/atlas/asset-types', async ({ request }) => {
   const body = (await request.json()) as AssetTypeInput
   if (body.inspection_interval_days < 1 || body.inspection_interval_days > 3650) {
     return HttpResponse.json({ detail: 'Interval out of range.' }, { status: 422 })
@@ -23,6 +23,8 @@ export const createAssetTypeHandler = http.post('/api/atlas/asset-types', async 
   )
 })
 
-export const archiveAssetTypeHandler = http.delete('/api/atlas/asset-types/:assetTypeId', () => {
+const archiveAssetTypeHandler = http.delete('/api/atlas/asset-types/:assetTypeId', () => {
   return new HttpResponse(null, { status: 204 })
 })
+
+export { archiveAssetTypeHandler, createAssetTypeHandler, listAssetTypesHandler }

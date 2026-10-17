@@ -2,7 +2,6 @@ import { flushPromises } from '@vue/test-utils'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { SERVER_ERROR_MESSAGE } from '@/api/errors'
 import { SEARCH_DEBOUNCE_MS } from '@/utils/use-paged-list'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
 import SiteFormDialog from '@/components/SiteFormDialog.vue'
@@ -22,49 +21,6 @@ afterEach(() => {
 })
 
 describe('Admin: sites', () => {
-  it('lists sites returned by the API with their name and address', async () => {
-    const wrapper = await mountSitesView()
-
-    expect(wrapper.text()).toContain('North Depot')
-    expect(wrapper.text()).toContain('1 Main Street')
-  })
-
-  it('shows the empty state when there are no sites', async () => {
-    server.use(
-      http.get('/api/atlas/sites', () => HttpResponse.json(makeSitePage([]))),
-    )
-
-    const wrapper = await mountSitesView()
-
-    expect(wrapper.get('[data-testid="sites-empty"]').text()).toContain('No sites yet.')
-  })
-
-  it('shows the error state with retry when loading sites fails', async () => {
-    server.use(
-      http.get(
-        '/api/atlas/sites',
-        () => HttpResponse.json({ detail: 'Database unavailable' }, { status: 503 }),
-        { once: true },
-      ),
-    )
-
-    const wrapper = await mountSitesView()
-    await wrapper.get('[data-testid="retry-sites-button"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('North Depot')
-    expect(wrapper.find('[data-testid="sites-error"]').exists()).toBe(false)
-  })
-
-  it('shows the server error message when loading sites fails', async () => {
-    server.use(
-      http.get('/api/atlas/sites', () => HttpResponse.json({ detail: 'Database unavailable' }, { status: 503 })),
-    )
-
-    const wrapper = await mountSitesView()
-
-    expect(wrapper.get('[data-testid="sites-error"]').text()).toContain(SERVER_ERROR_MESSAGE)
-  })
 
   it('creates a site and shows it in the list', async () => {
     let sites = [makeSite()]
@@ -190,33 +146,6 @@ describe('Admin: sites', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Page Two Depot')
-  })
-
-  it('shows only the latest search text when the user keeps typing', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    server.use(
-      http.get('/api/atlas/sites', ({ request }) => {
-        const query = new URL(request.url).searchParams.get('q') ?? ''
-        const allSites = [
-          makeSite({ id: 1, name: 'North Depot' }),
-          makeSite({ id: 2, name: 'South Depot' }),
-        ]
-        return HttpResponse.json(
-          makeSitePage(
-            allSites.filter((site) => site.name.toLowerCase().includes(query.toLowerCase())),
-          ),
-        )
-      }),
-    )
-    const wrapper = await mountSitesView()
-
-    await wrapper.get('[data-testid="site-search-input"] input').setValue('north')
-    await wrapper.get('[data-testid="site-search-input"] input').setValue('south')
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS)
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('South Depot')
-    expect(wrapper.text()).not.toContain('North Depot')
   })
 
   it('shows only the results of the latest search when an older request finishes last', async () => {

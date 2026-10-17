@@ -26,6 +26,9 @@ def handle_entity_not_found(
     request: Request,
     error: EntityNotFoundError,
 ) -> JSONResponse:
+    """
+    Turns a missing or archived row into a 404 response.
+    """
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={"detail": str(error)},
@@ -37,6 +40,9 @@ def handle_duplicate_name(
     request: Request,
     error: DuplicateNameError,
 ) -> JSONResponse:
+    """
+    Turns a name conflict into a 409 response.
+    """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": str(error)},
@@ -47,4 +53,7 @@ def handle_duplicate_name(
 
 @app.get("/health")
 def read_health() -> dict[str, str]:
+    """
+    Reports that the service is up.
+    """
     return {"status": "ok"}

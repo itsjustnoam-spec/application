@@ -3,6 +3,8 @@ import type { HealthStatus } from '@/models/health'
 
 const ATLAS_HEALTH_PATH = '/atlas/health'
 
-export const fetchAtlasHealth = (): Promise<HealthStatus> => {
+const fetchAtlasHealth = (): Promise<HealthStatus> => {
   return apiRequest<HealthStatus>(ATLAS_HEALTH_PATH)
 }
+
+export { fetchAtlasHealth }

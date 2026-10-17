@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
-export const createAppVuetify = () => {
+const createAppVuetify = () => {
   return createVuetify({
     components,
     directives,
@@ -21,3 +21,5 @@ export const createAppVuetify = () => {
     },
   })
 }
+
+export { createAppVuetify }

@@ -17,9 +17,13 @@ class InvalidTimezoneError(ValueError):
     """
     Raised when a timezone name is not a known IANA zone. Subclassing ValueError lets pydantic report it as a 422.
     """
+    pass
 
 
 class SiteInput(BaseModel):
+    """
+    The values a client sends to create or update a site.
+    """
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=100)
@@ -47,6 +51,9 @@ class SiteInput(BaseModel):
 
 
 class SiteOut(BaseModel):
+    """
+    A site as the API returns it.
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id: int
