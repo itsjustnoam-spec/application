@@ -5,7 +5,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 ## Location & naming
 - [ ] TS-01 File path is `tests/<domain>/test_<operation>_<domain>.py`; manager and API tests of the same operation are in the same file (no `tests/routers/`, `tests/managers/`, `tests/schemas/`)
 - [ ] TS-02 Test names follow `test_<unit>_<condition>_<expected>`
-- [ ] TS-03 Module helpers (request-body builders, assertions) live in that module's `utils.py` (or `utils/`), and fixtures live in `conftest.py` or at the top of the file
+- [ ] TS-03 Shared fixtures and helpers live in `tests/conftest.py` and `tests/utils.py`; a domain's own fixtures and helpers (request-body builders, assertions) live in `tests/<domain>/conftest.py` and `tests/<domain>/utils.py`
 
 ## File structure
 - [ ] TS-04 Order is imports, then local fixtures, then test functions
@@ -26,7 +26,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-14 Fixture scope is `function` unless the setup is expensive and read-only
 - [ ] TS-15 Setup that needs cleanup uses a `yield` fixture
 - [ ] TS-28 (auto) Test bodies never call `session.add/delete/commit/execute` (they use `env` or the app's own functions)
-- [ ] TS-30 (auto) Every object a test relies on but doesn't test comes from the `env` fixture in `tests/conftest.py`; no other fixture or helper creates objects (no `make_*` factories)
+- [ ] TS-30 (auto) Every object a test relies on but doesn't test comes from the `env` fixture in `tests/conftest.py`; no other fixture or helper, root or domain, creates objects (no `make_*` factories)
 - [ ] TS-31 The object under test is created through the app's manager or the API, and any variant a test needs is a named member of `env`
 - [ ] TS-29 No tests for migrations, and no tests that only check which input a model or schema accepts
 

@@ -36,7 +36,8 @@ tests/
   conftest.py                   # Root fixtures: engine, session, clients, and the env fixture
   utils.py                      # The Environment dataclass that env returns, shared helpers
   <domain>/                     # e.g. sites, asset_types, entities
-    utils.py                    # Non-fixture helpers (builders of request bodies, assertions)
+    conftest.py                 # This domain's fixtures (clients, frozen clocks, ...); they never create objects
+    utils.py                    # This domain's non-fixture helpers (builders of request bodies, assertions)
     test_create_<domain>.py     # e.g. test_create_site.py: manager + API tests for creating
     test_update_<domain>.py
     test_list_<domain>.py
@@ -189,7 +190,7 @@ All the data a test relies on, but doesn't test, comes from **one fixture, `env`
 
 - **`env` is the only place that creates objects in the database for tests.** It may add them through the session or the application's managers.
 - **The object under test is created through the application's own functions.** A test about creating or changing something calls the manager (`create_asset(...)`, `archive_site(...)`) or the API. That's the only creation allowed outside `env`.
-- **No factory fixtures and no creating helpers** (`make_site`, `make_asset`, ...), in `conftest.py` or `utils.py`.
+- **No factory fixtures and no creating helpers** (`make_site`, `make_asset`, ...), in any `conftest.py` or `utils.py`, root or domain. A domain's `conftest.py` and `utils.py` hold fixtures and helpers for that domain's tests, but objects still come only from `env`.
 - **A test never touches the session directly**: no `session.add`, `session.delete`, `session.commit`, or `session.execute` in a test body. To check the result, it uses the application's read functions or the API.
 - **When a test needs something `env` doesn't have**, add it to `env` under a name that says what's special about it (`archived_site`, `retired_compressor`, `asset_due_yesterday`). Don't build it in the test.
 - Tests never depend on what another test created. `env` is function-scoped, so every test starts from the same world.
