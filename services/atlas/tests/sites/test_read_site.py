@@ -1,13 +1,10 @@
-from collections.abc import Callable
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from atlas.entities import Site
 from atlas.managers.errors import EntityNotFoundError
 from atlas.managers.sites import read_site
-from tests.utils import get_persisted_id
+from tests.utils import Environment, get_persisted_id
 
 MISSING_SITE_ID = 9999
 
@@ -21,9 +18,9 @@ def test_read_site_missing_id_raises_entity_not_found_error(
 
 def test_read_site_archived_site_raises_entity_not_found_error(
     db_session: Session,
-    make_site: Callable[..., Site],
+    env: Environment,
 ):
-    site_id = get_persisted_id(make_site(archived=True))
+    site_id = get_persisted_id(env.archived_site)
 
     with pytest.raises(EntityNotFoundError, match="Site not found"):
         read_site(db_session, site_id)
@@ -31,14 +28,12 @@ def test_read_site_archived_site_raises_entity_not_found_error(
 
 def test_read_site_api_existing_id_returns_200_with_site(
     api_client: TestClient,
-    make_site: Callable[..., Site],
+    env: Environment,
 ):
-    site_id = get_persisted_id(make_site(name="HQ"))
-
-    response = api_client.get(f"/sites/{site_id}")
+    response = api_client.get(f"/sites/{get_persisted_id(env.north_site)}")
 
     assert response.status_code == 200
-    assert response.json()["name"] == "HQ"
+    assert response.json()["name"] == "North Depot"
 
 
 def test_read_site_api_missing_id_returns_404_with_detail(

@@ -49,6 +49,6 @@ const loadAtlasHealth = async (): Promise<void> => {
 }
 
 onMounted(() => {
-  void loadAtlasHealth()
+  loadAtlasHealth()
 })
 </script>

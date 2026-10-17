@@ -1,14 +1,11 @@
-from collections.abc import Callable
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from atlas.entities import Site
 from atlas.managers.errors import DuplicateNameError
 from atlas.managers.sites import create_site, read_site
 from atlas.schemas.site import SiteInput
-from tests.utils import get_persisted_id
+from tests.utils import Environment, get_persisted_id
 
 SITE_PAYLOAD = {
     "name": "HQ",
@@ -32,10 +29,9 @@ def test_create_site_new_name_stores_the_site(db_session: Session):
 
 def test_create_site_duplicate_active_name_raises_duplicate_name_error(
     db_session: Session,
-    make_site: Callable[..., Site],
+    env: Environment,
 ):
-    make_site(name="HQ")
-    site_input = SiteInput(name="HQ", address="2 Side Road", timezone="UTC")
+    site_input = SiteInput(name=env.north_site.name, address="2 Side Road", timezone="UTC")
 
     with pytest.raises(
         DuplicateNameError,
@@ -46,10 +42,9 @@ def test_create_site_duplicate_active_name_raises_duplicate_name_error(
 
 def test_create_site_archived_name_is_reusable(
     db_session: Session,
-    make_site: Callable[..., Site],
+    env: Environment,
 ):
-    make_site(name="HQ", archived=True)
-    site_input = SiteInput(name="HQ", address="2 Side Road", timezone="UTC")
+    site_input = SiteInput(name=env.archived_site.name, address="2 Side Road", timezone="UTC")
 
     created_site = create_site(db_session, site_input)
 
@@ -71,11 +66,11 @@ def test_create_site_api_valid_body_returns_201_with_site(
 
 def test_create_site_api_duplicate_name_returns_409_with_detail(
     api_client: TestClient,
-    make_site: Callable[..., Site],
+    env: Environment,
 ):
-    make_site(name="HQ")
+    body = {**SITE_PAYLOAD, "name": env.north_site.name}
 
-    response = api_client.post("/sites", json=SITE_PAYLOAD)
+    response = api_client.post("/sites", json=body)
 
     assert response.status_code == 409
     assert response.json() == {"detail": "A site with this name already exists"}

@@ -53,7 +53,7 @@ class AssetInput(BaseModel):
     @classmethod
     def blank_notes_to_none(cls, notes: str | None) -> str | None:
         """
-        Stores an empty or whitespace-only note as no note.
+        Store an empty or whitespace-only note as no note.
 
         :param notes: The notes the client sent.
         :return: The stripped notes, or None when nothing is left.

@@ -34,7 +34,7 @@ class SiteInput(BaseModel):
     @classmethod
     def validate_timezone(cls, timezone: str) -> str:
         """
-        Accepts only IANA timezone names.
+        Accept only IANA timezone names.
 
         :param timezone: IANA name such as Europe/Berlin
         :return: the same name when it resolves

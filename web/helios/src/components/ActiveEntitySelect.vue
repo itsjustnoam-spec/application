@@ -16,7 +16,7 @@
 <script lang="ts">
 import type { SelectOption } from '@/models/select-option'
 
-interface ActiveEntitySelectProps {
+interface Props {
   modelValue: number | null
   label: string
   testId: string
@@ -25,12 +25,9 @@ interface ActiveEntitySelectProps {
   fetchOptions: (query: string) => Promise<SelectOption[]>
 }
 
-interface ActiveEntitySelectEmits {
+interface Emits {
   'update:modelValue': [number | null]
 }
-
-
-export type { ActiveEntitySelectEmits, ActiveEntitySelectProps }
 </script>
 
 <script setup lang="ts">
@@ -39,16 +36,16 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { handleNetworkError } from '@/api/errors'
 import { SEARCH_DEBOUNCE_MS } from '@/utils/use-paged-list'
 
-const emit = defineEmits<ActiveEntitySelectEmits>()
+const emit = defineEmits<Emits>()
 
-const props = defineProps<ActiveEntitySelectProps>()
+const props = defineProps<Props>()
 
 const fetchedOptions = ref<SelectOption[]>([])
 const chosenOption = ref<SelectOption | null>(props.selectedOption)
 const isLoading = ref<boolean>(false)
 const loadErrorMessage = ref<string | null>(null)
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-let latestRequestId = 0
+const searchTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const latestRequestId = ref<number>(0)
 
 const options = computed<SelectOption[]>(() => {
   const chosen = chosenOption.value
@@ -66,47 +63,52 @@ const errorMessages = computed<string[]>(() =>
 )
 
 const loadOptions = async (query: string): Promise<void> => {
-  latestRequestId += 1
-  const requestId = latestRequestId
+  latestRequestId.value += 1
+  const requestId = latestRequestId.value
   isLoading.value = true
   loadErrorMessage.value = null
   try {
     const result = await props.fetchOptions(query)
-    if (requestId === latestRequestId) {
+    if (requestId === latestRequestId.value) {
       fetchedOptions.value = result
     }
   } catch (error: unknown) {
-    if (requestId === latestRequestId) {
+    if (requestId === latestRequestId.value) {
       loadErrorMessage.value = handleNetworkError(error)
     }
   } finally {
-    if (requestId === latestRequestId) {
+    if (requestId === latestRequestId.value) {
       isLoading.value = false
     }
   }
 }
 
 const onSearch = (query: string): void => {
-  if (searchTimer !== null) {
-    clearTimeout(searchTimer)
+  if (searchTimer.value !== null) {
+    clearTimeout(searchTimer.value)
   }
-  searchTimer = setTimeout(() => {
-    void loadOptions(query)
+  searchTimer.value = setTimeout(() => {
+    loadOptions(query)
   }, SEARCH_DEBOUNCE_MS)
 }
 
 const onSelect = (value: number | null): void => {
-  chosenOption.value = options.value.find((option) => option.value === value) ?? null
+  const matchingOption = options.value.find((option) => option.value === value)
+  if (matchingOption === undefined) {
+    chosenOption.value = null
+  } else {
+    chosenOption.value = matchingOption
+  }
   emit('update:modelValue', value)
 }
 
 onMounted(() => {
-  void loadOptions('')
+  loadOptions('')
 })
 
 onUnmounted(() => {
-  if (searchTimer !== null) {
-    clearTimeout(searchTimer)
+  if (searchTimer.value !== null) {
+    clearTimeout(searchTimer.value)
   }
 })
 </script>

@@ -1,32 +1,30 @@
-from collections.abc import Callable
 from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, col, select
 
-from atlas.entities import Asset, AssetStatus, AssetType, Site
+from atlas.entities import Asset
 from atlas.managers.assets import create_asset, read_asset
 from atlas.managers.errors import DuplicateSerialNumberError, EntityNotFoundError
-from atlas.schemas.asset import AssetInput
-from tests.assets.utils import build_asset_body, count_assets
-from tests.utils import get_persisted_id
+from tests.assets.utils import (
+    NEW_SERIAL_NUMBER,
+    build_asset_body,
+    build_asset_input,
+    count_assets,
+)
+from tests.utils import Environment, get_persisted_id
+
+MISSING_SITE_ID = 9999
 
 
 def test_create_asset_valid_input_persists_asset_with_due_date(
     db_session: Session,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type(inspection_interval_days=30)
-    asset_input = AssetInput(
-        name="Compressor",
-        serial_number="SN-1",
-        site_id=get_persisted_id(site),
-        asset_type_id=get_persisted_id(asset_type),
-        status=AssetStatus.OPERATIONAL,
-        installation_date=date(2026, 1, 1),
+    asset_input = build_asset_input(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
     )
 
     created_asset = create_asset(db_session, asset_input)
@@ -39,20 +37,12 @@ def test_create_asset_valid_input_persists_asset_with_due_date(
 
 def test_create_asset_duplicate_serial_raises_duplicate_serial_number_error(
     db_session: Session,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
-    make_asset: Callable[..., Asset],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type()
-    make_asset(site=site, asset_type=asset_type, serial_number="SN-1")
-    asset_input = AssetInput(
-        name="Pump",
-        serial_number="SN-1",
-        site_id=get_persisted_id(site),
-        asset_type_id=get_persisted_id(asset_type),
-        status=AssetStatus.OPERATIONAL,
-        installation_date=date(2026, 1, 1),
+    asset_input = build_asset_input(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
+        serial_number=env.compressor.serial_number,
     )
 
     with pytest.raises(
@@ -61,31 +51,24 @@ def test_create_asset_duplicate_serial_raises_duplicate_serial_number_error(
     ):
         create_asset(db_session, asset_input)
 
-    assert count_assets(db_session) == 1
+    assert count_assets(db_session) == 4
 
 
 def test_create_asset_serial_of_archived_asset_succeeds(
     db_session: Session,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
-    make_asset: Callable[..., Asset],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type()
-    make_asset(site=site, asset_type=asset_type, serial_number="SN-1", archived=True)
-    asset_input = AssetInput(
-        name="Pump",
-        serial_number="SN-1",
-        site_id=get_persisted_id(site),
-        asset_type_id=get_persisted_id(asset_type),
-        status=AssetStatus.OPERATIONAL,
-        installation_date=date(2026, 1, 1),
+    archived_serial_number = env.archived_boiler.serial_number
+    asset_input = build_asset_input(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
+        serial_number=archived_serial_number,
     )
 
     created_asset = create_asset(db_session, asset_input)
 
     serial_rows = db_session.exec(
-        select(Asset).where(col(Asset.serial_number) == "SN-1"),
+        select(Asset).where(col(Asset.serial_number) == archived_serial_number),
     ).all()
     archived_rows = [
         row
@@ -99,60 +82,39 @@ def test_create_asset_serial_of_archived_asset_succeeds(
 
 def test_create_asset_missing_site_raises_entity_not_found_error(
     db_session: Session,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    asset_type = make_asset_type()
-    asset_input = AssetInput(
-        name="Pump",
-        serial_number="SN-1",
-        site_id=9999,
-        asset_type_id=get_persisted_id(asset_type),
-        status=AssetStatus.OPERATIONAL,
-        installation_date=date(2026, 1, 1),
-    )
+    asset_input = build_asset_input(MISSING_SITE_ID, get_persisted_id(env.pump))
 
     with pytest.raises(EntityNotFoundError, match="Site not found"):
         create_asset(db_session, asset_input)
 
-    assert count_assets(db_session) == 0
+    assert count_assets(db_session) == 4
 
 
 def test_create_asset_archived_asset_type_raises_entity_not_found_error(
     db_session: Session,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type(archived=True)
-    asset_input = AssetInput(
-        name="Pump",
-        serial_number="SN-1",
-        site_id=get_persisted_id(site),
-        asset_type_id=get_persisted_id(asset_type),
-        status=AssetStatus.OPERATIONAL,
-        installation_date=date(2026, 1, 1),
+    asset_input = build_asset_input(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.archived_asset_type),
     )
 
     with pytest.raises(EntityNotFoundError, match="Asset type not found"):
         create_asset(db_session, asset_input)
 
-    assert count_assets(db_session) == 0
+    assert count_assets(db_session) == 4
 
 
 def test_create_asset_future_installation_date_is_accepted(
     db_session: Session,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type(inspection_interval_days=30)
-    asset_input = AssetInput(
-        name="Pump",
-        serial_number="SN-1",
-        site_id=get_persisted_id(site),
-        asset_type_id=get_persisted_id(asset_type),
-        status=AssetStatus.OPERATIONAL,
-        installation_date=date(2999, 1, 1),
+    asset_input = build_asset_input(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
+        installation_date="2999-01-01",
     )
 
     created_asset = create_asset(db_session, asset_input)
@@ -162,12 +124,11 @@ def test_create_asset_future_installation_date_is_accepted(
 
 def test_create_asset_api_valid_body_returns_201_with_asset(
     api_client: TestClient,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site(name="North Depot", timezone="Europe/Berlin")
-    asset_type = make_asset_type(name="Pump", inspection_interval_days=30)
-    body = build_asset_body(get_persisted_id(site), get_persisted_id(asset_type))
+    site_id = get_persisted_id(env.north_site)
+    asset_type_id = get_persisted_id(env.pump)
+    body = build_asset_body(site_id, asset_type_id)
 
     response = api_client.post("/assets", json=body)
 
@@ -175,11 +136,11 @@ def test_create_asset_api_valid_body_returns_201_with_asset(
     assert response.json() == {
         "id": response.json()["id"],
         "name": "Compressor",
-        "serial_number": "SN-1",
-        "site_id": get_persisted_id(site),
+        "serial_number": NEW_SERIAL_NUMBER,
+        "site_id": site_id,
         "site_name": "North Depot",
         "site_timezone": "Europe/Berlin",
-        "asset_type_id": get_persisted_id(asset_type),
+        "asset_type_id": asset_type_id,
         "asset_type_name": "Pump",
         "status": "Operational",
         "installation_date": "2026-01-01",
@@ -192,14 +153,13 @@ def test_create_asset_api_valid_body_returns_201_with_asset(
 
 def test_create_asset_api_duplicate_serial_returns_409(
     api_client: TestClient,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
-    make_asset: Callable[..., Asset],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type()
-    make_asset(site=site, asset_type=asset_type, serial_number="SN-1")
-    body = build_asset_body(get_persisted_id(site), get_persisted_id(asset_type))
+    body = build_asset_body(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
+        serial_number=env.compressor.serial_number,
+    )
 
     response = api_client.post("/assets", json=body)
 
@@ -211,10 +171,9 @@ def test_create_asset_api_duplicate_serial_returns_409(
 
 def test_create_asset_api_missing_site_returns_404(
     api_client: TestClient,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    asset_type = make_asset_type()
-    body = build_asset_body(9999, get_persisted_id(asset_type))
+    body = build_asset_body(MISSING_SITE_ID, get_persisted_id(env.pump))
 
     response = api_client.post("/assets", json=body)
 
@@ -224,12 +183,12 @@ def test_create_asset_api_missing_site_returns_404(
 
 def test_create_asset_api_archived_asset_type_returns_404(
     api_client: TestClient,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type(archived=True)
-    body = build_asset_body(get_persisted_id(site), get_persisted_id(asset_type))
+    body = build_asset_body(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.archived_asset_type),
+    )
 
     response = api_client.post("/assets", json=body)
 
@@ -239,12 +198,13 @@ def test_create_asset_api_archived_asset_type_returns_404(
 
 def test_create_asset_api_blank_notes_saves_notes_as_null(
     api_client: TestClient,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type()
-    body = build_asset_body(get_persisted_id(site), get_persisted_id(asset_type), notes="   ")
+    body = build_asset_body(
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
+        notes="   ",
+    )
 
     response = api_client.post("/assets", json=body)
 
@@ -254,14 +214,11 @@ def test_create_asset_api_blank_notes_saves_notes_as_null(
 
 def test_create_asset_api_notes_are_stored_trimmed(
     api_client: TestClient,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    site = make_site()
-    asset_type = make_asset_type()
     body = build_asset_body(
-        get_persisted_id(site),
-        get_persisted_id(asset_type),
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
         notes="  Check the belt  ",
     )
 
@@ -280,16 +237,13 @@ def test_create_asset_api_notes_are_stored_trimmed(
 ])
 def test_create_asset_api_invalid_body_returns_422(
     api_client: TestClient,
-    make_site: Callable[..., Site],
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
     field_name: str,
     invalid_value: object,
 ):
-    site = make_site()
-    asset_type = make_asset_type()
     body = build_asset_body(
-        get_persisted_id(site),
-        get_persisted_id(asset_type),
+        get_persisted_id(env.north_site),
+        get_persisted_id(env.pump),
         **{field_name: invalid_value},
     )
 

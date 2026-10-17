@@ -27,7 +27,10 @@ def test_next_inspection_due_uses_last_inspection_when_given():
     assert due_date == date(2026, 3, 31)
 
 
-@pytest.mark.parametrize("status", [AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED])
+@pytest.mark.parametrize("status", [
+    AssetStatus.OUT_OF_SERVICE,
+    AssetStatus.RETIRED,
+])
 def test_next_inspection_due_out_of_service_returns_none(status: AssetStatus):
     due_date = next_inspection_due(date(2026, 1, 1), 30, status)
 

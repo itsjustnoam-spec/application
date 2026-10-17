@@ -22,7 +22,7 @@ engine = create_engine(settings.database_url)
 
 def get_session() -> Generator[Session, None, None]:
     """
-    Opens a session for one request and runs the request in one transaction.
+    Open a session for one request and run the request in one transaction.
 
     :return: The request's session, inside a transaction that commits when the
         request succeeds and rolls back when it fails.

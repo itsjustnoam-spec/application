@@ -38,23 +38,21 @@
 </template>
 
 <script lang="ts">
-interface ConfirmDeleteProps {
+interface Props {
   title: string
   message: string
   isLoading: boolean
   errorMessage: string | null
 }
 
-interface ConfirmDeleteEmits {
+interface Emits {
   'confirm': []
   'cancel': []
 }
-
-export type { ConfirmDeleteEmits, ConfirmDeleteProps }
 </script>
 
 <script setup lang="ts">
-const emit = defineEmits<ConfirmDeleteEmits>()
+const emit = defineEmits<Emits>()
 
-defineProps<ConfirmDeleteProps>()
+defineProps<Props>()
 </script>

@@ -33,7 +33,7 @@ def handle_entity_not_found(
     error: EntityNotFoundError,
 ) -> JSONResponse:
     """
-    Turns a missing or archived row into a 404 response.
+    Turn a missing or archived row into a 404 response.
     """
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -47,7 +47,7 @@ def handle_duplicate_name(
     error: DuplicateNameError,
 ) -> JSONResponse:
     """
-    Turns a name conflict into a 409 response.
+    Turn a name conflict into a 409 response.
     """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
@@ -61,7 +61,7 @@ def handle_duplicate_serial_number(
     error: DuplicateSerialNumberError,
 ) -> JSONResponse:
     """
-    Turns a serial number conflict into a 409 response.
+    Turn a serial number conflict into a 409 response.
     """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
@@ -75,7 +75,7 @@ def handle_entity_in_use(
     error: EntityInUseError,
 ) -> JSONResponse:
     """
-    Turns an archive blocked by active references into a 409 response.
+    Turn an archive blocked by active references into a 409 response.
     """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
@@ -88,6 +88,6 @@ def handle_entity_in_use(
 @app.get("/health")
 def read_health() -> dict[str, str]:
     """
-    Reports that the service is up.
+    Report that the service is up.
     """
     return {"status": "ok"}

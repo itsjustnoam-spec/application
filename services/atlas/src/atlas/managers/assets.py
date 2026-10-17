@@ -17,7 +17,11 @@ from sqlmodel import Session, col, select
 
 from atlas.entities import Asset, AssetStatus, AssetType, Site
 from atlas.managers.asset_types import lock_asset_type, read_asset_type
-from atlas.managers.due_dates import is_overdue, next_inspection_due
+from atlas.managers.due_dates import (
+    STATUSES_WITHOUT_DUE_DATE,
+    is_overdue,
+    next_inspection_due,
+)
 from atlas.managers.errors import (
     DuplicateSerialNumberError,
     EntityNotFoundError,
@@ -29,7 +33,6 @@ from atlas.schemas.asset import AssetInput, AssetOut, AssetSort, SortDirection
 
 ASSET_NOT_FOUND_MESSAGE = "Asset not found"
 ASSET_SERIAL_NUMBER_TAKEN = "An asset with this serial number already exists"
-STATUSES_WITHOUT_DUE_DATE = [AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED]
 
 # ----- Functions ----- #
 
@@ -40,7 +43,7 @@ def to_asset_out(
     asset_type: AssetType,
 ) -> AssetOut:
     """
-    Builds the API view of an asset, with its due date and overdue flag.
+    Build the API view of an asset, with its due date and overdue flag.
 
     :param asset: The asset row.
     :param site: The asset's site.
@@ -72,7 +75,7 @@ def to_asset_out(
 
 def next_due_expression() -> ColumnElement[date]:
     """
-    Builds the SQL expression for the next inspection due date, null for statuses without one.
+    Build the SQL expression for the next inspection due date, null for statuses without one.
 
     :return: A SQL expression usable in ORDER BY.
     """
@@ -103,7 +106,7 @@ def list_assets(
     direction: SortDirection,
 ) -> tuple[list[AssetOut], int]:
     """
-    Lists active assets, filtered and sorted, one page at a time.
+    List active assets, filtered and sorted, one page at a time.
 
     :param session: The request's database session.
     :param limit: The maximum number of assets to return.
@@ -199,7 +202,7 @@ def list_assets(
 
 def _read_active_asset(session: Session, asset_id: int) -> Asset:
     """
-    Reads one active asset row.
+    Read one active asset row.
 
     :param session: The request's database session.
     :param asset_id: The id of the asset.
@@ -215,7 +218,7 @@ def _read_active_asset(session: Session, asset_id: int) -> Asset:
 
 def _asset_out_for(session: Session, asset: Asset) -> AssetOut:
     """
-    Builds the API view of an asset, loading its site and asset type.
+    Build the API view of an asset, loading its site and asset type.
 
     :param session: The request's database session.
     :param asset: The asset row.
@@ -232,7 +235,7 @@ def _asset_out_for(session: Session, asset: Asset) -> AssetOut:
 
 def read_asset(session: Session, asset_id: int) -> AssetOut:
     """
-    Reads one active asset.
+    Read one active asset.
 
     :param session: The request's database session.
     :param asset_id: The id of the asset.
@@ -245,7 +248,7 @@ def read_asset(session: Session, asset_id: int) -> AssetOut:
 
 def _check_references(session: Session, asset_input: AssetInput):
     """
-    Checks that the site and asset type of an asset are active.
+    Check that the site and asset type of an asset are active.
 
     :param session: The request's database session.
     :param asset_input: The values of the asset.
@@ -270,7 +273,7 @@ def flush_asset_changes(
     transaction: SessionTransaction,
 ):
     """
-    Writes the asset changes made inside a nested transaction, and closes it.
+    Write the asset changes made inside a nested transaction, and close it.
 
     :param session: The request's database session.
     :param transaction: The nested transaction opened before the changes were made.
@@ -289,7 +292,7 @@ def flush_asset_changes(
 
 def _apply_input(asset: Asset, asset_input: AssetInput):
     """
-    Copies the editable values of an asset input onto an asset row.
+    Copy the editable values of an asset input onto an asset row.
 
     :param asset: The asset row to change.
     :param asset_input: The new values.
@@ -305,7 +308,7 @@ def _apply_input(asset: Asset, asset_input: AssetInput):
 
 def create_asset(session: Session, asset_input: AssetInput) -> AssetOut:
     """
-    Creates an asset at an active site, of an active asset type.
+    Create an asset at an active site, of an active asset type.
 
     :param session: The request's database session.
     :param asset_input: The values of the new asset.
@@ -335,7 +338,7 @@ def update_asset(
     asset_input: AssetInput,
 ) -> AssetOut:
     """
-    Replaces the editable values of an active asset.
+    Replace the editable values of an active asset.
 
     :param session: The request's database session.
     :param asset_id: The id of the asset.
@@ -354,7 +357,7 @@ def update_asset(
 
 def archive_asset(session: Session, asset_id: int):
     """
-    Archives an active asset, which hides it and frees its serial number.
+    Archive an active asset, which hides it and frees its serial number.
 
     :param session: The request's database session.
     :param asset_id: The id of the asset.

@@ -34,7 +34,7 @@ def list_sites(
     query: str | None,
 ) -> tuple[list[Site], int]:
     """
-    Lists active sites, optionally filtered by name, one page at a time.
+    List active sites, optionally filtered by name, one page at a time.
 
     :param session: The request's database session.
     :param limit: The maximum number of sites to return.
@@ -60,7 +60,7 @@ def list_sites(
 
 def lock_site(session: Session, site_id: int, exclusive: bool):
     """
-    Locks a site row so an archive and an asset reference to it cannot race.
+    Lock a site row so an archive and an asset reference to it cannot race.
 
     :param session: The request's database session.
     :param site_id: The id of the site.
@@ -82,7 +82,7 @@ def lock_site(session: Session, site_id: int, exclusive: bool):
 
 def read_site(session: Session, site_id: int) -> Site:
     """
-    Reads one active site.
+    Read one active site.
 
     :param session: The request's database session.
     :param site_id: The id of the site.
@@ -101,7 +101,7 @@ def flush_site_changes(
     transaction: SessionTransaction,
 ):
     """
-    Writes the site changes made inside a nested transaction, and closes it.
+    Write the site changes made inside a nested transaction, and close it.
 
     :param session: The request's database session.
     :param transaction: The nested transaction opened before the changes were made.
@@ -118,7 +118,7 @@ def flush_site_changes(
 
 def create_site(session: Session, site_input: SiteInput) -> Site:
     """
-    Creates a site.
+    Create a site.
 
     :param session: The request's database session.
     :param site_input: The values of the new site.
@@ -142,7 +142,7 @@ def update_site(
     site_input: SiteInput,
 ) -> Site:
     """
-    Replaces the name, address, and timezone of an active site.
+    Replace the name, address, and timezone of an active site.
 
     :param session: The request's database session.
     :param site_id: The id of the site.
@@ -162,7 +162,7 @@ def update_site(
 
 def archive_site(session: Session, site_id: int):
     """
-    Archives an active site, which hides it and frees its name.
+    Archive an active site, which hides it and frees its name.
 
     :param session: The request's database session.
     :param site_id: The id of the site.
@@ -179,7 +179,9 @@ def archive_site(session: Session, site_id: int):
         col(Asset.site_id) == site_id,
         col(Asset.archived).is_(False),
     )
-    if session.exec(active_assets.limit(1)).first() is not None:
+    first_active_asset = session.exec(active_assets.limit(1)).first()
+    has_active_assets = first_active_asset is not None
+    if has_active_assets:
         raise EntityInUseError(SITE_HAS_ACTIVE_ASSETS)
 
     site.archived = True

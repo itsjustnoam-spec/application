@@ -17,12 +17,12 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
   const sortDirection = ref<'asc' | 'desc'>('asc')
   const isLoading = ref<boolean>(false)
   const errorMessage = ref<string | null>(null)
-  let searchTimer: ReturnType<typeof setTimeout> | null = null
-  let latestRequestId = 0
+  const searchTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+  const latestRequestId = ref<number>(0)
 
   const loadPage = async (): Promise<void> => {
-    latestRequestId += 1
-    const requestId = latestRequestId
+    latestRequestId.value += 1
+    const requestId = latestRequestId.value
     isLoading.value = true
     errorMessage.value = null
     try {
@@ -31,10 +31,10 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
         offset: (page.value - FIRST_PAGE) * PAGE_SIZE,
         query: searchText.value,
         filters: filters.value,
-        sort: sortKey.value ?? undefined,
+        sort: sortKey.value === null ? undefined : sortKey.value,
         direction: sortKey.value === null ? undefined : sortDirection.value,
       })
-      if (requestId === latestRequestId) {
+      if (requestId === latestRequestId.value) {
         const isPastLastPage = result.items.length === 0 && page.value > FIRST_PAGE
         if (isPastLastPage) {
           page.value = Math.max(FIRST_PAGE, Math.ceil(result.total / PAGE_SIZE))
@@ -45,11 +45,11 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
         total.value = result.total
       }
     } catch (error: unknown) {
-      if (requestId === latestRequestId) {
+      if (requestId === latestRequestId.value) {
         errorMessage.value = handleNetworkError(error)
       }
     } finally {
-      if (requestId === latestRequestId) {
+      if (requestId === latestRequestId.value) {
         isLoading.value = false
       }
     }
@@ -57,31 +57,31 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
 
   const setPage = (nextPage: number): void => {
     page.value = nextPage
-    void loadPage()
+    loadPage()
   }
 
   const setSearchText = (text: string): void => {
     searchText.value = text
-    if (searchTimer !== null) {
-      clearTimeout(searchTimer)
+    if (searchTimer.value !== null) {
+      clearTimeout(searchTimer.value)
     }
-    searchTimer = setTimeout(() => {
+    searchTimer.value = setTimeout(() => {
       page.value = FIRST_PAGE
-      void loadPage()
+      loadPage()
     }, SEARCH_DEBOUNCE_MS)
   }
 
   const setFilters = (nextFilters: Record<string, ListFilterValue>): void => {
     filters.value = nextFilters
     page.value = FIRST_PAGE
-    void loadPage()
+    loadPage()
   }
 
   const setSort = (key: string | null, direction: 'asc' | 'desc'): void => {
     sortKey.value = key
     sortDirection.value = direction
     page.value = FIRST_PAGE
-    void loadPage()
+    loadPage()
   }
 
   return {

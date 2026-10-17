@@ -1,14 +1,12 @@
-from collections.abc import Callable
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from atlas.entities import AssetCategory, AssetType
+from atlas.entities import AssetCategory
 from atlas.managers.asset_types import update_asset_type
 from atlas.managers.errors import DuplicateNameError, EntityNotFoundError
 from atlas.schemas.asset_type import AssetTypeInput
-from tests.utils import get_persisted_id
+from tests.utils import Environment, get_persisted_id
 
 MISSING_ASSET_TYPE_ID = 9999
 ASSET_TYPE_PAYLOAD = {
@@ -20,14 +18,13 @@ ASSET_TYPE_PAYLOAD = {
 
 def test_update_asset_type_existing_asset_type_replaces_fields(
     db_session: Session,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    asset_type_id = get_persisted_id(make_asset_type())
     asset_type_input = AssetTypeInput.model_validate(ASSET_TYPE_PAYLOAD)
 
     updated_asset_type = update_asset_type(
         db_session,
-        asset_type_id,
+        get_persisted_id(env.valve),
         asset_type_input,
     )
 
@@ -40,12 +37,10 @@ def test_update_asset_type_existing_asset_type_replaces_fields(
 
 def test_update_asset_type_rename_to_taken_name_raises_duplicate_name_error(
     db_session: Session,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    make_asset_type(name="Pump")
-    asset_type_id = get_persisted_id(make_asset_type(name="Valve"))
     asset_type_input = AssetTypeInput(
-        name="Pump",
+        name=env.pump.name,
         category=AssetCategory.MECHANICAL,
         inspection_interval_days=30,
     )
@@ -54,7 +49,11 @@ def test_update_asset_type_rename_to_taken_name_raises_duplicate_name_error(
         DuplicateNameError,
         match="An asset type with this name already exists",
     ):
-        update_asset_type(db_session, asset_type_id, asset_type_input)
+        update_asset_type(
+            db_session,
+            get_persisted_id(env.valve),
+            asset_type_input,
+        )
 
 
 def test_update_asset_type_missing_id_raises_entity_not_found_error(
@@ -72,9 +71,9 @@ def test_update_asset_type_missing_id_raises_entity_not_found_error(
 
 def test_update_asset_type_api_valid_body_returns_200_with_updated_asset_type(
     api_client: TestClient,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    asset_type_id = get_persisted_id(make_asset_type(name="Pump"))
+    asset_type_id = get_persisted_id(env.valve)
 
     response = api_client.put(
         f"/asset-types/{asset_type_id}",

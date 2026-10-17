@@ -122,7 +122,7 @@ const CONFIRM_DIALOG_MAX_WIDTH = '26rem'
 import { computed, onMounted, ref } from 'vue'
 
 import { deleteSite, listSites } from '@/api/sites'
-import { getErrorDetail, handleNetworkError } from '@/api/errors'
+import { describeRequestError } from '@/api/errors'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
 import EasyToolTip from '@/components/EasyToolTip.vue'
 import SiteFormDialog from '@/components/SiteFormDialog.vue'
@@ -164,7 +164,7 @@ const closeFormDialog = (): void => {
 
 const onSiteSaved = (): void => {
   closeFormDialog()
-  void loadPage()
+  loadPage()
 }
 
 const openDeleteDialog = (site: Site): void => {
@@ -188,7 +188,7 @@ const confirmArchive = async (): Promise<void> => {
       closeDeleteDialog()
       await loadPage()
     } catch (error: unknown) {
-      archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+      archiveErrorMessage.value = describeRequestError(error)
     } finally {
       isArchiving.value = false
     }
@@ -196,6 +196,6 @@ const confirmArchive = async (): Promise<void> => {
 }
 
 onMounted(() => {
-  void loadPage()
+  loadPage()
 })
 </script>

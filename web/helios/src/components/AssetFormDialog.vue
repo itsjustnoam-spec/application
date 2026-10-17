@@ -92,11 +92,11 @@
 <script lang="ts">
 import type { Asset } from '@/models/asset'
 
-interface AssetFormProps {
+interface Props {
   asset: Asset | null
 }
 
-interface AssetFormEmits {
+interface Emits {
   'saved': [Asset]
   'cancel': []
 }
@@ -106,31 +106,32 @@ const NOTES_MAX_LENGTH = 1000
 const REQUIRED_MESSAGE = 'This field is required.'
 const INSTALLATION_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
-export type { AssetFormEmits, AssetFormProps }
+const buildRequiredErrors = (hasSubmitAttempted: boolean, isValid: boolean): string[] =>
+  hasSubmitAttempted && !isValid ? [REQUIRED_MESSAGE] : []
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeMount, ref } from 'vue'
 
 import { createAsset, updateAsset } from '@/api/assets'
-import { getErrorDetail, handleNetworkError } from '@/api/errors'
+import { describeRequestError } from '@/api/errors'
 import ActiveEntitySelect from '@/components/ActiveEntitySelect.vue'
 import EasyToolTip from '@/components/EasyToolTip.vue'
 import { ASSET_STATUSES, type AssetInput, type AssetStatus } from '@/models/asset'
 import type { SelectOption } from '@/models/select-option'
 import { fetchActiveAssetTypeOptions, fetchActiveSiteOptions } from '@/utils/active-options'
 
-const emit = defineEmits<AssetFormEmits>()
+const emit = defineEmits<Emits>()
 
-const props = defineProps<AssetFormProps>()
+const props = defineProps<Props>()
 
-const name = ref<string>(props.asset?.name ?? '')
-const serialNumber = ref<string>(props.asset?.serial_number ?? '')
-const siteId = ref<number | null>(props.asset?.site_id ?? null)
-const assetTypeId = ref<number | null>(props.asset?.asset_type_id ?? null)
-const status = ref<AssetStatus | null>(props.asset?.status ?? null)
-const installationDate = ref<string>(props.asset?.installation_date ?? '')
-const notes = ref<string>(props.asset?.notes ?? '')
+const name = ref<string>('')
+const serialNumber = ref<string>('')
+const siteId = ref<number | null>(null)
+const assetTypeId = ref<number | null>(null)
+const status = ref<AssetStatus | null>(null)
+const installationDate = ref<string>('')
+const notes = ref<string>('')
 const hasSubmitAttempted = ref<boolean>(false)
 const isSaving = ref<boolean>(false)
 const errorMessage = ref<string | null>(null)
@@ -172,16 +173,23 @@ const isFormValid = computed<boolean>(
     isNotesValid.value,
 )
 
-const requiredErrors = (isValid: boolean): string[] =>
-  hasSubmitAttempted.value && !isValid ? [REQUIRED_MESSAGE] : []
-
-const nameErrorMessages = computed<string[]>(() => requiredErrors(isNameValid.value))
-const serialNumberErrorMessages = computed<string[]>(() => requiredErrors(isSerialNumberValid.value))
-const siteErrorMessages = computed<string[]>(() => requiredErrors(isSiteValid.value))
-const assetTypeErrorMessages = computed<string[]>(() => requiredErrors(isAssetTypeValid.value))
-const statusErrorMessages = computed<string[]>(() => requiredErrors(isStatusValid.value))
+const nameErrorMessages = computed<string[]>(() =>
+  buildRequiredErrors(hasSubmitAttempted.value, isNameValid.value),
+)
+const serialNumberErrorMessages = computed<string[]>(() =>
+  buildRequiredErrors(hasSubmitAttempted.value, isSerialNumberValid.value),
+)
+const siteErrorMessages = computed<string[]>(() =>
+  buildRequiredErrors(hasSubmitAttempted.value, isSiteValid.value),
+)
+const assetTypeErrorMessages = computed<string[]>(() =>
+  buildRequiredErrors(hasSubmitAttempted.value, isAssetTypeValid.value),
+)
+const statusErrorMessages = computed<string[]>(() =>
+  buildRequiredErrors(hasSubmitAttempted.value, isStatusValid.value),
+)
 const installationDateErrorMessages = computed<string[]>(() =>
-  requiredErrors(isInstallationDateValid.value),
+  buildRequiredErrors(hasSubmitAttempted.value, isInstallationDateValid.value),
 )
 const notesErrorMessages = computed<string[]>(() =>
   isNotesValid.value ? [] : [`Notes can be at most ${NOTES_MAX_LENGTH} characters.`],
@@ -211,14 +219,34 @@ const submitForm = async (): Promise<void> => {
   isSaving.value = true
   errorMessage.value = null
   try {
-    const savedAsset = props.asset === null
-      ? await createAsset(input)
-      : await updateAsset(props.asset.id, input)
-    emit('saved', savedAsset)
+    if (props.asset === null) {
+      emit('saved', await createAsset(input))
+    } else {
+      emit('saved', await updateAsset(props.asset.id, input))
+    }
   } catch (error: unknown) {
-    errorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+    errorMessage.value = describeRequestError(error)
   } finally {
     isSaving.value = false
   }
 }
+
+function fillFormFromAsset() {
+  if (props.asset === null) {
+    return
+  }
+  name.value = props.asset.name
+  serialNumber.value = props.asset.serial_number
+  siteId.value = props.asset.site_id
+  assetTypeId.value = props.asset.asset_type_id
+  status.value = props.asset.status
+  installationDate.value = props.asset.installation_date
+  if (props.asset.notes !== null) {
+    notes.value = props.asset.notes
+  }
+}
+
+onBeforeMount(() => {
+  fillFormFromAsset()
+})
 </script>

@@ -1,18 +1,16 @@
-from collections.abc import Callable
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from atlas.entities import AssetCategory, AssetType
+from atlas.entities import AssetCategory
 from atlas.managers.asset_types import create_asset_type, read_asset_type
 from atlas.managers.errors import DuplicateNameError
 from atlas.schemas.asset_type import AssetTypeInput
-from tests.utils import get_persisted_id
+from tests.utils import Environment, get_persisted_id
 
 ASSET_TYPE_PAYLOAD = {
-    "name": "Pump",
-    "category": "Mechanical",
+    "name": "Chiller",
+    "category": "HVAC",
     "inspection_interval_days": 30,
 }
 
@@ -21,24 +19,23 @@ def test_create_asset_type_new_name_stores_the_asset_type(
     db_session: Session,
 ):
     asset_type_input = AssetTypeInput(
-        name="Pump",
-        category=AssetCategory.MECHANICAL,
+        name="Chiller",
+        category=AssetCategory.HVAC,
         inspection_interval_days=30,
     )
 
     created_asset_type = create_asset_type(db_session, asset_type_input)
 
     asset_type_id = get_persisted_id(created_asset_type)
-    assert read_asset_type(db_session, asset_type_id).name == "Pump"
+    assert read_asset_type(db_session, asset_type_id).name == "Chiller"
 
 
 def test_create_asset_type_duplicate_active_name_raises_duplicate_name_error(
     db_session: Session,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    make_asset_type(name="Pump")
     asset_type_input = AssetTypeInput(
-        name="Pump",
+        name=env.pump.name,
         category=AssetCategory.HVAC,
         inspection_interval_days=60,
     )
@@ -52,11 +49,10 @@ def test_create_asset_type_duplicate_active_name_raises_duplicate_name_error(
 
 def test_create_asset_type_archived_name_is_reusable(
     db_session: Session,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    make_asset_type(name="Pump", archived=True)
     asset_type_input = AssetTypeInput(
-        name="Pump",
+        name=env.archived_asset_type.name,
         category=AssetCategory.HVAC,
         inspection_interval_days=60,
     )
@@ -81,11 +77,11 @@ def test_create_asset_type_api_valid_body_returns_201_with_asset_type(
 
 def test_create_asset_type_api_duplicate_name_returns_409_with_detail(
     api_client: TestClient,
-    make_asset_type: Callable[..., AssetType],
+    env: Environment,
 ):
-    make_asset_type(name="Pump")
+    body = {**ASSET_TYPE_PAYLOAD, "name": env.pump.name}
 
-    response = api_client.post("/asset-types", json=ASSET_TYPE_PAYLOAD)
+    response = api_client.post("/asset-types", json=body)
 
     assert response.status_code == 409
     assert response.json() == {

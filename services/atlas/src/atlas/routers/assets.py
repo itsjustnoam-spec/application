@@ -48,7 +48,7 @@ def list_assets(
     direction: SortDirection = SortDirection.ASC,
 ) -> Page[AssetOut]:
     """
-    Lists active assets matching the search text and filters, one page at a time.
+    List active assets matching the search text and filters, one page at a time.
     """
     assets, total = asset_manager.list_assets(
         session,
@@ -75,7 +75,7 @@ def create_asset(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssetOut:
     """
-    Creates an asset at an active site, of an active asset type.
+    Create an asset at an active site, of an active asset type.
     """
     return asset_manager.create_asset(session, asset_input)
 
@@ -86,7 +86,7 @@ def read_asset(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssetOut:
     """
-    Reads one active asset.
+    Read one active asset.
     """
     return asset_manager.read_asset(session, asset_id)
 
@@ -98,7 +98,7 @@ def update_asset(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssetOut:
     """
-    Replaces the editable values of an active asset.
+    Replace the editable values of an active asset.
     """
     return asset_manager.update_asset(
         session,
@@ -116,6 +116,6 @@ def archive_asset(
     session: Annotated[Session, Depends(get_session)],
 ):
     """
-    Archives an active asset.
+    Archive an active asset.
     """
     asset_manager.archive_asset(session, asset_id)

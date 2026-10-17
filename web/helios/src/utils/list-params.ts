@@ -12,9 +12,11 @@ const buildListQuery = (params: ListParams): string => {
   if (params.query !== null && params.query.trim().length > 0) {
     query.set(SEARCH_PARAM_NAME, params.query.trim())
   }
-  for (const [key, value] of Object.entries(params.filters ?? {})) {
-    if (value !== null && value !== '') {
-      query.set(key, String(value))
+  if (params.filters !== undefined) {
+    for (const [key, value] of Object.entries(params.filters)) {
+      if (value !== null && value !== '') {
+        query.set(key, String(value))
+      }
     }
   }
   if (params.sort !== undefined) {

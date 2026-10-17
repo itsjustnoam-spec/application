@@ -7,7 +7,9 @@ const mountWithPlugins = <Props>(
   component: Component,
   options: ComponentMountingOptions<Props> = {},
 ) => {
-  const extraPlugins = options.global?.plugins ?? []
+  const globalOptions = options.global
+  const extraPlugins =
+    globalOptions !== undefined && globalOptions.plugins !== undefined ? globalOptions.plugins : []
   return mount(component, {
     ...options,
     global: {

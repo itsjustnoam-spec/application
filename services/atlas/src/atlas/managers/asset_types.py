@@ -34,7 +34,7 @@ def list_asset_types(
     query: str | None,
 ) -> tuple[list[AssetType], int]:
     """
-    Lists active asset types, optionally filtered by name, one page at a time.
+    List active asset types, optionally filtered by name, one page at a time.
 
     :param session: The request's database session.
     :param limit: The maximum number of asset types to return.
@@ -62,7 +62,7 @@ def list_asset_types(
 
 def lock_asset_type(session: Session, asset_type_id: int, exclusive: bool):
     """
-    Locks an asset type row so an archive and an asset reference to it cannot race.
+    Lock an asset type row so an archive and an asset reference to it cannot race.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
@@ -84,7 +84,7 @@ def lock_asset_type(session: Session, asset_type_id: int, exclusive: bool):
 
 def read_asset_type(session: Session, asset_type_id: int) -> AssetType:
     """
-    Reads one active asset type.
+    Read one active asset type.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
@@ -106,7 +106,7 @@ def flush_asset_type_changes(
     transaction: SessionTransaction,
 ):
     """
-    Writes the asset type changes made inside a nested transaction, and closes it.
+    Write the asset type changes made inside a nested transaction, and close it.
 
     :param session: The request's database session.
     :param transaction: The nested transaction opened before the changes were made.
@@ -126,7 +126,7 @@ def create_asset_type(
     asset_type_input: AssetTypeInput,
 ) -> AssetType:
     """
-    Creates an asset type.
+    Create an asset type.
 
     :param session: The request's database session.
     :param asset_type_input: The values of the new asset type.
@@ -150,7 +150,7 @@ def update_asset_type(
     asset_type_input: AssetTypeInput,
 ) -> AssetType:
     """
-    Replaces the name, category, and interval of an active asset type.
+    Replace the name, category, and interval of an active asset type.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
@@ -172,7 +172,7 @@ def update_asset_type(
 
 def archive_asset_type(session: Session, asset_type_id: int):
     """
-    Archives an active asset type, which hides it and frees its name.
+    Archive an active asset type, which hides it and frees its name.
 
     :param session: The request's database session.
     :param asset_type_id: The id of the asset type.
@@ -189,7 +189,9 @@ def archive_asset_type(session: Session, asset_type_id: int):
         col(Asset.asset_type_id) == asset_type_id,
         col(Asset.archived).is_(False),
     )
-    if session.exec(active_assets.limit(1)).first() is not None:
+    first_active_asset = session.exec(active_assets.limit(1)).first()
+    has_active_assets = first_active_asset is not None
+    if has_active_assets:
         raise EntityInUseError(ASSET_TYPE_HAS_ACTIVE_ASSETS)
 
     asset_type.archived = True

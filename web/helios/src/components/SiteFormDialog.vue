@@ -61,11 +61,11 @@
 import type { Site } from '@/models/site'
 import { TIMEZONE_OPTIONS } from '@/utils/timezones'
 
-interface SiteFormProps {
+interface Props {
   site: Site | null
 }
 
-interface SiteFormEmits {
+interface Emits {
   'saved': [Site]
   'cancel': []
 }
@@ -74,25 +74,23 @@ const NAME_MAX_LENGTH = 100
 const ADDRESS_MAX_LENGTH = 500
 const REQUIRED_MESSAGE = 'This field is required.'
 const TOO_LONG_MESSAGE_PREFIX = 'Too long: max'
-
-export type { SiteFormEmits, SiteFormProps }
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeMount, ref } from 'vue'
 
 import { createSite, updateSite } from '@/api/sites'
-import { getErrorDetail, handleNetworkError } from '@/api/errors'
+import { describeRequestError } from '@/api/errors'
 import EasyToolTip from '@/components/EasyToolTip.vue'
 import type { SiteInput } from '@/models/site'
 
-const emit = defineEmits<SiteFormEmits>()
+const emit = defineEmits<Emits>()
 
-const props = defineProps<SiteFormProps>()
+const props = defineProps<Props>()
 
-const name = ref<string>(props.site?.name ?? '')
-const address = ref<string>(props.site?.address ?? '')
-const timezone = ref<string | null>(props.site?.timezone ?? null)
+const name = ref<string>('')
+const address = ref<string>('')
+const timezone = ref<string | null>(null)
 const hasSubmitAttempted = ref<boolean>(false)
 const isSaving = ref<boolean>(false)
 const errorMessage = ref<string | null>(null)
@@ -146,14 +144,28 @@ const submitForm = async (): Promise<void> => {
   isSaving.value = true
   errorMessage.value = null
   try {
-    const savedSite = props.site === null
-      ? await createSite(input)
-      : await updateSite(props.site.id, input)
-    emit('saved', savedSite)
+    if (props.site === null) {
+      emit('saved', await createSite(input))
+    } else {
+      emit('saved', await updateSite(props.site.id, input))
+    }
   } catch (error: unknown) {
-    errorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+    errorMessage.value = describeRequestError(error)
   } finally {
     isSaving.value = false
   }
 }
+
+function fillFormFromSite() {
+  if (props.site === null) {
+    return
+  }
+  name.value = props.site.name
+  address.value = props.site.address
+  timezone.value = props.site.timezone
+}
+
+onBeforeMount(() => {
+  fillFormFromSite()
+})
 </script>

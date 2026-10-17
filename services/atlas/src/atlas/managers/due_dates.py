@@ -14,7 +14,10 @@ from atlas.entities import AssetStatus
 # ----- Consts ----- #
 
 STATUSES_WITHOUT_DUE_DATE = frozenset(
-    {AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED},
+    {
+        AssetStatus.OUT_OF_SERVICE,
+        AssetStatus.RETIRED,
+    },
 )
 
 # ----- Functions ----- #
@@ -27,7 +30,7 @@ def next_inspection_due(
     last_inspection_date: date | None = None,
 ) -> date | None:
     """
-    Calculates when an asset is next due for inspection.
+    Calculate when an asset is next due for inspection.
 
     The due date counts from the last inspection when there is one, otherwise from the installation date.
 
@@ -50,12 +53,12 @@ def is_overdue(
     now: datetime | None = None,
 ) -> bool:
     """
-    Tells whether a due date has passed in the site's timezone, where a due date of today is not overdue.
+    Check whether a due date has passed in the site's timezone, where a due date of today is not overdue.
 
     :param due_date: The next due date, or None when there is none.
     :param site_timezone: The IANA timezone name of the site.
     :param now: The current moment, or None to use the real clock.
-    :return: True when the due date is before today in the site's timezone.
+    :return: Whether the due date is before today in the site's timezone.
     """
     if due_date is None:
         return False

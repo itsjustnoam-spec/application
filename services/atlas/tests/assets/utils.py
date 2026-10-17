@@ -1,19 +1,20 @@
 from datetime import UTC, datetime, tzinfo
-from typing import Any
+from typing import Any, Self
 
 from sqlmodel import Session
 
 from atlas.entities import AssetStatus
 from atlas.managers.assets import list_assets
-from atlas.schemas.asset import AssetOut, AssetSort, SortDirection
+from atlas.schemas.asset import AssetInput, AssetOut, AssetSort, SortDirection
 
 FROZEN_MOMENT = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)
+NEW_SERIAL_NUMBER = "SN-100"
 
 
 class FrozenDatetime(datetime):
     @classmethod
-    def now(cls, tz: tzinfo | None = None) -> datetime:
-        return FROZEN_MOMENT.astimezone(tz)
+    def now(cls, tz: tzinfo | None = None) -> Self:
+        return cls.fromtimestamp(FROZEN_MOMENT.timestamp(), tz)
 
 
 def build_asset_body(
@@ -23,7 +24,7 @@ def build_asset_body(
 ) -> dict[str, Any]:
     return {
         "name": "Compressor",
-        "serial_number": "SN-1",
+        "serial_number": NEW_SERIAL_NUMBER,
         "site_id": site_id,
         "asset_type_id": asset_type_id,
         "status": "Operational",
@@ -31,6 +32,19 @@ def build_asset_body(
         "notes": None,
         **overrides,
     }
+
+
+def build_asset_input(
+    site_id: int,
+    asset_type_id: int,
+    **overrides: Any,
+) -> AssetInput:
+    body = build_asset_body(
+        site_id,
+        asset_type_id,
+        **overrides,
+    )
+    return AssetInput.model_validate(body)
 
 
 def names_of(assets: list[AssetOut]) -> list[str]:

@@ -182,15 +182,13 @@ const FORM_DIALOG_MAX_WIDTH = '40rem'
 const CONFIRM_DIALOG_MAX_WIDTH = '26rem'
 const DEFAULT_SORT_KEY = 'name'
 const DEFAULT_SORT_DIRECTION = 'asc'
-
-export type { AssetSortItem }
 </script>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { deleteAsset, listAssets } from '@/api/assets'
-import { getErrorDetail, handleNetworkError } from '@/api/errors'
+import { describeRequestError } from '@/api/errors'
 import ActiveEntitySelect from '@/components/ActiveEntitySelect.vue'
 import AssetFormDialog from '@/components/AssetFormDialog.vue'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
@@ -279,7 +277,7 @@ const closeFormDialog = (): void => {
 
 const onAssetSaved = (): void => {
   closeFormDialog()
-  void loadPage()
+  loadPage()
 }
 
 const openDeleteDialog = (asset: Asset): void => {
@@ -303,7 +301,7 @@ const confirmArchive = async (): Promise<void> => {
       closeDeleteDialog()
       await loadPage()
     } catch (error: unknown) {
-      archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+      archiveErrorMessage.value = describeRequestError(error)
     } finally {
       isArchiving.value = false
     }
@@ -313,7 +311,7 @@ const confirmArchive = async (): Promise<void> => {
 watch([siteFilter, assetTypeFilter, statusFilter], applyFilters)
 
 onMounted(() => {
-  void loadPage()
+  loadPage()
 })
 </script>
 
