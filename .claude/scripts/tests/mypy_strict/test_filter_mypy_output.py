@@ -1,6 +1,8 @@
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
+
 from mypy_strict import filter_mypy_output
 
 SOURCE = '''def save(x: int):
@@ -62,6 +64,38 @@ def test_filter_mypy_output_suppressed_error_drops_its_note(write_python_file: C
 def test_filter_mypy_output_other_errors_are_kept(write_python_file: Callable[..., Path]):
     path = write_python_file(SOURCE)
     output_lines = [f"{path}:2: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]"]
+
+    kept_lines = filter_mypy_output(output_lines)
+
+    assert kept_lines == output_lines
+
+
+def test_filter_mypy_output_untyped_call_to_none_returning_function_is_dropped(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    (tmp_path / "jobs.py").write_text(
+        "def run_cleanup():\n    print(1)\n\n\ndef run_report() -> int:\n    return 1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    output_lines = [
+        'jobs.py:9: error: Call to untyped function "run_cleanup" in typed context  [no-untyped-call]',
+    ]
+
+    kept_lines = filter_mypy_output(output_lines)
+
+    assert kept_lines == []
+
+
+def test_filter_mypy_output_untyped_call_to_unknown_function_is_kept(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.chdir(tmp_path)
+    output_lines = [
+        'jobs.py:9: error: Call to untyped function "legacy_helper" in typed context  [no-untyped-call]',
+    ]
 
     kept_lines = filter_mypy_output(output_lines)
 

@@ -17,40 +17,50 @@ How application code uses the database. The code itself also follows `python-con
 
 ## 2. Transactions
 
-- **Start a transaction explicitly** at the beginning of the unit of work, before its first query, and keep the transaction object.
-- **Commit and roll back through the transaction object**: `transaction.commit()` / `transaction.rollback()`. **Never call `session.rollback()`**, and don't scatter `session.commit()` calls across the code.
-- One unit of work is one transaction. Don't commit halfway and keep going.
-- A session holds one transaction at a time. When an inner step must be able to fail without undoing the whole unit of work, use a savepoint (`session.begin_nested()`) and roll back that savepoint.
-- Flush (`session.flush()`) when you need database errors, such as constraint violations, or generated ids before the commit.
+- **The unit of work owns the transaction.** For an API, that's the request: the session dependency starts the transaction, commits it when the request succeeds, and calls `transaction.rollback()` when it fails. For a script, worker, or Temporal activity, it's the function that owns the job.
+- **Commit and roll back through the transaction (or savepoint) object**: `transaction.commit()` / `transaction.rollback()`. **Never call `session.rollback()`**, and managers never call `session.commit()`.
+- **Expected failures use a savepoint.** When a statement may fail in an expected way, such as a unique constraint, the manager opens a savepoint with `session.begin_nested()`, flushes, and on failure calls `savepoint.rollback()` and raises a domain error. The request's transaction stays usable.
+- **Open the savepoint before changing anything.** `begin_nested()` first flushes pending changes, so changes made before it are written outside the savepoint and can't be rolled back by it.
+- A session holds one top-level transaction at a time: don't call `session.begin()` in managers.
 
 ```python
-# GOOD:
-def create_site(session: Session, site_input: SiteInput) -> Site:
+# GOOD: the request's session dependency owns the transaction
+def get_session() -> Generator[Session, None, None]:
     """
-    Creates a site.
+    Opens a session for one request and runs the request in one transaction.
+    """
+    with Session(engine) as session:
+        transaction = session.begin()
+        try:
+            yield session
+        except Exception:
+            transaction.rollback()
+            raise
 
-    :param session: The open database session.
-    :param site_input: The values of the new site.
-    :return: The created site.
-    :raises DuplicateNameError: When another site already has this name.
+        transaction.commit()
+
+
+# GOOD: a manager uses a savepoint for the expected failure
+def update_site(session: Session, site_id: int, site_input: SiteInput) -> Site:
     """
-    transaction = session.begin()
-    site = Site(name=site_input.name, timezone=site_input.timezone)
-    session.add(site)
+    ...
+    """
+    site = read_site(session, site_id)
+    savepoint = session.begin_nested()  # before changing the object
+    site.name = site_input.name
     try:
         session.flush()
     except IntegrityError as error:
-        transaction.rollback()
+        savepoint.rollback()
         raise DuplicateNameError(SITE_NAME_TAKEN) from error
 
-    transaction.commit()
-    session.refresh(site)
+    savepoint.commit()
     return site
 
 # BAD:
 session.add(site)
 try:
-    session.commit()
+    session.commit()  # managers don't commit
 except IntegrityError as error:
     session.rollback()  # never roll back through the session
     raise DuplicateNameError(SITE_NAME_TAKEN) from error
