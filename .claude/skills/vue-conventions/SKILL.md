@@ -1,6 +1,6 @@
 ---
 name: vue-conventions
-description: Use when creating, modifying, refactoring, or reviewing Vue 3, Vuetify, TypeScript, and Tailwind frontend code. Enforces SFC block layout, script splitting, script setup ordering, EasyToolTip, loading states, error handling, and styling rules.
+description: Use when creating, modifying, refactoring, or reviewing Vue 3, Vuetify, TypeScript, and Tailwind frontend code. Enforces SFC block layout, script splitting, no exports from .vue files, Props/Emits interfaces, script setup ordering, refs over let, explicit checks (no ??), if over ternary calls, no void, EasyToolTip, loading states, error handling, and styling rules.
 ---
 
 # Vue 3, Vuetify & TypeScript Frontend Conventions
@@ -19,6 +19,7 @@ Strict conventions for frontend development using Vue 3 (Composition API), Vueti
 - **No redundant conditions**: never repeat a condition that a parent already guarantees. For example, content inside `<v-dialog :model-value="isDialogOpen">` only shows while the dialog is open, so it must not also have `v-if="isDialogOpen"`. If the content must start fresh each time it opens (e.g. a form that initialises from its props), give it a `:key` that the parent changes every time it opens the dialog, instead of a duplicate `v-if`. A new key remounts the content even when the props didn't change, e.g. opening "Add" twice in a row.
 - **Shared Code Extraction**:
   - Any logic, helper functions, or TypeScript interfaces used in more than one place **must** be extracted into `src/utils/` or `src/models/`.
+- **No exports from `.vue` files**: a `.vue` file never exports anything (no `export`, `export type`, or `export { ... }` in either script block). Anything another file needs (a type, a constant, a helper) belongs in `src/utils/`, `src/models/`, or the module it's really about, and both the component and the other file import it from there.
 
 ---
 
@@ -34,7 +35,7 @@ Every Vue SFC must follow this exact top-to-bottom block order:
 
 Separate static type declarations from reactive runtime logic using two `<script>` tags:
 
-1. `<script lang="ts">`: Contains component-specific interfaces (including the component's **props and emits interfaces**), types, enums, and pure constants, with one export block at the bottom (see §7).
+1. `<script lang="ts">`: Contains component-specific interfaces (including the component's `Props` and `Emits` interfaces), types, enums, and pure constants. Nothing in it is exported (see §1).
 2. `<script setup lang="ts">`: Contains component runtime logic and reactive state.
 
 ```vue
@@ -51,21 +52,18 @@ interface UserCardItem {
   role: string
 }
 
-interface UserCardProps {
+interface Props {
   user: UserCardItem
   initialStatus: boolean
 }
 
 // Emits: updated user ID and selection flag
-interface UserCardEmits {
+interface Emits {
   'update': [string, boolean]
   'close': []
 }
 
 const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
-
-export type { UserCardItem, UserCardProps, UserCardEmits }
-export { DEFAULT_AVATAR_FALLBACK }
 </script>
 
 <script setup lang="ts">
@@ -91,11 +89,15 @@ The contents of `<script setup lang="ts">` must follow this exact sequence, with
    *(empty line)*
 4. **`computed` properties**:
    *(empty line)*
-5. **Functions**: const arrow functions (`const fn = () => {}`) and standard functions.
+5. **Const functions**: `const fn = () => {}`.
    *(empty line)*
-6. **Watchers (`watch`, `watchEffect`)**:
+6. **Function declarations**: `function fn() {}`.
    *(empty line)*
-7. **Lifecycle hooks (`onMounted`, `onUnmounted`)**:
+7. **Watchers (`watch`, `watchEffect`)**:
+   *(empty line)*
+8. **Lifecycle hooks (`onBeforeMount`, `onMounted`, `onUnmounted`, ...)**:
+
+Every item sits in its own section: never declare a ref after a function, or a computed after a watcher.
 
 ### Example `<script setup>` Layout
 
@@ -105,9 +107,9 @@ const DEBOUNCE_DELAY_MS = 300
 const MAX_SELECTION_COUNT = 5
 
 // Emits & Props (interfaces are declared in the <script lang="ts"> block)
-const emit = defineEmits<UserCardEmits>()
+const emit = defineEmits<Emits>()
 
-const props = defineProps<UserCardProps>()
+const props = defineProps<Props>()
 
 // Refs
 const isActionLoading = ref<boolean>(false)
@@ -116,7 +118,7 @@ const searchFilter = ref<string>('')
 // Computed
 const hasActiveFilter = computed<boolean>(() => searchFilter.value.trim().length > 0)
 
-// Functions
+// Const functions
 const executeUserUpdate = async () => {
   isActionLoading.value = true
   try {
@@ -127,6 +129,11 @@ const executeUserUpdate = async () => {
   } finally {
     isActionLoading.value = false
   }
+}
+
+// Function declarations
+function clearSearchFilter() {
+  searchFilter.value = ''
 }
 
 // Watchers
@@ -145,7 +152,7 @@ onMounted(() => {
 
 ## 4. Props & Emits Rules
 
-- **Always use interfaces**: declare props and emits as named interfaces (`<Component>Props`, `<Component>Emits`) in the `<script lang="ts">` block, then pass them: `defineProps<UserCardProps>()`, `defineEmits<UserCardEmits>()`.
+- **Always use interfaces named `Props` and `Emits`**: declare them in the `<script lang="ts">` block, not exported, and pass them: `defineProps<Props>()`, `defineEmits<Emits>()`. The file already says which component they belong to, so never prefix them (no `UserCardProps`, `ActiveEntitySelectEmits`).
   - **Never** write the type inline inside the macro: no `defineProps<{ ... }>()` and no `defineEmits<{ ... }>()`.
   - A component with no props or no emits doesn't call that macro at all.
 - **`defineEmits` Parameter Naming**:
@@ -223,10 +230,35 @@ The same applies to self-closing components: each attribute on its own line, and
     - Empty array / collection: `if (test.length === 0)`
     - Numeric check: `if (test === 0)` or `if (test < 0)`
   - **Boolean Exception**: Only when a variable is strictly of type `boolean` (`true` or `false`), you may use `if (test)` or `if (!test)`.
+- **No `??`**: never use the nullish coalescing operator (`??` or `??=`). Write the explicit check instead, so the reader sees exactly which values are handled:
+  ```ts
+  // GOOD:
+  let siteName = 'Unknown site'
+  if (site !== null && site !== undefined) {
+    siteName = site.name
+  }
+
+  // BAD:
+  const siteName = site?.name ?? 'Unknown site'
+  ```
+- **`if` over ternary for calls**: when the choice is which function to call (or whether to call one), use a full `if` / `else`, never a ternary (`isEditing ? updateAsset() : createAsset()`).
+  ```ts
+  // GOOD:
+  if (isEditing.value) {
+    await updateAsset(assetForm.value)
+  } else {
+    await createAsset(assetForm.value)
+  }
+
+  // BAD:
+  await (isEditing.value ? updateAsset(assetForm.value) : createAsset(assetForm.value))
+  ```
+- **No `void` before calls**: call the function as it is (`loadPage()`), or `await` it when the order matters. Never write `void loadPage()`.
+- **Prefer `ref` over `let`**: component state in `<script setup>` is a `ref` (`const selectedSiteId = ref<number | null>(null)`), not a reassigned `let`. A `let` isn't reactive, so the template and watchers never see its changes.
 - **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants.
 - **Strings**: **large strings** (long messages, long URLs paths, multi-line text) become named constants. **Short strings** (labels, keys, short messages, single words) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower.
 - **Configuration in `.env`**: API base URLs, links to other systems, ports, keys, and every other environment-specific value live in the app's `.env` files (`VITE_*`) and are read through `import.meta.env` in one config module. Never hardcode them.
-- **Exports at the bottom**: never export at the declaration (`export const`, `export function`, `export interface`, `export type`, `export enum`, `export class`). Declare everything first, then end the file (or the `<script lang="ts">` block) with one export section:
+- **Exports at the bottom**: in `.ts` files, never export at the declaration (`export const`, `export function`, `export interface`, `export type`, `export enum`, `export class`). Declare everything first, then end the file with one export section (`.vue` files export nothing, see §1):
   ```ts
   const fetchEntities = async (): Promise<Entity[]> => { /* ... */ }
   interface Entity { id: number; name: string }

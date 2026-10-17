@@ -41,7 +41,7 @@ class AssetType(SQLModel, table=True):
 
 def read_entity_by_id(session: Session, entity_id: int) -> Entity:
     """
-    Reads one entity by its id.
+    Read one entity by its id.
     """
     entity = session.get(Entity, entity_id)
     if entity is None:
@@ -52,7 +52,7 @@ def read_entity_by_id(session: Session, entity_id: int) -> Entity:
 
 def find_entity_name(entity_id: int) -> str | None:
     """
-    Finds the name of an entity.
+    Find the name of an entity.
     """
     if entity_id < 0:
         return None
@@ -62,7 +62,7 @@ def find_entity_name(entity_id: int) -> str | None:
 
 def archive_entity(entity: Entity):
     """
-    Archives an entity.
+    Archive an entity.
     """
     if entity.is_archived:
         return
@@ -72,7 +72,7 @@ def archive_entity(entity: Entity):
 
 def list_entity_names(entities: list[Entity]) -> list[str]:
     """
-    Lists the names of the active entities.
+    List the names of the active entities.
     """
     return [
         entity.name
@@ -87,7 +87,7 @@ def list_entities(
     query: Annotated[str | None, Query(alias="q")] = None,
 ) -> list[Entity]:
     """
-    Lists entities matching the search text.
+    List entities matching the search text.
     """
     transaction = session.begin()
     entities = search_entities(session, query)
@@ -101,7 +101,7 @@ def build_entity_query(
     page_size: int,
 ) -> Query:
     """
-    Builds the query that lists entities.
+    Build the query that lists entities.
     """
     return session.query(
         entity_type,
@@ -163,6 +163,12 @@ def test_check_python_file_empty_file_returns_no_violations(write_python_file: C
     ('class SiteError(Exception):\n    """\n    Site failure.\n    """\n', "PY-39"),
     ("session.rollback()\n", "PY-40"),
     ("self.session.rollback()\n", "PY-40"),
+    ('def lock_resource(resource: int):\n    """\n    Locks the resource.\n    """\n    print(resource)\n', "PY-41"),
+    ('def is_overdue(day: int) -> bool:\n    """\n    Check whether the day passed.\n\n    :param day: Day.\n    :return: True when the day passed, False otherwise.\n    """\n    return day > 0\n', "PY-42"),
+    ("class AssetStatus(str, Enum):\n    pass\n", "PY-43"),
+    ("STATUSES = [AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED]\n", "PY-44"),
+    ("STATUSES = frozenset(\n    {AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED},\n)\n", "PY-44"),
+    ("STATUSES = [\n    AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED,\n]\n", "PY-44"),
 ])
 def test_check_python_file_violating_snippet_reports_rule(
     write_python_file: Callable[..., Path],
@@ -227,7 +233,7 @@ def test_check_python_file_utf8_bom_reports_py00(tmp_path: Path):
 
 def test_check_python_file_test_module_skips_layout_rules(write_python_file: Callable[..., Path]):
     path = write_python_file(
-        "import pytest\n\n@pytest.mark.parametrize('value,expected', [(1, 2), (2, 3)])\ndef test_increment(value, expected):\n    assert value + 1 == expected\n",
+        "import pytest\n\n@pytest.mark.parametrize('value,expected', [\n    (1, 2),\n    (2, 3),\n])\ndef test_increment(value, expected):\n    assert value + 1 == expected\n",
         "test_increment.py",
     )
 
@@ -249,6 +255,9 @@ def test_check_python_file_syntax_error_reports_syntax_rule(write_python_file: C
     "if is_ready:\n    publish()\n",
     "if is_ready:\n    publish()\n\nnotify()\n",
     "if is_ready:\n    publish()\nelse:\n    wait()\n\nnotify()\n",
+    "STATUSES = frozenset(\n    {\n        AssetStatus.OUT_OF_SERVICE,\n        AssetStatus.RETIRED,\n    },\n)\n",
+    "handlers: dict[str, Callable[[int, str], bool]] = {}\n",
+    "NAMES = ['single']\n",
 ])
 def test_check_python_file_compliant_snippet_reports_nothing(
     write_python_file: Callable[..., Path],
@@ -272,7 +281,10 @@ def test_check_python_file_long_line_with_several_calls_reports_it_once(
     assert reported_rule_ids == ["PY-24"]
 
 
-@pytest.mark.parametrize("directory", ["migrations", "versions"])
+@pytest.mark.parametrize("directory", [
+    "migrations",
+    "versions",
+])
 def test_check_python_file_migration_file_is_exempt(tmp_path: Path, directory: str):
     path = tmp_path / "alembic" / directory / "0001_create_assets.py"
     path.parent.mkdir(parents=True)
@@ -302,15 +314,26 @@ def test_check_python_file_test_module_violation_reports_rule(
     assert expected_rule_id in reported_rule_ids
 
 
-def test_check_python_file_conftest_may_write_through_session(
+def test_check_python_file_conftest_env_fixture_may_write_through_session(
     write_python_file: Callable[..., Path],
 ):
-    source = "def make_site(session):\n    session.add(Site(name='a'))\n    session.commit()\n"
+    source = "def env(db_session):\n    db_session.add(Site(name='a'))\n    db_session.flush()\n"
     path = write_python_file(source, "conftest.py")
 
     violations = check_python_file(path)
 
     assert violations == []
+
+
+def test_check_python_file_conftest_factory_outside_env_reports_ts30(
+    write_python_file: Callable[..., Path],
+):
+    source = "def make_site(db_session):\n    db_session.add(Site(name='a'))\n"
+    path = write_python_file(source, "conftest.py")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert reported_rule_ids == ["TS-30"]
 
 
 def test_check_python_file_banner_text_inside_string_is_ignored(

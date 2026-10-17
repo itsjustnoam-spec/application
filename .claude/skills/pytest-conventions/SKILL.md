@@ -1,6 +1,6 @@
 ---
 name: pytest-conventions
-description: Use when writing, maintaining, reviewing, or debugging Python tests with pytest. Enforces the tests/<domain>/test_<operation> layout, test data only through conftest fixtures and app functions, what not to test (migrations, plain validation), AAA structure, fixture patterns, parametrization, DAMP test naming, 100% coverage, and strict isolation.
+description: Use when writing, maintaining, reviewing, or debugging Python tests with pytest. Enforces the tests/<domain>/test_<operation> layout, test data only through the env fixture in conftest and the app's own managers, what not to test (migrations, plain validation), AAA structure, fixture patterns, parametrization, DAMP test naming, 100% coverage, and strict isolation.
 ---
 
 # Pytest Testing Conventions
@@ -33,9 +33,9 @@ Tests are grouped by **domain** (a thing in the application, such as `sites` or 
 
 ```
 tests/
-  conftest.py                   # Root/global fixtures: engine, session, client
+  conftest.py                   # Root fixtures: engine, session, clients, and the env fixture
+  utils.py                      # The Environment dataclass that env returns, shared helpers
   <domain>/                     # e.g. sites, asset_types, entities
-    conftest.py                 # Fixtures that create this domain's objects (factories)
     utils.py                    # Non-fixture helpers (builders of request bodies, assertions)
     test_create_<domain>.py     # e.g. test_create_site.py: manager + API tests for creating
     test_update_<domain>.py
@@ -132,37 +132,9 @@ def temp_cache_dir(tmp_path):
     # Cleanup occurs automatically via tmp_path
 ```
 
-### Fixture Factories
+### No Factory Fixtures
 
-When tests need multiple variants of an entity or customized objects, yield a factory function rather than hardcoding static fixtures:
-
-```python
-@pytest.fixture
-def make_user():
-    created_users: list[User] = []
-
-    def _make(email: str = None, role: str = "member") -> User:
-        user_id = str(uuid4())
-        user = User(id=user_id, email=email or f"test-{user_id}@example.com", role=role)
-        created_users.append(user)
-        return user
-
-    yield _make
-
-    for user in created_users:
-        delete_user(user.id)
-
-@pytest.mark.parametrize("role,expected_access", [
-    ("admin", True),
-    ("member", False),
-])
-def test_has_admin_access_by_role_returns_expected_access(make_user, role: str, expected_access: bool):
-    user = make_user(role=role)
-
-    access_granted = has_admin_access(user)
-
-    assert access_granted is expected_access
-```
+Don't write fixtures or helpers that create objects (`make_site(...)`, `make_asset(...)`, `create_test_user(...)`). Every object a test needs comes from the `env` fixture, or is created by the test itself through the application's managers (see §8).
 
 ---
 
@@ -211,25 +183,76 @@ Never assert generic `Exception` or `ValueError` when domain exceptions are defi
 
 ---
 
-## 8. Test Data
+## 8. Test Data: the `env` Fixture
 
-- **Objects are created only in `conftest.py`**, by fixtures or fixture factories (e.g. `make_site(...)`), so there's exactly one place that knows how to create each object.
-- **A test never touches the session directly**: no `session.add`, `session.delete`, `session.commit`, or `session.execute` in a test body. To arrange state, a test uses fixtures, or calls the application's own functions (e.g. `create_site(...)`, `archive_site(...)`). To check the result, it uses the application's read functions or the API.
+All the data a test relies on, but doesn't test, comes from **one fixture, `env`**, in `tests/conftest.py`. It builds a small, named world (sites, asset types, assets, ...) for every test, inside the test's rolled-back transaction, and returns it as an `Environment` dataclass (declared in `tests/utils.py`), so tests read `env.north_site` or `env.retired_compressor`.
+
+- **`env` is the only place that creates objects in the database for tests.** It may add them through the session or the application's managers.
+- **The object under test is created through the application's own functions.** A test about creating or changing something calls the manager (`create_asset(...)`, `archive_site(...)`) or the API. That's the only creation allowed outside `env`.
+- **No factory fixtures and no creating helpers** (`make_site`, `make_asset`, ...), in `conftest.py` or `utils.py`.
+- **A test never touches the session directly**: no `session.add`, `session.delete`, `session.commit`, or `session.execute` in a test body. To check the result, it uses the application's read functions or the API.
+- **When a test needs something `env` doesn't have**, add it to `env` under a name that says what's special about it (`archived_site`, `retired_compressor`, `asset_due_yesterday`). Don't build it in the test.
+- Tests never depend on what another test created. `env` is function-scoped, so every test starts from the same world.
 
 ```python
+# tests/utils.py
+@dataclass
+class Environment:
+    north_site: Site
+    archived_site: Site
+    pump: AssetType
+    compressor: Asset
+
+
+# tests/conftest.py
+@pytest.fixture
+def env(db_session: Session) -> Environment:
+    north_site = Site(name="North Depot", address="1 Main Street", timezone="Europe/Berlin")
+    archived_site = Site(name="Old Depot", address="2 Main Street", timezone="UTC", archived=True)
+    pump = AssetType(name="Pump", category=AssetCategory.MECHANICAL, inspection_interval_days=30)
+    compressor = Asset(name="Compressor", serial_number="SN-1", site=north_site, asset_type=pump)
+    db_session.add_all(
+        [
+            north_site,
+            archived_site,
+            pump,
+            compressor,
+        ],
+    )
+    db_session.flush()
+    return Environment(
+        north_site=north_site,
+        archived_site=archived_site,
+        pump=pump,
+        compressor=compressor,
+    )
+
+
 # GOOD:
-def test_archive_site_existing_site_hides_it_from_list(session, make_site):
-    site = make_site(name="North plant")
+def test_archive_asset_active_asset_hides_it_from_list(db_session: Session, env: Environment):
+    archive_asset(db_session, env.compressor.id)
 
-    archive_site(session, site.id)
+    assert list_assets(db_session).total == 0
 
-    assert list_sites(session).total == 0
+
+def test_create_asset_valid_input_returns_asset(db_session: Session, env: Environment):
+    asset_input = build_asset_input(site_id=env.north_site.id, asset_type_id=env.pump.id)
+
+    asset = create_asset(db_session, asset_input)
+
+    assert asset.site_id == env.north_site.id
+
 
 # BAD:
-def test_archive_site_existing_site_hides_it_from_list(session):
+def test_archive_asset_active_asset_hides_it_from_list(db_session: Session, make_asset):
+    asset = make_asset(name="Compressor")  # factory fixture instead of env
+    ...
+
+
+def test_list_assets_archived_site_is_hidden(db_session: Session):
     site = Site(name="North plant", timezone="UTC")
-    session.add(site)  # object created and saved directly in the test
-    session.commit()
+    db_session.add(site)  # object created and saved directly in the test
+    db_session.commit()
     ...
 ```
 

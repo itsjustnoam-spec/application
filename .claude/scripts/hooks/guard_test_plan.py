@@ -33,7 +33,7 @@ EDIT_TOOL_NAMES = ("Edit", "MultiEdit")
 
 def read_hook_payload() -> dict[str, object]:
     """
-    Reads the JSON payload Claude Code sends on stdin.
+    Read the JSON payload Claude Code sends on stdin.
     """
     raw_payload = sys.stdin.buffer.read().decode("utf-8")
     if raw_payload.strip() == "":
@@ -45,14 +45,14 @@ def read_hook_payload() -> dict[str, object]:
 
 def is_python_test_file(path: Path) -> bool:
     """
-    Tells whether a path is a pytest test module.
+    Check whether a path is a pytest test module.
     """
     return path.suffix == ".py" and path.name.startswith("test_")
 
 
 def is_frontend_test_file(path: Path) -> bool:
     """
-    Tells whether a path is a Vitest or Playwright test file.
+    Check whether a path is a Vitest or Playwright test file.
     """
     is_in_tests_folder = "__tests__" in path.parts
     has_test_suffix = path.name.endswith(FRONTEND_TEST_SUFFIXES)
@@ -61,7 +61,7 @@ def is_frontend_test_file(path: Path) -> bool:
 
 def extract_test_names(path: Path, source: str) -> list[str]:
     """
-    Extracts the test names a test file declares.
+    Extract the test names a test file declares.
     """
     if is_python_test_file(path):
         return PYTHON_TEST_PATTERN.findall(source)
@@ -75,7 +75,7 @@ def extract_test_names(path: Path, source: str) -> list[str]:
 
 def read_existing_source(path: Path) -> str:
     """
-    Reads a file's current content, or an empty string when it doesn't exist.
+    Read a file's current content, or an empty string when it doesn't exist.
     """
     if not path.is_file():
         return ""
@@ -85,7 +85,7 @@ def read_existing_source(path: Path) -> str:
 
 def collect_source_changes(tool_name: str, tool_input: dict[str, object]) -> list[tuple[str, str]]:
     """
-    Lists the (before, after) text pairs a Write or Edit call would apply.
+    List the (before, after) text pairs a Write or Edit call would apply.
 
     :param tool_name: The tool being called.
     :param tool_input: The tool's input payload.
@@ -112,7 +112,7 @@ def collect_source_changes(tool_name: str, tool_input: dict[str, object]) -> lis
 
 def find_added_test_names(path: Path, source_changes: list[tuple[str, str]]) -> list[str]:
     """
-    Lists the tests that a change adds.
+    List the tests that a change adds.
     """
     added_test_names: list[str] = []
     for old_source, new_source in source_changes:
@@ -125,7 +125,7 @@ def find_added_test_names(path: Path, source_changes: list[tuple[str, str]]) -> 
 
 def find_active_test_plan(start_directory: Path) -> tuple[str, Path] | None:
     """
-    Finds the test plan of the feature running in the checkout that contains the start directory.
+    Find the test plan of the feature running in the checkout that contains the start directory.
 
     :param start_directory: The directory of the test file being written.
     :return: The active feature slug and its test-plan path, when a feature is active.
@@ -143,7 +143,7 @@ def find_active_test_plan(start_directory: Path) -> tuple[str, Path] | None:
 
 def block(message: str) -> int:
     """
-    Sends the reason back to Claude and blocks the edit.
+    Send the reason back to Claude and block the edit.
     """
     sys.stderr.buffer.write((message + "\n").encode("utf-8"))
     sys.stderr.flush()
@@ -152,7 +152,7 @@ def block(message: str) -> int:
 
 def main() -> int:
     """
-    Blocks new tests that aren't in the active feature's test plan.
+    Block new tests that aren't in the active feature's test plan.
     """
     payload = read_hook_payload()
     tool_input = payload.get("tool_input")
