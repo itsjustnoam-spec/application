@@ -100,14 +100,7 @@ Vue Test Utils has no accessibility queries, so:
 
 ---
 
-## 6. Coverage
-
-- Frontend coverage isn't a goal and isn't gated (see "What Gets a Frontend Test" above). Never write a test only to cover a line.
-- If logic in a component is important enough to test in detail, move it into a util or composable and unit-test it there.
-
----
-
-## 7. Setup
+## 6. Setup
 
 `vitest.config.ts` uses `jsdom`, includes `tests/unit/**` and `tests/integration/**`, sets `restoreMocks: true` and `unstubGlobals: true`, and inlines `vuetify`. `tests/setup.ts` polyfills `ResizeObserver` and starts the MSW server with `onUnhandledRequest: 'error'`, so any request without a handler fails the test. In component tests, where the API module is mocked, this also catches leaks to the real network.
 
