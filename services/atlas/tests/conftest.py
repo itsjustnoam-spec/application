@@ -1,4 +1,5 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,10 +9,13 @@ from sqlmodel import Session, SQLModel
 
 import atlas.database
 from atlas.database import get_session, settings
+from atlas.entities import Asset, AssetCategory, AssetStatus, AssetType, Site
 from atlas.main import app
 
 TEST_DATABASE_NAME_SUFFIX = "_test"
-TRUNCATE_ALL_TABLES = "TRUNCATE TABLE site, asset_type RESTART IDENTITY"
+TRUNCATE_ALL_TABLES = (
+    "TRUNCATE TABLE asset, site, asset_type RESTART IDENTITY"
+)
 
 
 class UnsafeTestDatabaseError(Exception):
@@ -92,3 +96,77 @@ def committing_api_client(
 
     with test_engine.begin() as connection:
         connection.execute(text(TRUNCATE_ALL_TABLES))
+
+
+@pytest.fixture
+def make_site(db_session: Session) -> Callable[..., Site]:
+    def _make(
+        name: str = "North Depot",
+        address: str = "1 Main Street",
+        timezone: str = "Europe/Berlin",
+        archived: bool = False,
+    ) -> Site:
+        site = Site(
+            name=name,
+            address=address,
+            timezone=timezone,
+            archived=archived,
+        )
+        db_session.add(site)
+        db_session.commit()
+        db_session.refresh(site)
+        return site
+
+    return _make
+
+
+@pytest.fixture
+def make_asset(db_session: Session) -> Callable[..., Asset]:
+    def _make(
+        site: Site,
+        asset_type: AssetType,
+        name: str = "Compressor",
+        serial_number: str = "SN-1",
+        status: AssetStatus = AssetStatus.OPERATIONAL,
+        installation_date: date = date(2026, 1, 1),
+        notes: str | None = None,
+        archived: bool = False,
+    ) -> Asset:
+        asset = Asset(
+            name=name,
+            serial_number=serial_number,
+            site_id=site.id,
+            asset_type_id=asset_type.id,
+            status=status,
+            installation_date=installation_date,
+            notes=notes,
+            archived=archived,
+        )
+        db_session.add(asset)
+        db_session.commit()
+        db_session.refresh(asset)
+        return asset
+
+    return _make
+
+
+@pytest.fixture
+def make_asset_type(db_session: Session) -> Callable[..., AssetType]:
+    def _make(
+        name: str = "Pump",
+        category: AssetCategory = AssetCategory.MECHANICAL,
+        inspection_interval_days: int = 30,
+        archived: bool = False,
+    ) -> AssetType:
+        asset_type = AssetType(
+            name=name,
+            category=category,
+            inspection_interval_days=inspection_interval_days,
+            archived=archived,
+        )
+        db_session.add(asset_type)
+        db_session.commit()
+        db_session.refresh(asset_type)
+        return asset_type
+
+    return _make

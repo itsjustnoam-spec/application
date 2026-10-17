@@ -9,14 +9,20 @@ FastAPI application for the Atlas service, which owns the PostgreSQL data.
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from atlas.managers.errors import DuplicateNameError, EntityNotFoundError
-from atlas.routers import asset_types, sites
+from atlas.managers.errors import (
+    DuplicateNameError,
+    DuplicateSerialNumberError,
+    EntityInUseError,
+    EntityNotFoundError,
+)
+from atlas.routers import asset_types, assets, sites
 
 # ----- Consts ----- #
 
 app = FastAPI(title="FieldOps Atlas")
 app.include_router(sites.router)
 app.include_router(asset_types.router)
+app.include_router(assets.router)
 
 # ----- Functions ----- #
 
@@ -42,6 +48,34 @@ def handle_duplicate_name(
 ) -> JSONResponse:
     """
     Turns a name conflict into a 409 response.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(error)},
+    )
+
+
+@app.exception_handler(DuplicateSerialNumberError)
+def handle_duplicate_serial_number(
+    request: Request,
+    error: DuplicateSerialNumberError,
+) -> JSONResponse:
+    """
+    Turns a serial number conflict into a 409 response.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(error)},
+    )
+
+
+@app.exception_handler(EntityInUseError)
+def handle_entity_in_use(
+    request: Request,
+    error: EntityInUseError,
+) -> JSONResponse:
+    """
+    Turns an archive blocked by active references into a 409 response.
     """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,

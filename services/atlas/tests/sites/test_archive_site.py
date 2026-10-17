@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from atlas.entities import Site
-from atlas.managers.errors import EntityNotFoundError
+from atlas.entities import Asset, AssetType, Site
+from atlas.managers.errors import EntityInUseError, EntityNotFoundError
 from atlas.managers.sites import archive_site, list_sites, read_site
 from tests.utils import get_persisted_id
 
@@ -62,3 +62,48 @@ def test_archive_site_api_missing_id_returns_404_with_detail(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Site not found"}
+
+
+def test_archive_site_with_active_asset_raises_entity_in_use_error(
+    db_session: Session,
+    make_site: Callable[..., Site],
+    make_asset_type: Callable[..., AssetType],
+    make_asset: Callable[..., Asset],
+):
+    site = make_site()
+    make_asset(site=site, asset_type=make_asset_type())
+
+    with pytest.raises(EntityInUseError, match="Site has active assets"):
+        archive_site(db_session, get_persisted_id(site))
+
+    assert read_site(db_session, get_persisted_id(site)).archived is False
+
+
+def test_archive_site_with_only_archived_assets_succeeds(
+    db_session: Session,
+    make_site: Callable[..., Site],
+    make_asset_type: Callable[..., AssetType],
+    make_asset: Callable[..., Asset],
+):
+    site = make_site()
+    make_asset(site=site, asset_type=make_asset_type(), archived=True)
+
+    archive_site(db_session, get_persisted_id(site))
+
+    with pytest.raises(EntityNotFoundError, match="Site not found"):
+        read_site(db_session, get_persisted_id(site))
+
+
+def test_archive_site_api_with_active_asset_returns_409(
+    api_client: TestClient,
+    make_site: Callable[..., Site],
+    make_asset_type: Callable[..., AssetType],
+    make_asset: Callable[..., Asset],
+):
+    site = make_site()
+    make_asset(site=site, asset_type=make_asset_type())
+
+    response = api_client.delete(f"/sites/{get_persisted_id(site)}")
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Site has active assets"}

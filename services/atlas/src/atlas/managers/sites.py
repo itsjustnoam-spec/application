@@ -10,14 +10,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import SessionTransaction
 from sqlmodel import Session, col, func, select
 
-from atlas.entities import Site
-from atlas.managers.errors import DuplicateNameError, EntityNotFoundError
+from atlas.entities import Asset, Site
+from atlas.managers.errors import (
+    DuplicateNameError,
+    EntityInUseError,
+    EntityNotFoundError,
+)
 from atlas.schemas.site import SiteInput
 
 # ----- Consts ----- #
 
 SITE_NOT_FOUND_MESSAGE = "Site not found"
 SITE_NAME_TAKEN = "A site with this name already exists"
+SITE_HAS_ACTIVE_ASSETS = "Site has active assets"
 
 # ----- Functions ----- #
 
@@ -51,6 +56,28 @@ def list_sites(
         page_statement.offset(offset).limit(limit),
     ).all()
     return list(sites), total
+
+
+def lock_site(session: Session, site_id: int, exclusive: bool):
+    """
+    Locks a site row so an archive and an asset reference to it cannot race.
+
+    :param session: The request's database session.
+    :param site_id: The id of the site.
+    :param exclusive: True to block other writers and references (archive), False to only block archives.
+    """
+    statement = (
+        select(Site)
+        .where(col(Site.id) == site_id)
+        .with_for_update(
+            read=not exclusive,
+        )
+    )
+    session.exec(
+        statement.execution_options(
+            populate_existing=True,
+        ),
+    ).first()
 
 
 def read_site(session: Session, site_id: int) -> Site:
@@ -140,7 +167,20 @@ def archive_site(session: Session, site_id: int):
     :param session: The request's database session.
     :param site_id: The id of the site.
     :raises EntityNotFoundError: When the site doesn't exist or is archived.
+    :raises EntityInUseError: When an active asset is still at the site.
     """
+    lock_site(
+        session,
+        site_id,
+        exclusive=True,
+    )
     site = read_site(session, site_id)
+    active_assets = select(Asset.id).where(
+        col(Asset.site_id) == site_id,
+        col(Asset.archived).is_(False),
+    )
+    if session.exec(active_assets.limit(1)).first() is not None:
+        raise EntityInUseError(SITE_HAS_ACTIVE_ASSETS)
+
     site.archived = True
     session.flush()

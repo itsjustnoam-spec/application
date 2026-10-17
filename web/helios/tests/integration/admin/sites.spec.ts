@@ -221,4 +221,22 @@ describe('Admin: sites', () => {
 
     expect(wrapper.text()).toContain('North Depot')
   })
+
+  it('shows the server message when archiving a site with active assets fails', async () => {
+    server.use(
+      http.delete('/api/atlas/sites/:siteId', () =>
+        HttpResponse.json({ detail: 'Site has active assets' }, { status: 409 }),
+      ),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="archive-site-button"]').trigger('click')
+    const confirmDialog = wrapper.findComponent(ConfirmDeleteDialog)
+    await confirmDialog.get('[data-testid="confirm-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog.get('[data-testid="confirm-delete-error"]').text()).toContain(
+      'Site has active assets',
+    )
+  })
 })
