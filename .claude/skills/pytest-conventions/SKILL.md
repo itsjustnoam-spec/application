@@ -12,16 +12,10 @@ Opinionated, comprehensive testing patterns for Python and pytest. Incorporates 
 ## 1. Core Principles
 
 1. **Test behavior, not implementation**: Focus on what the code does and its observable contract, not internal private implementation details.
-2. **Arrange-Act-Assert (AAA), Visibly**: Visibly separate every test function into three distinct blocks using single blank lines: setup (Arrange), the single action under test (Act), and verification (Assert).
-3. **One assertion concept per test**: A test verifies a single outcome or behavior. Multiple `assert` statements are permitted only when validating properties of the same single result.
-4. **DAMP over DRY in tests**: Descriptive And Meaningful Phrases over rigid Don't Repeat Yourself. Tests should be readable from top to bottom without jumping through complex helper abstractions.
-5. **Fixtures over setup methods**: Never use `unittest`-style `setUp`/`tearDown` or classes. Use pytest fixtures in `conftest.py` or module files.
-6. **Narrow fixture scopes**: Default to `function` scope. Widen to `module` or `session` only for expensive, read-only setup (e.g. database engines, mock servers).
-7. **Parametrize instead of looping**: Never write a `for` loop inside a test function. Loops hide which iteration failed; `@pytest.mark.parametrize` yields isolated, uniquely identified test cases.
-8. **Isolation and order-independence**: Zero shared mutable state across tests. Tests must pass regardless of execution order and run cleanly in parallel (e.g. with `pytest-xdist`).
-9. **Mock at the boundary you own**: Patch where the object is *imported and looked up*, not where it is defined. Mock external network, filesystem, and clocks; never mock the unit under test.
-10. **100% test coverage**: All new business logic, models, services, and endpoints require 100% test coverage.
-    - *Exception*: Pure reverse proxy redirect endpoints without business logic do not require test suites.
+2. **One assertion concept per test**: A test verifies a single outcome or behavior. Multiple `assert` statements are permitted only when validating properties of the same single result.
+3. **DAMP over DRY in tests**: Descriptive And Meaningful Phrases over rigid Don't Repeat Yourself. Tests should be readable from top to bottom without jumping through complex helper abstractions.
+4. **Narrow fixture scopes**: Default to `function` scope. Widen to `module` or `session` only for expensive, read-only setup (e.g. database engines, mock servers).
+5. **Isolation and order-independence**: Zero shared mutable state across tests. Tests must pass regardless of execution order and run cleanly in parallel (e.g. with `pytest-xdist`).
 
 ---
 
@@ -64,21 +58,16 @@ Every test file must follow this strict sequence:
 
 ## 3. The AAA Structure in Action
 
-Every test body must visually separate Arrange, Act, and Assert:
+Every test body separates Arrange, Act, and Assert with single blank lines, and has exactly one action under test:
 
 ```python
 def test_calculate_discount_valid_percentage_reduces_total():
-    # Arrange
-    base_price: float = 100.0
-    discount_percentage: float = 20.0
+    base_price = 100.0
 
-    # Act
-    discounted_price: float = calculate_discount(base_price, discount_percentage)
+    discounted_price = calculate_discount(base_price, 20.0)
 
-    # Assert
     assert discounted_price == 80.0
 ```
-*(Omit the `# Arrange`, `# Act`, `# Assert` comment labels in production test files; preserve the blank line separation).*
 
 ---
 
@@ -86,52 +75,7 @@ def test_calculate_discount_valid_percentage_reduces_total():
 
 ### Conftest Hierarchy
 
-Fixtures cascade downwards from root `tests/conftest.py` into module-level `conftest.py` files. Keep shared database connections and global clients in root `conftest.py`:
-
-```python
-# tests/conftest.py
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
-@pytest.fixture(scope="session")
-def db_engine():
-    """
-    Created once for the entire test session.
-    """
-    engine = create_engine("sqlite:///:memory:", future=True)
-    create_schema(engine)
-    yield engine
-    engine.dispose()
-
-@pytest.fixture(scope="function")
-def db_session(db_engine):
-    """
-    Isolated per test: rolls back all writes upon teardown.
-    """
-    connection = db_engine.connect()
-    transaction = connection.begin()
-    session = Session(bind=connection)
-    try:
-        yield session
-    finally:
-        session.close()
-        transaction.rollback()
-        connection.close()
-```
-
-### Yield Fixtures (Automatic Cleanup)
-
-Always use `yield` fixtures when setup requires cleanup or teardown:
-
-```python
-@pytest.fixture
-def temp_cache_dir(tmp_path):
-    cache_dir = tmp_path / "cache"
-    cache_dir.mkdir()
-    yield cache_dir
-    # Cleanup occurs automatically via tmp_path
-```
+Fixtures cascade downwards from root `tests/conftest.py` into domain `conftest.py` files. Keep shared database connections and global clients in root `conftest.py`; the database fixtures are described in `backend-test-infra`. Never use `unittest`-style `setUp`/`tearDown`. Setup that needs cleanup is a `yield` fixture.
 
 ### No Factory Fixtures
 
@@ -141,15 +85,12 @@ Don't write fixtures or helpers that create objects (`make_site(...)`, `make_ass
 
 ## 5. Parametrization & Data-Driven Tests
 
-Never use loops inside test methods. Use `@pytest.mark.parametrize`:
+Never use loops inside test methods: they hide which iteration failed. Use `@pytest.mark.parametrize`:
 
 ```python
 @pytest.mark.parametrize("input_email,is_valid", [
     ("user@domain.com", True),
-    ("first.last@company.org", True),
     ("missing-at.com", False),
-    ("@no-username.org", False),
-    ("", False),
 ])
 def test_email_validator_various_inputs(input_email: str, is_valid: bool):
     validation_result: bool = validate_email_address(input_email)
@@ -280,11 +221,4 @@ Every new endpoint gets both layers. Both layers run against a **separate test d
 
 ## 11. Running Tests
 
-Always execute test commands with `uv`:
-
-```bash
-uv run pytest
-uv run pytest tests/auth/test_login_flow.py
-uv run pytest -k "test_login" -v
-uv run pytest -m "not slow"
-```
+Run tests with `uv run pytest` (a path or `-k <name>` narrows the run).

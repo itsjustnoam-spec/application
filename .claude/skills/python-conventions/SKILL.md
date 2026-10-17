@@ -36,7 +36,7 @@ Use **`uv`** for every package and environment operation:
     - If you are not sure whether the type is clear, **always add the type annotation**.
 - **Static Verification**:
     - Run `uv run mypy --strict` at the end of each task to verify type correctness across all modified files.
-    - **Ignore** mypy's "missing return type annotation" errors on functions that return nothing, and "call to untyped function" errors on calls to functions that have no parameters and return nothing (mypy calls them untyped only because `-> None` is omitted). The no-`-> None` rule takes precedence. Never add `-> None` to silence mypy. `.claude/scripts/mypy_strict.py` filters exactly these errors; the same errors on functions that **do** return a value are real and must be fixed.
+    - Never add `-> None` to silence mypy: run it through `.claude/scripts/mypy_strict.py`, which drops only the errors the no-`-> None` rule causes.
 - **Optional Returns**: In a function annotated `-> X | None`, write `return None` explicitly. mypy rejects a bare `return` there ("Return value expected").
 
 ```python
@@ -77,24 +77,7 @@ Every Python application file must follow a consistent top-level layout with pag
 - **Test files** (`tests/`, `test_*.py`, `conftest.py`). They have no page docstring and no section banners (see `pytest-conventions`).
 - **Migration files** (Alembic `versions/` / `migrations/`). They're generated and keep the generator's format, so they need no page header, banners, or docstring format, and their generated `-> None` signatures stay as they are.
 
-### Page Documentation Header
-
-```python
-"""
-EXPLANATION ABOUT PAGE
-
-:author: AUTHOR_NAME
-:date: DD/MM/YY
-"""
-```
-
-### Section Dividers Format
-
-Section lines use the exact format, with the section name **always capitalized**:
-```python
-# ----- SECTION_NAME ----- #
-```
-Standard section names: `Imports`, `Consts`, `Classes`, `Functions` (and other domain-specific sections as needed, e.g. `Routes`). Omit sections that would be empty.
+The page docstring holds a description, `:author:`, and `:date: DD/MM/YY`. Section lines are exactly `# ----- Name ----- #`, with the name **always capitalized**. Standard section names: `Imports`, `Consts`, `Classes`, `Functions` (and other domain-specific sections as needed, e.g. `Routes`). Omit sections that would be empty.
 
 ### Strict Spacing Rules
 
@@ -322,18 +305,6 @@ class AssetType(SQLModel, table=True):
             name="ck_asset_types_inspection_interval_days_range",
         ),
     )
-
-
-# BAD: blank line after the docstring, and __table_args__ before the fields
-class AssetType(SQLModel, table=True):
-    """
-    A kind of asset, with the number of days between its inspections.
-    """
-
-    __tablename__ = "asset_types"
-    __table_args__ = (CheckConstraint("inspection_interval_days > 0"),)
-
-    id: int | None = Field(default=None, primary_key=True)
 ```
 
 ### String enums
@@ -452,14 +423,6 @@ def fetch_user_by_id(user_id: str) -> UserRecord:
         raise UserNotFoundError(f"User {user_id} was not found.")
 
     return record
-
-
-# BAD:
-def fetch_user_by_id(user_id: str) -> UserRecord:
-    record = db.find(user_id)
-    if not record:
-        raise ValueError("User not found")  # Never raise base exceptions
-    return record
 ```
 
 ---
@@ -468,11 +431,5 @@ def fetch_user_by_id(user_id: str) -> UserRecord:
 
 Testing is governed by the dedicated **`pytest-conventions`** skill. Whenever writing, refactoring, or reviewing tests for Python backend code:
 
-- **Invoke `pytest-conventions`**: Strictly follow all patterns documented in `pytest-conventions`.
 - **100% Test Coverage**: All new backend code requires 100% test coverage (pure reverse proxy redirects excepted).
 - **Separate test database**: tests always run against their own database, never the application's, unless the user explicitly says otherwise (see `backend-test-infra`).
-- **Test File Organization**: `tests/<domain>/test_<operation>_<domain>.py` (e.g. `tests/sites/test_create_site.py`), see `pytest-conventions`.
-- **File Structure**: no page docstring and no section banners. Imports straight away, then fixtures, then standalone test functions (no test classes, no comments).
-- **Execution & Type Verification**:
-    - Always run `uv run mypy --strict` at the end of each task to verify complete type soundness.
-    - Always run tests using `uv run pytest`.

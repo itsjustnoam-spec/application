@@ -82,19 +82,12 @@ const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
 The contents of `<script setup lang="ts">` must follow this exact sequence, with single empty lines separating each section:
 
 1. **Constants**: Component-local constants (timeout intervals, debounce delays, magic numbers, large strings).
-   *(empty line)*
 2. **`defineEmits` & `defineProps`**:
-   *(empty line)*
 3. **`ref`s / reactive state**:
-   *(empty line)*
 4. **`computed` properties**:
-   *(empty line)*
 5. **Const functions**: `const fn = () => {}`.
-   *(empty line)*
 6. **Function declarations**: `function fn() {}`.
-   *(empty line)*
 7. **Watchers (`watch`, `watchEffect`)**:
-   *(empty line)*
 8. **Lifecycle hooks (`onBeforeMount`, `onMounted`, `onUnmounted`, ...)**:
 
 Every item sits in its own section: never declare a ref after a function, or a computed after a watcher.
@@ -225,34 +218,13 @@ The same applies to self-closing components: each attribute on its own line, and
   - Always perform full, explicit condition checks instead of loose truthy/falsy checks.
   - **Never** write `if (!test)` or `if (test)` on objects, strings, numbers, arrays, or nullable/optional variables.
   - Fully check what you actually want to evaluate:
-    - Null / Undefined: `if (test === null || test === undefined)` or `if (test !== null && test !== undefined)`
-    - Empty string: **Always check with `.trim()`** (e.g. `if (test.trim().length === 0)` or `if (test.trim() === '')`). **Never** check raw `=== ''` (which fails on whitespace-only strings) and **never** use loose `if (!test)`.
+    - Null / Undefined: `if (test === null || test === undefined)`
+    - Empty string: **always with `.trim()`**: `if (test.trim().length === 0)`. Never raw `=== ''`, which misses whitespace-only strings.
     - Empty array / collection: `if (test.length === 0)`
-    - Numeric check: `if (test === 0)` or `if (test < 0)`
+    - Numeric check: `if (test === 0)`
   - **Boolean Exception**: Only when a variable is strictly of type `boolean` (`true` or `false`), you may use `if (test)` or `if (!test)`.
-- **No `??`**: never use the nullish coalescing operator (`??` or `??=`). Write the explicit check instead, so the reader sees exactly which values are handled:
-  ```ts
-  // GOOD:
-  let siteName = 'Unknown site'
-  if (site !== null && site !== undefined) {
-    siteName = site.name
-  }
-
-  // BAD:
-  const siteName = site?.name ?? 'Unknown site'
-  ```
+- **No `??`**: never use the nullish coalescing operator (`??` or `??=`). Write the explicit `=== null` / `=== undefined` check instead, so the reader sees exactly which values are handled.
 - **`if` over ternary for calls**: when the choice is which function to call (or whether to call one), use a full `if` / `else`, never a ternary (`isEditing ? updateAsset() : createAsset()`).
-  ```ts
-  // GOOD:
-  if (isEditing.value) {
-    await updateAsset(assetForm.value)
-  } else {
-    await createAsset(assetForm.value)
-  }
-
-  // BAD:
-  await (isEditing.value ? updateAsset(assetForm.value) : createAsset(assetForm.value))
-  ```
 - **No `void` before calls**: call the function as it is (`loadPage()`), or `await` it when the order matters. Never write `void loadPage()`.
 - **Prefer `ref` over `let`**: component state in `<script setup>` is a `ref` (`const selectedSiteId = ref<number | null>(null)`), not a reassigned `let`. A `let` isn't reactive, so the template and watchers never see its changes.
 - **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants.
