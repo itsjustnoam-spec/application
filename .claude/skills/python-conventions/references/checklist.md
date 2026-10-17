@@ -27,7 +27,7 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-16 `__init__` methods have no docstring
 - [ ] PY-29 No blank line between a class docstring and the class body
 - [ ] PY-17 Docstrings of business-logic functions have `:param` / `:return` / `:raises` as needed; small helpers may have only the description
-- [ ] PY-35 (auto) Every function and method has a docstring (except `__init__`, nested functions, and tests), and every endpoint has a description-only docstring
+- [ ] PY-35 (auto) Every function and method has a docstring (except `__init__` and tests), and every endpoint has a description-only docstring
 - [ ] PY-18 Description is one concise sentence ending in `.` and doesn't mention raising errors
 - [ ] PY-19 API endpoint docstrings have only a description (no `:param`/`:return`/`:raises`)
 - [ ] PY-20 Proxy pass-through functions have a single-line docstring only
@@ -38,7 +38,7 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-31 Table models: `__table_args__` (constraints, indexes) is at the end of the class, after the fields
 
 ## Configuration & strings
-- [ ] PY-33 URLs, hosts, ports, DB names, credentials, and keys come from `.env` via settings (never hardcoded), and new keys are added to `.env.example`
+- [ ] PY-33 URLs, hosts, ports, DB names, credentials, and keys come from `.env` via settings (never hardcoded)
 - [ ] PY-34 Large strings (long messages, SQL, templates) are named constants; short strings stay inline
 
 ## FastAPI & database
