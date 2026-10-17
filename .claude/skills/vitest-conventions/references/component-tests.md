@@ -2,15 +2,14 @@
 
 A component test mounts **one component** and checks its contract: given these props, slots, and store state, it renders this, and when the user does X, it emits or calls Y.
 
-## 1. What to cover per component
-- [ ] **Rendering from props:** each meaningful variation, via `it.each`
-- [ ] **Slots:** provided slot content renders in the right place
-- [ ] **Emits:** each event fires with the exact payload, in response to the user action that should trigger it
-- [ ] **User interaction:** clicks, typing, and keyboard behavior that change the DOM
-- [ ] **Async actions:** a loading indicator while pending, the success result, the error path through `handleNetworkError`, and the empty state, with the API module mocked
-- [ ] **Validation:** invalid input blocks submission and shows the message
-- [ ] **Debounce:** `vi.useFakeTimers()`, then advance by the component's **named** debounce constant (import it from the component's `<script lang="ts">` block), never by a magic number
-- [ ] **Dialog content components:** confirm and cancel emit the right events (the `v-dialog` wrapper belongs to the parent)
+## 1. Which components get component tests
+Only **shared components** (used by more than one component or view), and components with **important behavior** of their own, such as a destructive confirm dialog or a component that guards data. A component used in one place is covered by its flow's integration test, if that flow is important (see "What Gets a Frontend Test" in `SKILL.md`).
+
+For a component that does get tests, cover its **contract**, not every detail:
+- [ ] The emits other components rely on, with their exact payloads, triggered by the real user action
+- [ ] The props that change behavior (not every visual variation)
+- [ ] Important async or error handling, if the component owns it
+- [ ] Debounce, only when it matters: `vi.useFakeTimers()`, then advance by the component's **named** debounce constant
 
 ## 2. Mounting rules
 - Overlays (`v-dialog`, `v-menu`, `v-snackbar`) render inline because `mountWithPlugins` stubs `teleport`. Don't query `document.body` for them.

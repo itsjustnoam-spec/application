@@ -1,6 +1,6 @@
 ---
 name: vitest-conventions
-description: Use when writing, reviewing, or setting up frontend tests with Vitest for Vue 3 + Vuetify + TypeScript, covering both component tests (Vue Test Utils) and frontend integration tests (a whole view with real store, router, and MSW-mocked network). Defines layers, file layout, naming, AAA structure, mocking boundaries, and coverage.
+description: Use when writing, reviewing, or setting up frontend tests with Vitest for Vue 3 + Vuetify + TypeScript, covering both component tests (Vue Test Utils) and frontend integration tests (a whole view with real store, router, and MSW-mocked network). Defines what to test (only shared code and important behavior), layers, file layout, naming, AAA structure, and mocking boundaries.
 ---
 
 # Vitest Frontend Testing Conventions
@@ -14,6 +14,20 @@ The frontend counterpart of `pytest-conventions`. It covers two Vitest layers:
 | fe-unit | Pure utils/composables without DOM | Nothing (or the clock) | this file only |
 
 Browser tests (real browser, mocked backend) are a separate layer. See `browser-test-conventions`.
+
+## What Gets a Frontend Test (and What Doesn't)
+
+Frontend code changes often, and small UI changes shouldn't break a pile of tests. So frontend tests cover **only core behavior**:
+
+- **Shared code**: anything used by more than one component, such as utils, composables, stores, the API client, and shared components. A bug there spreads, so it gets tested.
+- **Important behavior**: the feature's main user flow, and behavior where a bug really hurts, such as losing or corrupting data, destructive actions (delete, archive), permissions, and money.
+
+**Don't test:**
+- A component used in only one place, beyond what its flow's integration test already exercises.
+- How props map to rendered output, texts and labels, styling and layout, or every loading, empty, and error state of every page.
+- Simple form wiring (a field bound to a model) or Vuetify behavior itself.
+
+There's **no coverage target** for frontend code. Coverage of new frontend code isn't measured as a gate.
 
 **Read the reference file for the layer you are writing before you write it.** Test code also follows `vue-conventions` (explicit checks, named constants, descriptive names). Reviewers use `references/checklist.md`.
 
@@ -88,8 +102,8 @@ Vue Test Utils has no accessibility queries, so:
 
 ## 6. Coverage
 
-- New and changed frontend code needs ~100% changed-line coverage from **fe-component + fe-integration + fe-unit** together. Browser tests don't count toward coverage.
-- Prefer covering a line through a behavior test over writing a test only to hit the line. If a line can only be covered by testing implementation details, extract that logic into a util and unit-test it.
+- Frontend coverage isn't a goal and isn't gated (see "What Gets a Frontend Test" above). Never write a test only to cover a line.
+- If logic in a component is important enough to test in detail, move it into a util or composable and unit-test it there.
 
 ---
 
@@ -134,6 +148,6 @@ afterAll(() => server.close())
 
 `tests/utils/mount.ts` exports `mountWithPlugins(component, options)`. It creates Vuetify with the app's **real** theme config (so semantic theme keys exist), passes `global.plugins` (Vuetify, plus the router/pinia given in the options), and sets `global.stubs: { teleport: true }`. Vuetify dialogs, menus, and snackbars teleport into `document.body`, so without this stub their content is outside the wrapper and `wrapper.get(...)` can't find it.
 
-Run everything: `npx vitest run --coverage`. Changed lines only: `diff-cover coverage/cobertura-coverage.xml --compare-branch=<base> --fail-under=100`.
+Run everything: `npx vitest run`.
 
 **jsdom limits:** Vuetify recommends a real browser for components that depend on layout, overlays, or real events (menus, `v-select` dropdowns, tooltips, virtual scrolling). If such a behavior can't be tested reliably in jsdom, test it in a browser test instead of fighting jsdom, and write that decision in `test-plan.md`.

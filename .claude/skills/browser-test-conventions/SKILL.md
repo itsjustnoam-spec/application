@@ -7,14 +7,14 @@ description: Use when writing, reviewing, or setting up browser tests with Playw
 
 Browser tests run the **real frontend in a real browser** (Vite dev server + Chromium) and click through it the way a user does. **The backend is always mocked**: every API request is answered from typed factory data, so tests are fast, deterministic, and never depend on running services.
 
-They complement Vitest (`vitest-conventions`). Vitest covers details, edge cases, and coverage. Browser tests prove that **the critical journeys work in a real browser**, with real layout, overlays, focus, routing, and events that jsdom can't fully reproduce.
+They complement Vitest (`vitest-conventions`). Vitest covers shared code and important behavior. Browser tests prove that **the critical journeys work in a real browser**, with real layout, overlays, focus, routing, and events that jsdom can't fully reproduce.
 
 ---
 
 ## 1. What Gets a Browser Test
 
-- **One test per new or changed user journey** from the spec: the happy path (e.g. "user creates an entity and sees it in the list").
-- **One test per journey-level failure** the spec defines (e.g. "user sees an error when the backend rejects the entity").
+- **One test per important new or changed user journey** from the spec: the happy path (e.g. "user creates an entity and sees it in the list").
+- **A failure test only when the failure really matters** (e.g. "user sees an error when saving fails, and nothing is lost").
 - Behavior that is **unreliable in jsdom**: Vuetify menus and selects, dialogs and focus, tooltips, virtual scrolling, drag and drop, file upload, real navigation and back buttons.
 - **Not** every edge case or validation rule. Those belong in fe-integration/fe-component tests. Browser tests are few and high-value.
 

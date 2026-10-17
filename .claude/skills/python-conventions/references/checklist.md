@@ -1,6 +1,8 @@
 # Python Conventions Checklist
 
-Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16 and PY-02. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
+Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16, PY-35, and PY-02. Test files are exempt from PY-07 to PY-12 and PY-35.
+
+Run `python .claude/scripts/check_python_conventions.py <files>` first: it checks every item marked (auto). Copy its result for those items, then judge the rest. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
 
 ## Typing
 - [ ] PY-01 Every function parameter has a type annotation (except `self`/`cls`)
@@ -24,7 +26,8 @@ Run this per changed `.py` file (tests use the pytest checklist as well). Migrat
 - [ ] PY-15 No blank lines between `:param` / `:return` / `:raises` lines
 - [ ] PY-16 `__init__` methods have no docstring
 - [ ] PY-29 No blank line between a class docstring and the class body
-- [ ] PY-17 Docstrings exist only where the contract is non-obvious (no redundant docstrings)
+- [ ] PY-17 Docstrings of business-logic functions have `:param` / `:return` / `:raises` as needed; small helpers may have only the description
+- [ ] PY-35 (auto) Every function and method has a docstring (except `__init__`, nested functions, and tests), and every endpoint has a description-only docstring
 - [ ] PY-18 Description is one concise sentence ending in `.` and doesn't mention raising errors
 - [ ] PY-19 API endpoint docstrings have only a description (no `:param`/`:return`/`:raises`)
 - [ ] PY-20 Proxy pass-through functions have a single-line docstring only
@@ -38,11 +41,17 @@ Run this per changed `.py` file (tests use the pytest checklist as well). Migrat
 - [ ] PY-33 URLs, hosts, ports, DB names, credentials, and keys come from `.env` via settings (never hardcoded), and new keys are added to `.env.example`
 - [ ] PY-34 Large strings (long messages, SQL, templates) are named constants; short strings stay inline
 
+## FastAPI & database
+- [ ] PY-37 (auto) Dependencies are functions passed with `Depends(...)` in each endpoint's signature, never stored in a constant or type alias
+- [ ] PY-40 (auto) No `session.rollback()`: transactions are explicit and rolled back through the transaction object (see the `sql-conventions` checklist)
+
 ## Naming
 - [ ] PY-22 Function and variable names say exactly what they handle (no `load`, `process`, `data`, `item`)
+- [ ] PY-36 (auto) No single-letter or abbreviated names (`q`, `db`, `e`, `err`, `idx`, ...) for variables, parameters, loop variables, or `except ... as`. Short external names use `alias=`.
 
 ## Conditions
 - [ ] PY-23 No truthy/falsy checks on non-bool values. Uses `is None` / `is not None` / `len(x) == 0`.
+- [ ] PY-38 (auto) Comprehensions and generator expressions: expression, each `for`, and each `if` on their own lines; brackets on their own lines
 - [ ] PY-32 Exactly one blank line after every `if` block (with its `elif`/`else`) that is followed by more code in the same block
 
 ## Calls
@@ -51,6 +60,7 @@ Run this per changed `.py` file (tests use the pytest checklist as well). Migrat
 ## Exceptions
 - [ ] PY-25 No raising of builtin exceptions (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, …)
 - [ ] PY-26 Custom exception class names end with `Error`
+- [ ] PY-39 (auto) A class whose body is only a docstring ends with `pass`
 - [ ] PY-27 Each custom exception represents a clear domain failure
 
 ## Tooling

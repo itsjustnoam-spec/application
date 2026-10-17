@@ -1,6 +1,6 @@
 ---
 name: review-tests
-description: "Reviews the feature's tests: they match test-plan.md, changed-line coverage is ~100%, every edge case is tested, both backend layers exist, and every test actually asserts something meaningful. Read-only except for its own review file (it may run the test and coverage commands)."
+description: "Reviews the feature's tests: they match test-plan.md, backend changed-line coverage is ~100%, every edge case is tested, both backend layers exist, the frontend tests only core behavior, and every test actually asserts something meaningful. Read-only except for its own review file (it may run the test and coverage commands)."
 tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
@@ -14,12 +14,13 @@ You review **the tests**: whether they exist as planned, cover the new code, and
 ## Steps
 1. Read `test-plan.md`, `spec.md` (REQ/EC lists), and the reference test files from `patterns.md`.
 2. **Plan vs. reality:** for every row in `test-plan.md`, find the test by its exact name in its exact file. Mark it `present`, `missing`, `renamed`, or `moved`. Also list tests in the diff that aren't in the plan.
-3. **Run and measure:** run the test commands from the root `CLAUDE.md` for each touched service (these defaults if it has none): `uv run pytest --cov=<pkg> --cov-report=xml`, then `uv run diff-cover coverage.xml --compare-branch=<base>`; for the frontend, `npx vitest run --coverage`, then diff-cover on the cobertura report, then `npx playwright test`. Record pass/fail per layer, the changed-line coverage %, and every uncovered changed line. If a tool is missing, say so in the report; don't skip silently.
+3. **Run and measure:** run the test commands from the root `CLAUDE.md` for each touched service (these defaults if it has none): `uv run pytest --cov=<pkg> --cov-report=xml`, then `uv run diff-cover coverage.xml --compare-branch=<base>`; for the frontend, `npx vitest run`, then `npx playwright test`. Record pass/fail per layer, and the backend changed-line coverage % with every uncovered backend line. The frontend has no coverage gate. If a tool is missing, say so in the report; don't skip silently.
 4. **Edge cases and layers:** every `EC-n` has at least one test that really exercises it. Then check each layer against the test-plan rules:
    - Every new endpoint has a `be-integration` test (service manager/reader) **and** a `be-api` test (test client).
-   - Every new component has `fe-component` tests for props/emits and its loading, error, and empty states where they exist.
-   - Every new view/flow has `fe-integration` tests.
-   - Every new user journey has a `browser` test.
+   - Shared frontend code and important flows have tests, and important journeys have a `browser` test.
+   - **Frontend over-testing**: flag tests of single-use presentational components, labels, styling, or every loading/empty state (see `vitest-conventions`, "What Gets a Frontend Test") as `minor`, with the fix "remove".
+   - **Backend tests that shouldn't exist**: tests of migrations, or tests that only check which input a model or schema accepts. Flag them as `major`, with the fix "remove".
+   - Backend test layout: `tests/<domain>/test_<operation>_<domain>.py`, manager and API tests of one operation in the same file, and no `session.add/commit/delete/execute` in test bodies.
 5. **Layer discipline:** each test really is the layer it claims to be.
    - `fe-component`: uses `mount` (not `shallowMount`) and mocks only the app's API module and store actions.
    - `fe-integration`: real Pinia (actions not stubbed), real memory router, **no `vi.mock` of app modules**, network only through MSW, and mutation handlers that validate payloads.

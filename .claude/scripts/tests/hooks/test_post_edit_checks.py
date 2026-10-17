@@ -39,3 +39,22 @@ def test_post_edit_checks_missing_file_path_allows(run_hook: Callable[..., objec
     completed = run_hook("post_edit_checks.py", {"tool_name": "Write", "tool_input": {}})
 
     assert completed.returncode == 0
+
+
+def test_post_edit_checks_file_outside_project_is_skipped(
+    tmp_path: Path,
+    write_python_file: Callable[..., Path],
+    run_hook: Callable[..., object],
+):
+    path = write_python_file(VIOLATING_SOURCE)
+    project_directory = tmp_path / "project"
+    project_directory.mkdir()
+    payload = {"tool_name": "Write", "tool_input": {"file_path": str(path)}}
+
+    completed = run_hook(
+        "post_edit_checks.py",
+        payload,
+        {"CLAUDE_PROJECT_DIR": str(project_directory)},
+    )
+
+    assert completed.returncode == 0

@@ -8,7 +8,7 @@ A spec-first Claude Code workflow for a Vue/Vuetify + FastAPI microservices mono
   2 Grill (batches of ≤4 questions, each with a recommendation) → grill-notes.md
   3 Spec + plan → ★ you approve (the only stop)
   4 Implement task by task (hooks check conventions after every edit)
-  5 Test plan → test-plan.md   (a hook blocks tests that aren't in it)
+  5 Test plan → test-plan.md, reviewed once by review-test-plan (a hook blocks tests that aren't in it)
   6 Write tests: backend, component, integration, browser + changed-line coverage
   7 Review in parallel: conventions · spec · bugs · tests
   8 Triage + fix (max 3 rounds; every round kept in review/round-<n>/)
@@ -32,6 +32,8 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
 | `skills/vitest-conventions` | Frontend component tests (Vue Test Utils) and integration tests (real store/router + MSW) |
 | `skills/browser-test-conventions` | Playwright browser tests with a fully mocked backend |
+| `skills/sql-conventions` | Sessions, explicit transactions (`transaction.rollback()`), queries, constraints, migrations |
+| `agents/review-test-plan.md` | One-pass review of `test-plan.md` before tests are written |
 | `skills/backend-test-infra` | Integration vs API layers; Postgres, Mongo, proxy, RabbitMQ, Temporal test setup |
 | `skills/git-worktree` | Creating, entering, setting up, and removing a worktree per feature, for parallel work |
 | `workflow/grill-with-docs.md`, `write-spec.md`, `test-plan.md` | Phase guides that `/feature` reads (plain files, not skills) |
@@ -67,10 +69,11 @@ The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) o
 ## What the hooks do
 
 - **After every Write/Edit**
-  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, BOM; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH.
+  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, a docstring on every function, no short or abbreviated names, no dependencies stored in constants, multi-line comprehensions, `pass` in empty classes, no `session.rollback()`, BOM; in test files: no page docstring or banners, and no `session.add/commit/...`; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH. Files outside the project (Claude's scratch scripts) are skipped.
   - `.vue`/`.ts`: runs the project's `eslint` if one is installed in `node_modules`.
   - Problems are sent back to Claude (exit code 2) so it fixes them right away.
 - **Before every Write/Edit to a test file:** while a feature is active (`docs/features/.active`), it blocks adding a pytest, Vitest, or Playwright test whose name isn't in that feature's `test-plan.md`. Edits to existing tests are allowed. Outside the workflow, the guard does nothing.
+- **When Claude tries to end its turn (Stop):** while a feature is active and its spec is approved, it blocks stopping until `progress.md` says `Phase: DONE`, and tells Claude which step comes next. It allows stopping when `progress.md` has a `BLOCKED: <reason>` line, or after 3 blocks in a row with no progress (a loop guard).
 
 ## Using the scripts directly (e.g. in CI)
 
@@ -108,7 +111,7 @@ Both follow `workflow/workflow-improvement.md`.
 
 | Item | Form / setting | Why |
 |---|---|---|
-| `python-conventions`, `pytest-conventions`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`, `backend-test-infra` | Skill, model-invoked | Claude must pick them up by itself whenever it writes that kind of code, inside or outside `/feature`, and the review agents load them |
+| `python-conventions`, `pytest-conventions`, `sql-conventions`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`, `backend-test-infra` | Skill, model-invoked | Claude must pick them up by itself whenever it writes that kind of code, inside or outside `/feature`, and the review agents load them |
 | `git-worktree` | Skill, model-invoked | Claude should reach for it when you start parallel work; `/feature` loads it in phase 0 |
 | `grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement` | **Plain files in `workflow/`**, not skills | Only meaningful inside their command. As flagged skills they got refused mid-workflow and stopped `/feature` at phase 5. As plain files they can't misfire on their own and can't be blocked |
 | `/feature`, `/retro`, `/review-mrs` | Command, `true` | Long-running and write files, so you start them on purpose |

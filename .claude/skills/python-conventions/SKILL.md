@@ -1,6 +1,6 @@
 ---
 name: python-conventions
-description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, exact docstring format, page/section headers, class and SQLModel layout, blank lines after if blocks, multiline calls, custom exceptions, .env configuration, string constants, uv usage, and references the pytest-conventions skill.
+description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint, naming, page/section headers, class and SQLModel layout, blank lines after if blocks, multiline calls and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, uv usage, and references the pytest-conventions and sql-conventions skills.
 ---
 
 # Python Backend Conventions
@@ -42,12 +42,18 @@ Use **`uv`** for every package and environment operation:
 ```python
 # GOOD:
 def save_user_profile(user_id: str, email: str):
+    """
+    Saves the profile of a user.
+    """
     user_record: dict[str, str] = {"id": user_id, "email": email}
     active_tokens: list[str] = []  # Empty list where type is not obvious, type annotation required
     db.insert(user_record)
 
 
 def deactivate_user(user: UserRecord):
+    """
+    Marks an active user as inactive.
+    """
     if not user.is_active:
         return  # Bare return for an early exit
 
@@ -66,8 +72,9 @@ def save_user_profile(user_id, email) -> None:  # Do NOT use -> None and do NOT 
 
 ## 3. Page Header and Section Structure
 
-Every Python file must follow a consistent top-level layout with page documentation and stylized section dividers. Exempt:
+Every Python application file must follow a consistent top-level layout with page documentation and stylized section dividers. Exempt:
 - Empty files (e.g. an empty `__init__.py`).
+- **Test files** (`tests/`, `test_*.py`, `conftest.py`). They have no page docstring and no section banners (see `pytest-conventions`).
 - **Migration files** (Alembic `versions/` / `migrations/`). They're generated and keep the generator's format, so they need no page header, banners, or docstring format, and their generated `-> None` signatures stay as they are.
 
 ### Page Documentation Header
@@ -127,11 +134,20 @@ class EntityNotFoundError(Exception):
     """
     Raised when the requested entity does not exist.
     """
+    pass
 
 # ----- Functions ----- #
 
 
 def read_entity_by_id(session: Session, entity_id: int) -> Entity:
+    """
+    Reads one entity by its id.
+
+    :param session: The open database session.
+    :param entity_id: The id of the entity to read.
+    :return: The entity.
+    :raises EntityNotFoundError: When no entity has this id.
+    """
     entity: Entity | None = session.get(Entity, entity_id)
     if entity is None:
         raise EntityNotFoundError(f"Entity {entity_id} was not found.")
@@ -150,7 +166,7 @@ def read_entity_by_id(session: Session, entity_id: int) -> Entity:
 
 ### Function Docstrings Format
 
-When docstrings are needed on functions, use this exact format:
+Every function and method has a docstring, in this exact format:
 
 ```python
 """
@@ -164,14 +180,16 @@ DOCSTRING EXPLANATION
 
 - **Always On Separate Lines**: Opening `"""` and closing `"""` must **always** be on their own separate lines (never placed on the same line as the description or content). This applies universally across all docstrings (functions, classes, modules, and exceptions).
 - **No empty lines between fields**: `:param:`, `:return:`, and `:raises:` must appear on consecutive lines with zero blank lines between them.
-- **Selective docstrings**: Only write docstrings if explaining very important things or non-obvious contracts. Avoid redundant docstrings for trivial, self-explanatory code.
+- **Every function has a docstring**: every function and method in application code has one, including small helpers, managers, and endpoints. Exceptions: `__init__`, functions nested inside another function, and test functions and fixtures (their names explain them).
+- **Which fields**: functions with business logic get `:param:`, `:return:` (when they return a value), and `:raises:` (when they raise). Small helpers without business logic may have only the description.
 - **Never mention past implementations**: Explain *why* the code works this way *now*, never what it used to do.
 - **Description Sentence**: The description is a short, concise sentence explaining what the function does, ending with a period (`.`). It must **never** mention raising errors (e.g. no "or raise an error if not found"). Exceptions are documented exclusively in `:raises:`.
-- **API Endpoint Functions**: Only the description. Do **NOT** include `:param:`, `:return:`, or `:raises:`.
+- **API Endpoint Functions**: always have a docstring with **only** a short description of what the endpoint does (e.g. `Lists sites matching the search text, one page at a time.`). Do **NOT** include `:param:`, `:return:`, or `:raises:`.
 - **Reverse Proxy / Pass-Through Endpoints**: If an endpoint or function is just a reverse proxy redirecting/forwarding requests without internal business logic, omit `:param:`, `:raises:`, and `:return:`. Write only a brief single-line explanation. Full `:param:`, `:return:`, `:raises:` docstrings apply only when business logic is present.
 - **Classes & `__init__`**: Classes get a standard description with opening `"""` on line 1, description on line 2, and closing `"""` on line 3 (no `:param:` or `:return:`). `__init__` methods do **NOT** get a docstring.
 - **No blank line after a class docstring**: the class body (`__init__`, attributes, `__tablename__`, anything) starts on the line right after the closing `"""`.
 - **Indicative Naming**: Never use vague or generic names like `load` or `process`. Use explicit names that explain what is being handled (e.g., `load_customer_billing_history`, `process_credit_card_charge`).
+- **No short or abbreviated names**: no single-letter names and no abbreviations (`q`, `db`, `e`, `ex`, `err`, `idx`, `tmp`, `cfg`, `val`, `obj`, `res`, `req`, `resp`, `msg`, ...) for variables, parameters, loop and comprehension variables, or `except ... as` names. Write the full word: `query`, `session`, `error`, `index`. When an external name must stay short (e.g. a `?q=` query parameter), keep the full Python name and map it: `query: Annotated[str | None, Query(alias="q")] = None`.
 
 ---
 
@@ -288,11 +306,66 @@ class AssetType(SQLModel, table=True):
 
 ---
 
-## 10. Custom Exceptions
+## 10. Comprehensions
+
+List, set, and dict comprehensions and generator expressions are written across lines, one part per line: the opening bracket stays on the line of the assignment (or call), then the expression, then each `for` clause, then each `if` clause, each on its own line, and the closing bracket on its own line.
+
+```python
+# GOOD:
+site_names = [
+    site.name
+    for site in sites
+    if not site.archived
+]
+has_blank_line = any(
+    line.strip() == ""
+    for line in lines
+)
+
+# BAD:
+site_names = [site.name for site in sites if not site.archived]
+```
+
+---
+
+## 11. FastAPI Endpoints and Dependencies
+
+- **Every endpoint has a docstring** with only a short description (see §4).
+- **Dependencies are functions**, such as `get_session` or `get_current_user`, and every endpoint that needs one calls it in its own signature with `Depends(...)`.
+- **Never store a dependency in a constant or a type alias** (no `SessionDependency = Annotated[Session, Depends(get_session)]` and no `session_dependency = Depends(get_session)`). Spelling the dependency in each endpoint keeps every endpoint readable on its own.
+- Query and path parameters use full names (§4); use `alias=` when the URL needs a short name.
+
+```python
+# GOOD:
+@router.get("/sites")
+def list_sites(
+    session: Annotated[Session, Depends(get_session)],
+    query: Annotated[str | None, Query(alias="q", max_length=100)] = None,
+) -> SitePage:
+    """
+    Lists sites matching the search text, one page at a time.
+    """
+    ...
+
+# BAD:
+SessionDep = Annotated[Session, Depends(get_session)]  # dependency stored in a constant
+
+
+@router.get("/sites")
+def list_sites(session: SessionDep, q: str | None = None) -> SitePage:  # no docstring, short name
+    ...
+```
+
+Database access (sessions, transactions, queries) follows the **`sql-conventions`** skill.
+
+---
+
+## 12. Custom Exceptions
 
 - **Never raise Python base exceptions** (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, etc.).
 - Always define and raise custom application exceptions that clearly represent the domain failure.
 - Custom exception class names **must** end with `Error` (e.g. `NotFoundError`, `DatabaseTransactionError`, never `NotFound`).
+- **Empty classes end with `pass`**: a class whose body would otherwise be only its docstring (typically an exception that just inherits) always has `pass` on the line after the docstring. Never leave a class with only a docstring.
 
 ```python
 # GOOD:
@@ -300,9 +373,17 @@ class UserNotFoundError(Exception):
     """
     Raised when the specified user ID does not exist in the database.
     """
+    pass
 
 
 def fetch_user_by_id(user_id: str) -> UserRecord:
+    """
+    Fetches a user by id.
+
+    :param user_id: The id of the user.
+    :return: The user record.
+    :raises UserNotFoundError: When no user has this id.
+    """
     record: Optional[UserRecord] = db.find(user_id)
     if record is None:
         raise UserNotFoundError(f"User {user_id} was not found.")
@@ -320,15 +401,15 @@ def fetch_user_by_id(user_id: str) -> UserRecord:
 
 ---
 
-## 11. Testing Conventions (`pytest`)
+## 13. Testing Conventions (`pytest`)
 
 Testing is governed by the dedicated **`pytest-conventions`** skill. Whenever writing, refactoring, or reviewing tests for Python backend code:
 
 - **Invoke `pytest-conventions`**: Strictly follow all patterns documented in `pytest-conventions`.
 - **100% Test Coverage**: All new backend code requires 100% test coverage (pure reverse proxy redirects excepted).
 - **Separate test database**: tests always run against their own database, never the application's, unless the user explicitly says otherwise (see `backend-test-infra`).
-- **Test File Organization**: Mirror source in `tests/<module_name>/test_<what_we_test>.py`.
-- **File Structure**: Imports straight away, then fixtures, then standalone test functions (no test classes, no comments).
+- **Test File Organization**: `tests/<domain>/test_<operation>_<domain>.py` (e.g. `tests/sites/test_create_site.py`), see `pytest-conventions`.
+- **File Structure**: no page docstring and no section banners. Imports straight away, then fixtures, then standalone test functions (no test classes, no comments).
 - **Execution & Type Verification**:
     - Always run `uv run mypy --strict` at the end of each task to verify complete type soundness.
     - Always run tests using `uv run pytest`.

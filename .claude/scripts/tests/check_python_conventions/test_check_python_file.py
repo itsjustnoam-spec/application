@@ -22,6 +22,7 @@ class EntityNotFoundError(Exception):
     """
     Raised when the entity does not exist.
     """
+    pass
 
 
 class AssetType(SQLModel, table=True):
@@ -39,6 +40,9 @@ class AssetType(SQLModel, table=True):
 
 
 def read_entity_by_id(session: Session, entity_id: int) -> Entity:
+    """
+    Reads one entity by its id.
+    """
     entity = session.get(Entity, entity_id)
     if entity is None:
         raise EntityNotFoundError(f"Entity {entity_id} not found.")
@@ -47,6 +51,9 @@ def read_entity_by_id(session: Session, entity_id: int) -> Entity:
 
 
 def find_entity_name(entity_id: int) -> str | None:
+    """
+    Finds the name of an entity.
+    """
     if entity_id < 0:
         return None
 
@@ -54,10 +61,38 @@ def find_entity_name(entity_id: int) -> str | None:
 
 
 def archive_entity(entity: Entity):
+    """
+    Archives an entity.
+    """
     if entity.is_archived:
         return
 
     entity.is_archived = True
+
+
+def list_entity_names(entities: list[Entity]) -> list[str]:
+    """
+    Lists the names of the active entities.
+    """
+    return [
+        entity.name
+        for entity in entities
+        if not entity.is_archived
+    ]
+
+
+@router.get("/entities")
+def list_entities(
+    session: Annotated[Session, Depends(get_session)],
+    query: Annotated[str | None, Query(alias="q")] = None,
+) -> list[Entity]:
+    """
+    Lists entities matching the search text.
+    """
+    transaction = session.begin()
+    entities = search_entities(session, query)
+    transaction.rollback()
+    return entities
 
 
 def build_entity_query(
@@ -65,6 +100,9 @@ def build_entity_query(
     entity_type: str,
     page_size: int,
 ) -> Query:
+    """
+    Builds the query that lists entities.
+    """
     return session.query(
         entity_type,
         page_size,
@@ -74,7 +112,10 @@ def build_entity_query(
 
 
 def rule_ids(path: Path) -> list[str]:
-    return [violation.rule_id for violation in check_python_file(path)]
+    return [
+        violation.rule_id
+        for violation in check_python_file(path)
+    ]
 
 
 def test_check_python_file_compliant_source_returns_no_violations(write_python_file: Callable[..., Path]):
@@ -108,6 +149,19 @@ def test_check_python_file_empty_file_returns_no_violations(write_python_file: C
     ('class Store:\n    """\n    Store.\n    """\n\n    items = 1\n', "PY-29"),
     ("class Asset(SQLModel, table=True):\n    name: str\n    __tablename__ = 'assets'\n", "PY-30"),
     ("class Asset(SQLModel, table=True):\n    __table_args__ = ()\n    name: str\n", "PY-31"),
+    ("def save_entity(entity: int):\n    print(entity)\n", "PY-35"),
+    ("class Store:\n    def count_items(self) -> int:\n        return 1\n", "PY-35"),
+    ("def save_entity(q: str):\n    print(q)\n", "PY-36"),
+    ("try:\n    save()\nexcept OSError as e:\n    print(e)\n", "PY-36"),
+    ("db = connect()\n", "PY-36"),
+    ("SessionDep = Annotated[Session, Depends(get_session)]\n", "PY-37"),
+    ("session_dependency = Depends(get_session)\n", "PY-37"),
+    ("names = [site.name for site in sites]\n", "PY-38"),
+    ("names = [\n    site.name for site in sites\n]\n", "PY-38"),
+    ("found = any(line == '' for line in lines)\n", "PY-38"),
+    ('class SiteError(Exception):\n    """\n    Site failure.\n    """\n', "PY-39"),
+    ("session.rollback()\n", "PY-40"),
+    ("self.session.rollback()\n", "PY-40"),
 ])
 def test_check_python_file_violating_snippet_reports_rule(
     write_python_file: Callable[..., Path],
@@ -222,6 +276,47 @@ def test_check_python_file_migration_file_is_exempt(tmp_path: Path, directory: s
     path = tmp_path / "alembic" / directory / "0001_create_assets.py"
     path.parent.mkdir(parents=True)
     path.write_text("def upgrade() -> None:\n    op.create_table('assets')\n", encoding="utf-8")
+
+    violations = check_python_file(path)
+
+    assert violations == []
+
+
+
+@pytest.mark.parametrize("source,expected_rule_id", [
+    ('"""\nTests for sites.\n"""\nimport pytest\n', "TS-27"),
+    ("import pytest\n\n# ----- Tests ----- #\n", "TS-27"),
+    ("def test_archive_site(session):\n    session.add(Site(name='a'))\n", "TS-28"),
+    ("def test_archive_site(db_session):\n    db_session.commit()\n", "TS-28"),
+])
+def test_check_python_file_test_module_violation_reports_rule(
+    write_python_file: Callable[..., Path],
+    source: str,
+    expected_rule_id: str,
+):
+    path = write_python_file(source, "test_sites.py")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert expected_rule_id in reported_rule_ids
+
+
+def test_check_python_file_conftest_may_write_through_session(
+    write_python_file: Callable[..., Path],
+):
+    source = "def make_site(session):\n    session.add(Site(name='a'))\n    session.commit()\n"
+    path = write_python_file(source, "conftest.py")
+
+    violations = check_python_file(path)
+
+    assert violations == []
+
+
+def test_check_python_file_banner_text_inside_string_is_ignored(
+    write_python_file: Callable[..., Path],
+):
+    source = 'SOURCE = """\n# ----- Imports ----- #\n"""\n'
+    path = write_python_file(source, "test_banners.py")
 
     violations = check_python_file(path)
 

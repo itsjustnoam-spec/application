@@ -16,11 +16,11 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 | Calls | The service manager/reader directly (e.g. the entities reader) | The endpoint, through the FastAPI test client |
 | Database | Real test database | Real test database |
 | Proves | Business logic, queries, ORM behavior, domain exceptions, edge cases | Routing, validation (422), status codes, error-to-status mapping, response shape |
-| Typical file | `tests/<module>/test_<what>.py` | `tests/<module>/test_<what>_api.py` (or the project's existing naming) |
+| File | `tests/<domain>/test_<operation>_<domain>.py` | **The same file** as the integration tests of that operation |
 
 - Every new endpoint gets **both** layers.
 - Put edge-case depth in the integration layer. The API layer covers success, every validation/error status, and the response shape.
-- Unit tests (no I/O) are for pure helpers only.
+- Unit tests (no I/O) are for pure helpers with real logic only. No tests for migrations or for plain schema/model validation (see `pytest-conventions` §9).
 
 ---
 
@@ -34,8 +34,8 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 - Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Use the project's test database (docker-compose service or testcontainers) as found in the reference tests.
 - Isolation: one transaction per test, rolled back at teardown (the `db_session` pattern in `pytest-conventions`), with the engine at `session` scope.
-- Data setup: fixture factories (`make_entity(...)`) in the module's `utils.py`/`conftest.py`. Never rely on rows created by another test.
-- Migrations: if the feature adds one, have one test that applies it on an empty schema (if the project already does this).
+- Data setup: fixture factories (`make_entity(...)`) in the domain's `conftest.py`. Tests never add, delete, or commit through the session themselves (see `pytest-conventions` §8). Never rely on rows created by another test.
+- Migrations aren't tested; they're verified by running them (see `sql-conventions`).
 
 ## 3. FastAPI test client (API layer)
 

@@ -22,24 +22,27 @@ Write `docs/features/<slug>/test-plan.md` from `.claude/workflow/templates/test-
    | `be-unit` | pytest | Pure backend helpers with no I/O |
    | `be-integration` | pytest | Every new/changed service manager/reader path, against a real test DB (`backend-test-infra`) |
    | `be-api` | pytest | Every new/changed endpoint, through the test client: success, each error status, response shape |
-   | `fe-unit` | Vitest | Pure frontend utils/composables |
-   | `fe-component` | Vitest + Vue Test Utils | Every new/changed component: props, slots, emits, and loading/error/empty states (`vitest-conventions/references/component-tests.md`) |
-   | `fe-integration` | Vitest + Vue Test Utils + MSW | Every new/changed view or flow: real store + router, network mocked (`vitest-conventions/references/integration-tests.md`) |
-   | `browser` | Playwright, mocked backend | Every new/changed user journey (happy path + journey-level failure), and behavior that is unreliable in jsdom (`browser-test-conventions`) |
+   | `fe-unit` | Vitest | **Shared** frontend utils, composables, stores, and the API client |
+   | `fe-component` | Vitest + Vue Test Utils | Only **shared** components or components with important behavior: their contract (`vitest-conventions/references/component-tests.md`) |
+   | `fe-integration` | Vitest + Vue Test Utils + MSW | The **important** flows of new or changed views: main flow, failures of important actions (`vitest-conventions/references/integration-tests.md`) |
+   | `browser` | Playwright, mocked backend | **Important** user journeys (happy path), and behavior that is unreliable in jsdom (`browser-test-conventions`) |
+
+   **Frontend rows are deliberately few** (see `vitest-conventions`, "What Gets a Frontend Test"): no rows for single-use presentational components, labels, styling, or every loading/empty/error state. Backend rows stay complete.
 
    Put edge-case depth in the cheapest layer that can prove it (`be-integration`, `fe-component`). Put "does it work together" in `fe-integration`. Keep `browser` to journeys.
-6. **Coverage mapping:** every `REQ-n` and `EC-n` appears in "Covers" at least once. Every new public function, endpoint, component, consumer, workflow, and activity has at least one row. Every error branch in the diff has a row. Pure proxy pass-through routes are exempt (write them under "Exempt" with the reason).
-7. Don't plan tests that only restate the implementation (e.g. "the mock was called") when a real result can be checked.
+6. **Coverage mapping:** every `REQ-n` and `EC-n` appears in "Covers" at least once. On the **backend**, every new public function, endpoint, consumer, workflow, and activity has at least one row, and every error branch in the diff has a row. Pure proxy pass-through routes are exempt (write them under "Exempt" with the reason). On the **frontend**, only shared code and important behavior get rows.
+7. **Never plan these:** tests of migrations, tests that only check which input a model or schema accepts (validation is tested through the API, e.g. a 422), and frontend tests outside the core scope.
+8. Don't plan tests that only restate the implementation (e.g. "the mock was called") when a real result can be checked.
 
 ## Self-check
 - [ ] Every REQ and EC is covered
 - [ ] Every new endpoint has both `be-integration` and `be-api` rows
-- [ ] Every new component has `fe-component` rows for its props/emits and its loading, error, and empty states (when it has them)
-- [ ] Every new or changed view/flow has `fe-integration` rows: main flow, each specified network failure, empty data
-- [ ] Every new or changed user journey has a `browser` row (happy path), plus one for each journey-level failure in the spec
+- [ ] Backend test files follow `tests/<domain>/test_<operation>_<domain>.py`, with manager and API rows of one operation in the same file
+- [ ] No rows for migrations or plain schema/model validation
+- [ ] Frontend rows cover only shared code and important behavior; important flows have `fe-integration` rows, and important journeys have one `browser` row
 - [ ] Anything moved from jsdom to `browser` because jsdom can't handle it says so in "What it tests"
 - [ ] Every row's expected result is concrete
 - [ ] Names follow the naming conventions exactly
 
 ## After writing the tests
-Run the tests and the coverage of changed lines (commands are in the root `CLAUDE.md`). Record the results at the bottom of `test-plan.md` under "Results". If a planned test turns out to be impossible or wrong, update its row with the reason instead of silently dropping it.
+Run the tests, and the backend changed-line coverage (commands are in the root `CLAUDE.md`). The frontend has no coverage gate. Record the results at the bottom of `test-plan.md` under "Results". If a planned test turns out to be impossible or wrong, update its row with the reason instead of silently dropping it.

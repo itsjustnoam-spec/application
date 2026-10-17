@@ -3,12 +3,13 @@
 Run this per changed test file. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
 
 ## Location & naming
-- [ ] TS-01 File path is `tests/<module_name>/test_<what_we_test>.py`
+- [ ] TS-01 File path is `tests/<domain>/test_<operation>_<domain>.py`; manager and API tests of the same operation are in the same file (no `tests/routers/`, `tests/managers/`, `tests/schemas/`)
 - [ ] TS-02 Test names follow `test_<unit>_<condition>_<expected>`
 - [ ] TS-03 Module helpers and factories live in that module's `utils.py` (or `utils/`), and fixtures live in its `conftest.py` or at the top of the file
 
 ## File structure
 - [ ] TS-04 Order is imports, then local fixtures, then test functions
+- [ ] TS-27 (auto) No page docstring and no section banners in test files
 - [ ] TS-05 No test classes (unless strictly necessary)
 - [ ] TS-06 No comments (no `# Arrange` / `# Act` / `# Assert` labels either), unless documenting an upstream workaround
 
@@ -25,6 +26,8 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-14 Fixture scope is `function` unless the setup is expensive and read-only
 - [ ] TS-15 Setup that needs cleanup uses a `yield` fixture
 - [ ] TS-16 Multiple variants use fixture factories, not copy-pasted fixtures
+- [ ] TS-28 (auto) Objects are created only in `conftest.py`; test bodies never call `session.add/delete/commit/execute` (they use fixtures or the app's own functions)
+- [ ] TS-29 No tests for migrations, and no tests that only check which input a model or schema accepts
 
 ## Isolation & mocking
 - [ ] TS-17 No shared mutable state between tests, and tests pass in any order
