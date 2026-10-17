@@ -1,0 +1,8 @@
+# Gitignored local files copied into every new git worktree (see .claude/skills/git-worktree)
+.env
+.env.*
+!.env.example
+services/*/.env
+services/*/.env.*
+web/*/.env
+web/*/.env.*

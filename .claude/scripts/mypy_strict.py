@@ -32,12 +32,14 @@ MYPY_ARGUMENTS = ["--strict", "--show-error-codes", "--no-error-summary", "--no-
 def build_mypy_command(mypy_arguments: list[str]) -> list[str]:
     if shutil.which("uv") is not None:
         return ["uv", "run", "mypy", *MYPY_ARGUMENTS, *mypy_arguments]
+
     if shutil.which("mypy") is not None:
         return ["mypy", *MYPY_ARGUMENTS, *mypy_arguments]
+
     return [sys.executable, "-m", "mypy", *MYPY_ARGUMENTS, *mypy_arguments]
 
 
-def find_none_returning_function_lines(path: Path) -> set[int]:
+def find_none_returning_lines(path: Path) -> set[int]:
     """
     Finds the lines mypy may report for functions that never return a value.
 
@@ -50,8 +52,12 @@ def find_none_returning_function_lines(path: Path) -> set[int]:
         return set()
     function_lines: set[int] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, FUNCTION_NODE_TYPES) or function_returns_value(node):
+        if not isinstance(node, FUNCTION_NODE_TYPES):
             continue
+
+        if function_returns_value(node):
+            continue
+
         function_lines.add(node.lineno)
         function_lines.update(decorator.lineno for decorator in node.decorator_list)
     return function_lines
@@ -72,17 +78,26 @@ def filter_mypy_output(output_lines: list[str]) -> list[str]:
         if line_match is None:
             kept_lines.append(output_line)
             continue
-        location = (line_match.group("path"), line_match.group("line"))
-        if line_match.group("severity") == "note" and location in suppressed_locations:
+
+        file_name = line_match.group("path")
+        location = (file_name, line_match.group("line"))
+        is_note = line_match.group("severity") == "note"
+        if is_note and location in suppressed_locations:
             continue
+
         if MISSING_RETURN_MESSAGE not in output_line:
             kept_lines.append(output_line)
             continue
+
         if location[0] not in function_lines_by_path:
-            function_lines_by_path[location[0]] = find_none_returning_function_lines(Path(location[0]))
+            file_path = Path(location[0])
+            function_lines = find_none_returning_lines(file_path)
+            function_lines_by_path[location[0]] = function_lines
+
         if int(location[1]) in function_lines_by_path[location[0]]:
             suppressed_locations.add(location)
             continue
+
         kept_lines.append(output_line)
     return kept_lines
 
@@ -103,6 +118,7 @@ def main() -> int:
         sys.stderr.write(MYPY_UNAVAILABLE_MESSAGE)
         sys.stderr.write(completed.stdout + completed.stderr)
         return MYPY_UNAVAILABLE_EXIT_CODE
+
     kept_lines = filter_mypy_output(output_lines)
     error_count = sum(1 for kept_line in kept_lines if ": error: " in kept_line)
     for kept_line in kept_lines:
@@ -110,6 +126,7 @@ def main() -> int:
     if error_count == 0:
         print(SUCCESS_MESSAGE)
         return 0
+
     print(f"Found {error_count} error(s).")
     return 1
 

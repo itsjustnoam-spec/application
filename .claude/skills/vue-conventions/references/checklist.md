@@ -14,6 +14,7 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 
 ## Props & emits
 - [ ] VU-07 `defineEmits` tuples are types only (`[string, boolean]`), with no parameter names
+- [ ] VU-27 Props and emits are named interfaces (`<Component>Props` / `<Component>Emits`) in `<script lang="ts">`, used as `defineProps<XProps>()` / `defineEmits<XEmits>()`. No inline type literals in the macros.
 - [ ] VU-08 A comment above the emit declaration explains non-obvious emit parameters
 
 ## UI
@@ -34,10 +35,12 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 ## Clean code
 - [ ] VU-20 No loose truthy/falsy checks on non-booleans (explicit `=== null`/`=== undefined`, `.length === 0`, `=== 0`)
 - [ ] VU-21 Empty-string checks use `.trim()` (`x.trim().length === 0`)
-- [ ] VU-22 No magic numbers or strings in template or script; they're named constants
+- [ ] VU-22 No magic numbers in template or script; large strings are named constants, short strings stay inline
 - [ ] VU-23 Names are descriptive (no `data`, `item`, `load`)
 - [ ] VU-24 Docstrings only for complex math or non-obvious integrations
 - [ ] VU-25 No trailing `return` in functions that return nothing, and no `return undefined`/`return null` to mean "nothing"
+- [ ] VU-28 No export at the declaration (`export const/function/interface/type/enum/class`). One export section at the bottom of the file or `<script lang="ts">` block (`export default` only where a tool requires it).
+- [ ] VU-29 URLs, links, ports, and keys come from `.env` (`VITE_*` via `import.meta.env`), never hardcoded. New keys are in `.env.example`.
 
 ## Tests
 - [ ] VU-26 New logic and components are covered by Vitest tests per `vitest-conventions`

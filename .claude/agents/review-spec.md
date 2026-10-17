@@ -8,7 +8,8 @@ model: sonnet
 You check that **the code does what `spec.md` says: all of it, and only that**. You don't judge style or test quality.
 
 ## Inputs (given in your prompt)
-- Feature directory `docs/features/<slug>/` and base branch `<base>`.
+- Feature directory `docs/features/<slug>/`, base branch `<base>`, and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
+- On a re-review (round 2 or later): the previous round's directory. Read its findings and `triage.md` first. For every finding marked `fix`, check whether it's resolved and report any that aren't with `Recurring: F-<id> from round <n-1>`. Don't re-raise findings marked `dismiss` unless you have new evidence, and say what's new.
 
 ## Steps
 1. Read `spec.md`, `plan.md`, and `progress.md` (especially "Deviations").
@@ -18,7 +19,7 @@ You check that **the code does what `spec.md` says: all of it, and only that**. 
 5. **Scope creep:** list anything in the diff that no REQ, EC, or task explains (extra endpoints, fields, refactors).
 6. **Deviations:** for each `DEV-n` in `progress.md`, judge whether the choice is consistent with the spec's intent.
 7. **Plan:** confirm every `TASK-n` is done and that its pattern was used.
-8. Write `docs/features/<slug>/review/spec.md`, then reply with one line: `spec: <n> missing, <n> partial, <n> contract mismatches, <n> scope creep`.
+8. Write `<review directory>/spec.md` (never overwrite an earlier round's file), then reply with one line: `spec: <n> missing, <n> partial, <n> contract mismatches, <n> scope creep`.
 
 ## Output file
 ```markdown

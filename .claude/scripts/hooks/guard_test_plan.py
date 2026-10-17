@@ -16,6 +16,7 @@ from pathlib import Path
 BLOCKING_EXIT_CODE = 2
 ACTIVE_FEATURE_MARKER = Path("docs") / "features" / ".active"
 TEST_PLAN_FILE_NAME = "test-plan.md"
+GIT_ENTRY_NAME = ".git"
 PYTHON_TEST_PATTERN = re.compile(
     r"^\s*(?:async\s+)?def\s+(test_\w+)\s*\(",
     re.MULTILINE,
@@ -34,6 +35,7 @@ def read_hook_payload() -> dict[str, object]:
     raw_payload = sys.stdin.buffer.read().decode("utf-8")
     if raw_payload.strip() == "":
         return {}
+
     payload = json.loads(raw_payload)
     return payload if isinstance(payload, dict) else {}
 
@@ -43,18 +45,23 @@ def is_python_test_file(path: Path) -> bool:
 
 
 def is_frontend_test_file(path: Path) -> bool:
-    return path.name.endswith(FRONTEND_TEST_SUFFIXES) or "__tests__" in path.parts
+    is_in_tests_folder = "__tests__" in path.parts
+    has_test_suffix = path.name.endswith(FRONTEND_TEST_SUFFIXES)
+    return has_test_suffix or is_in_tests_folder
 
 
 def extract_test_names(path: Path, source: str) -> list[str]:
     if is_python_test_file(path):
         return PYTHON_TEST_PATTERN.findall(source)
-    return [test_match.group(2) for test_match in FRONTEND_TEST_PATTERN.finditer(source)]
+
+    test_matches = FRONTEND_TEST_PATTERN.finditer(source)
+    return [test_match.group(2) for test_match in test_matches]
 
 
 def read_existing_source(path: Path) -> str:
     if not path.is_file():
         return ""
+
     return path.read_text(encoding="utf-8-sig", errors="replace")
 
 
@@ -70,8 +77,12 @@ def collect_source_changes(tool_name: str, tool_input: dict[str, object]) -> lis
         file_path = str(tool_input.get("file_path", ""))
         new_content = str(tool_input.get("content", ""))
         return [(read_existing_source(Path(file_path)), new_content)]
+
     raw_edits = tool_input.get("edits")
-    edits = raw_edits if isinstance(raw_edits, list) else [tool_input]
+    edits: list[object] = [tool_input]
+    if isinstance(raw_edits, list):
+        edits = raw_edits
+
     source_changes: list[tuple[str, str]] = []
     for edit in edits:
         if isinstance(edit, dict):
@@ -93,9 +104,9 @@ def find_added_test_names(path: Path, source_changes: list[tuple[str, str]]) -> 
 
 def find_active_test_plan(start_directory: Path) -> tuple[str, Path] | None:
     """
-    Finds the test plan of the feature currently running through the workflow.
+    Finds the test plan of the feature running in the checkout that contains the start directory.
 
-    :param start_directory: The directory Claude Code is working in.
+    :param start_directory: The directory of the test file being written.
     :return: The active feature slug and its test-plan path, when a feature is active.
     """
     for directory in (start_directory, *start_directory.parents):
@@ -103,6 +114,9 @@ def find_active_test_plan(start_directory: Path) -> tuple[str, Path] | None:
         if marker.is_file():
             feature_slug = marker.read_text(encoding="utf-8").strip()
             return feature_slug, marker.parent / feature_slug / TEST_PLAN_FILE_NAME
+
+        if (directory / GIT_ENTRY_NAME).exists():
+            break
     return None
 
 
@@ -117,26 +131,34 @@ def main() -> int:
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return 0
+
     path = Path(str(tool_input.get("file_path", "")))
-    if not is_python_test_file(path) and not is_frontend_test_file(path):
+    is_python_test = is_python_test_file(path)
+    if not is_python_test and not is_frontend_test_file(path):
         return 0
-    source_changes = collect_source_changes(str(payload.get("tool_name", "")), tool_input)
+
+    tool_name = str(payload.get("tool_name", ""))
+    source_changes = collect_source_changes(tool_name, tool_input)
     added_test_names = find_added_test_names(path, source_changes)
     if len(added_test_names) == 0:
         return 0
-    active_test_plan = find_active_test_plan(Path(str(payload.get("cwd", "."))).resolve())
+
+    active_test_plan = find_active_test_plan(path.resolve().parent)
     if active_test_plan is None:
         return 0
+
     feature_slug, test_plan_path = active_test_plan
     if not test_plan_path.is_file():
         return block(
             f"Blocked: feature '{feature_slug}' has no {test_plan_path}. "
             "Write the test plan (test name, file path, what it tests, expected result) before writing tests.",
         )
+
     test_plan = test_plan_path.read_text(encoding="utf-8")
     unplanned_names = [test_name for test_name in added_test_names if test_name not in test_plan]
     if len(unplanned_names) == 0:
         return 0
+
     return block(
         f"Blocked: these tests are not in {test_plan_path}: {', '.join(unplanned_names)}. "
         "Add a row for each one to the test plan first, then write the test.",

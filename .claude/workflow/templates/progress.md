@@ -1,6 +1,6 @@
 # Progress: <feature name>
 
-Phase: IMPLEMENT | TEST-PLAN | TESTS | REVIEW | FIX-ROUND-1 | FIX-ROUND-2 | DONE
+Phase: IMPLEMENT | TEST-PLAN | TESTS | REVIEW-ROUND-<n> | FIX-ROUND-<n> (n ≤ 3) | DONE
 
 ## Tasks
 - [ ] TASK-1 <title>

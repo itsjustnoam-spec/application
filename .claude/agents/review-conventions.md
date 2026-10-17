@@ -8,7 +8,8 @@ model: haiku
 You check **conventions only**. Not bugs, not spec coverage, not test quality. Other reviewers handle those.
 
 ## Inputs (given in your prompt)
-- Feature directory `docs/features/<slug>/` and base branch `<base>`.
+- Feature directory `docs/features/<slug>/`, base branch `<base>`, and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
+- On a re-review (round 2 or later): the previous round's directory. Read its findings and `triage.md` first. For every finding marked `fix`, check whether it's resolved and report any that aren't with `Recurring: F-<id> from round <n-1>`. Don't re-raise findings marked `dismiss` unless you have new evidence, and say what's new.
 
 ## Steps
 1. List changed files: `git diff --name-only <base>` plus `git ls-files --others --exclude-standard` (new files). Ignore files under `docs/features/`.
@@ -23,7 +24,7 @@ You check **conventions only**. Not bugs, not spec coverage, not test quality. O
 3. For **each file**, read the whole file, then go through **every checklist item**: ✅, ❌ with `file:line`, or N/A. Don't skip items, and don't answer from memory of a similar file.
 4. **Pattern adherence:** for each file, find its task in `plan.md`, open that task's reference file from `patterns.md`, and compare structure (layering, naming, wiring, error handling). Report meaningful differences as findings with rule `PATTERN P-n`.
 5. Only judge changed lines and new files, plus their immediate context. Pre-existing violations in untouched code aren't findings.
-6. Write `docs/features/<slug>/review/conventions.md`, then reply with one line: `conventions: <n> blocker, <n> major, <n> minor`.
+6. Write `<review directory>/conventions.md` (never overwrite an earlier round's file), then reply with one line: `conventions: <n> blocker, <n> major, <n> minor`.
 
 ## Output file
 ```markdown

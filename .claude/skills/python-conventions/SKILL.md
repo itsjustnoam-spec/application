@@ -1,6 +1,6 @@
 ---
 name: python-conventions
-description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, exact docstring format, page/section headers, custom exceptions, uv usage, and references the pytest-conventions skill.
+description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, exact docstring format, page/section headers, class and SQLModel layout, blank lines after if blocks, multiline calls, custom exceptions, .env configuration, string constants, uv usage, and references the pytest-conventions skill.
 ---
 
 # Python Backend Conventions
@@ -50,6 +50,7 @@ def save_user_profile(user_id: str, email: str):
 def deactivate_user(user: UserRecord):
     if not user.is_active:
         return  # Bare return for an early exit
+
     user.is_active = False
 
 
@@ -65,7 +66,9 @@ def save_user_profile(user_id, email) -> None:  # Do NOT use -> None and do NOT 
 
 ## 3. Page Header and Section Structure
 
-Every Python file must follow a consistent top-level layout with page documentation and stylized section dividers. Empty files (e.g. an empty `__init__.py`) are exempt.
+Every Python file must follow a consistent top-level layout with page documentation and stylized section dividers. Exempt:
+- Empty files (e.g. an empty `__init__.py`).
+- **Migration files** (Alembic `versions/` / `migrations/`). They're generated and keep the generator's format, so they need no page header, banners, or docstring format, and their generated `-> None` signatures stay as they are.
 
 ### Page Documentation Header
 
@@ -132,6 +135,7 @@ def read_entity_by_id(session: Session, entity_id: int) -> Entity:
     entity: Entity | None = session.get(Entity, entity_id)
     if entity is None:
         raise EntityNotFoundError(f"Entity {entity_id} was not found.")
+
     return entity
 ```
 
@@ -166,31 +170,41 @@ DOCSTRING EXPLANATION
 - **API Endpoint Functions**: Only the description. Do **NOT** include `:param:`, `:return:`, or `:raises:`.
 - **Reverse Proxy / Pass-Through Endpoints**: If an endpoint or function is just a reverse proxy redirecting/forwarding requests without internal business logic, omit `:param:`, `:raises:`, and `:return:`. Write only a brief single-line explanation. Full `:param:`, `:return:`, `:raises:` docstrings apply only when business logic is present.
 - **Classes & `__init__`**: Classes get a standard description with opening `"""` on line 1, description on line 2, and closing `"""` on line 3 (no `:param:` or `:return:`). `__init__` methods do **NOT** get a docstring.
+- **No blank line after a class docstring**: the class body (`__init__`, attributes, `__tablename__`, anything) starts on the line right after the closing `"""`.
 - **Indicative Naming**: Never use vague or generic names like `load` or `process`. Use explicit names that explain what is being handled (e.g., `load_customer_billing_history`, `process_credit_card_charge`).
 
 ---
 
-## 5. Explicit Condition Checks
+## 5. Conditions and `if` Blocks
 
+### Explicit condition checks
 Never use truthy/falsy checks (`if not x:` / `if x:`) unless `x` is a genuine `bool`.
 
 - Checking for None: `if x is None:` / `if x is not None:`
 - Checking for an empty collection or string: `if len(x) == 0:` / `if len(x) > 0:`
 
+### Blank line after an `if` block
+When more code follows an `if` block (including its `elif`/`else` branches) in the same function, class, or module, leave **exactly one blank line** after the block.
+
 ```python
 # GOOD:
 if project is None:
     raise ProjectNotFoundError(f"Project {project_id} was not found.")
+
 if len(features) == 0:
     return
+
 if is_active:
     activate_session(session)
+
+publish_project(project)
 
 # BAD:
 if not project:  # project is not a bool
     raise ProjectNotFoundError(f"Project {project_id} was not found.")
-if not features:  # use len(features) == 0
+if not features:  # use len(features) == 0; also missing the blank line above
     return
+publish_project(project)  # missing the blank line after the if block
 ```
 
 ---
@@ -199,7 +213,7 @@ if not features:  # use len(features) == 0
 
 - A call (function call, constructor, decorator, `raise SomeError(...)`) **must** put each argument on its own line, with a trailing comma, when:
     - It has **3 or more arguments**, **or**
-    - The arguments text (everything between the parentheses) is **50+ characters** long.
+    - Written on a single line, **the whole line would be 70+ characters**, counting everything on it: indentation, spaces, the code before the call (e.g. `entity = `), and anything after it.
 - Otherwise keep it on a single line.
 - The trailing comma matters: it is what keeps formatters (`ruff format` / black) from collapsing the call back onto one line.
 
@@ -211,13 +225,70 @@ raise HTTPException(
     detail=str(error),
 )
 
-# BAD:
+# BAD (as a single line it is 77 characters):
 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 ```
 
 ---
 
-## 7. Custom Exceptions
+## 7. Class Layout and SQLModel Models
+
+- The class body starts right after the class docstring, with no blank line (see §4).
+- **SQLModel / SQLAlchemy table models** follow this order:
+    1. the docstring
+    2. `__tablename__`, on the line right after the docstring
+    3. the fields
+    4. `__table_args__` (constraints, indexes) and any other table configuration, **at the end of the class**
+
+```python
+# GOOD:
+class AssetType(SQLModel, table=True):
+    """
+    A kind of asset, with the number of days between its inspections.
+    """
+    __tablename__ = "asset_types"
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=100, unique=True)
+    inspection_interval_days: int
+
+    __table_args__ = (
+        CheckConstraint(
+            "inspection_interval_days BETWEEN 1 AND 3650",
+            name="ck_asset_types_inspection_interval_days_range",
+        ),
+    )
+
+
+# BAD: blank line after the docstring, and __table_args__ before the fields
+class AssetType(SQLModel, table=True):
+    """
+    A kind of asset, with the number of days between its inspections.
+    """
+
+    __tablename__ = "asset_types"
+    __table_args__ = (CheckConstraint("inspection_interval_days > 0"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+```
+
+---
+
+## 8. Configuration (`.env`)
+
+- **URLs, hosts, ports, database names, credentials, API keys, and every other environment-specific value** are stored in the service's `.env` file and read through the service's settings module. Never hardcode them in code, tests, or compose files when they can come from `.env`.
+- When you add a key, also add it to `.env.example` (create it if missing) with a placeholder value, so others know it exists. `.env` itself stays gitignored.
+
+---
+
+## 9. String Constants
+
+- **Large strings** (long messages, SQL, templates, multi-line text) become named constants in the `Consts` section, so they're easy to find and change.
+- **Short strings** (keys, labels, short messages, single words) stay inline where they're used. Moving them into constants only hides them and makes quick changes slower.
+
+---
+
+## 10. Custom Exceptions
 
 - **Never raise Python base exceptions** (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, etc.).
 - Always define and raise custom application exceptions that clearly represent the domain failure.
@@ -235,6 +306,7 @@ def fetch_user_by_id(user_id: str) -> UserRecord:
     record: Optional[UserRecord] = db.find(user_id)
     if record is None:
         raise UserNotFoundError(f"User {user_id} was not found.")
+
     return record
 
 
@@ -248,12 +320,13 @@ def fetch_user_by_id(user_id: str) -> UserRecord:
 
 ---
 
-## 8. Testing Conventions (`pytest`)
+## 11. Testing Conventions (`pytest`)
 
 Testing is governed by the dedicated **`pytest-conventions`** skill. Whenever writing, refactoring, or reviewing tests for Python backend code:
 
 - **Invoke `pytest-conventions`**: Strictly follow all patterns documented in `pytest-conventions`.
 - **100% Test Coverage**: All new backend code requires 100% test coverage (pure reverse proxy redirects excepted).
+- **Separate test database**: tests always run against their own database, never the application's, unless the user explicitly says otherwise (see `backend-test-infra`).
 - **Test File Organization**: Mirror source in `tests/<module_name>/test_<what_we_test>.py`.
 - **File Structure**: Imports straight away, then fixtures, then standalone test functions (no test classes, no comments).
 - **Execution & Type Verification**:

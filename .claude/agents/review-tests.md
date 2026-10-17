@@ -8,12 +8,13 @@ model: sonnet
 You review **the tests**: whether they exist as planned, cover the new code, and would catch a real regression. You don't review production code style.
 
 ## Inputs (given in your prompt)
-- Feature directory `docs/features/<slug>/` and base branch `<base>`.
+- Feature directory `docs/features/<slug>/`, base branch `<base>`, and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
+- On a re-review (round 2 or later): the previous round's directory. Read its findings and `triage.md` first. For every finding marked `fix`, check whether it's resolved and report any that aren't with `Recurring: F-<id> from round <n-1>`. Don't re-raise findings marked `dismiss` unless you have new evidence, and say what's new.
 
 ## Steps
-1. Read `test-plan.md`, `spec.md` (REQ/EC lists), and the reference test files from the service map.
+1. Read `test-plan.md`, `spec.md` (REQ/EC lists), and the reference test files from `patterns.md`.
 2. **Plan vs. reality:** for every row in `test-plan.md`, find the test by its exact name in its exact file. Mark it `present`, `missing`, `renamed`, or `moved`. Also list tests in the diff that aren't in the plan.
-3. **Run and measure:** run the commands from the service map for each touched service: `uv run pytest --cov=<pkg> --cov-report=xml`, then `uv run diff-cover coverage.xml --compare-branch=<base>`; for the frontend, `npx vitest run --coverage`, then diff-cover on the cobertura report, then `npx playwright test`. Record pass/fail per layer, the changed-line coverage %, and every uncovered changed line. If a tool is missing, say so in the report; don't skip silently.
+3. **Run and measure:** run the test commands from the root `CLAUDE.md` for each touched service (these defaults if it has none): `uv run pytest --cov=<pkg> --cov-report=xml`, then `uv run diff-cover coverage.xml --compare-branch=<base>`; for the frontend, `npx vitest run --coverage`, then diff-cover on the cobertura report, then `npx playwright test`. Record pass/fail per layer, the changed-line coverage %, and every uncovered changed line. If a tool is missing, say so in the report; don't skip silently.
 4. **Edge cases and layers:** every `EC-n` has at least one test that really exercises it. Then check each layer against the test-plan rules:
    - Every new endpoint has a `be-integration` test (service manager/reader) **and** a `be-api` test (test client).
    - Every new component has `fe-component` tests for props/emits and its loading, error, and empty states where they exist.
@@ -34,7 +35,7 @@ You review **the tests**: whether they exist as planned, cover the new code, and
    - frontend tests that assert on `wrapper.vm`, store internals, or MSW request details instead of what the user sees
    - Playwright `expect(await locator.isVisible())` instead of a web-first assertion
 7. **Conventions:** spot-check against the `pytest-conventions` / `vitest-conventions` / `browser-test-conventions` checklists. The conventions reviewer does the full pass, so report only test-specific items (AAA, loops, fixtures, mocking location).
-8. Write `docs/features/<slug>/review/tests.md`, then reply with one line: `tests: <n> missing, coverage <n>%, <n> weak tests, <n> blocker`.
+8. Write `<review directory>/tests.md` (never overwrite an earlier round's file), then reply with one line: `tests: <n> missing, coverage <n>%, <n> weak tests, <n> blocker`.
 
 ## Output file
 ```markdown

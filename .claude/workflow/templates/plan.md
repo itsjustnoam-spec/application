@@ -10,7 +10,7 @@ Spec: `spec.md` · Status: DRAFT | APPROVED (<date>)
 - Covers: REQ-1, EC-2
 - Pattern: P-2 (`reference/file.py`)  <!-- or: NEW, because <reason> -->
 - Steps: <2–5 bullets, concrete>
-- Verify: `<command from service map>`
+- Verify: `<command from CLAUDE.md>`
 
 ### TASK-2 ...
 

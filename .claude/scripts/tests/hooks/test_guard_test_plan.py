@@ -15,6 +15,7 @@ def make_feature(tmp_path: Path) -> Callable[[str | None], Path]:
         (features_directory / ".active").write_text("entity-reader\n", encoding="utf-8")
         if test_plan is not None:
             (features_directory / "entity-reader" / "test-plan.md").write_text(test_plan, encoding="utf-8")
+
         return tmp_path
 
     return _make
@@ -142,3 +143,40 @@ def test_guard_test_plan_non_test_file_allows(make_feature: Callable[..., Path],
     completed = run_hook("guard_test_plan.py", payload)
 
     assert completed.returncode == 0
+
+
+def make_worktree(main_checkout: Path, feature_slug: str | None) -> Path:
+    worktree = main_checkout / ".claude" / "worktrees" / "other-feature"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text("gitdir: ../../../.git/worktrees/other-feature\n", encoding="utf-8")
+    if feature_slug is not None:
+        features_directory = worktree / "docs" / "features"
+        (features_directory / feature_slug).mkdir(parents=True)
+        (features_directory / ".active").write_text(feature_slug + "\n", encoding="utf-8")
+
+    return worktree
+
+
+def test_guard_test_plan_worktree_ignores_main_checkout_active_feature(
+    make_feature: Callable[..., Path],
+    run_hook: Callable[..., object],
+):
+    main_checkout = make_feature(None)
+    worktree = make_worktree(main_checkout, None)
+
+    completed = run_hook("guard_test_plan.py", write_payload(worktree, "test_reader.py", NEW_TEST_SOURCE))
+
+    assert completed.returncode == 0
+
+
+def test_guard_test_plan_worktree_uses_its_own_active_feature(
+    make_feature: Callable[..., Path],
+    run_hook: Callable[..., object],
+):
+    main_checkout = make_feature("| T-1 | test_read_entity_missing_id_raises_entity_not_found_error | ... |\n")
+    worktree = make_worktree(main_checkout, "parts-reservations")
+
+    completed = run_hook("guard_test_plan.py", write_payload(worktree, "test_reader.py", NEW_TEST_SOURCE))
+
+    assert completed.returncode == 2
+    assert "parts-reservations" in completed.stderr

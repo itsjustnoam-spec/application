@@ -11,7 +11,7 @@ A spec-first Claude Code workflow for a Vue/Vuetify + FastAPI microservices mono
   5 Test plan → test-plan.md   (a hook blocks tests that aren't in it)
   6 Write tests: backend, component, integration, browser + changed-line coverage
   7 Review in parallel: conventions · spec · bugs · tests
-  8 Triage + fix (max 2 rounds)
+  8 Triage + fix (max 3 rounds; every round kept in review/round-<n>/)
   9 summary.md
 ```
 
@@ -25,14 +25,18 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 |---|---|
 | `settings.json` | Hooks: post-edit convention/lint check, test-plan guard |
 | `commands/feature.md` | The orchestrator (`/feature`) |
-| `commands/map-services.md` | Generates `skills/service-map/` from the code (`/map-services`) |
+| `commands/retro.md` | End-of-session retrospective → improvements document (`/retro`) |
+| `commands/review-mrs.md` | Learns from GitLab merge requests via the GitLab MCP → improvements document (`/review-mrs`) |
 | `agents/explorer.md` | Pattern discovery before planning |
 | `agents/review-*.md` | The four reviewers |
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
 | `skills/vitest-conventions` | Frontend component tests (Vue Test Utils) and integration tests (real store/router + MSW) |
 | `skills/browser-test-conventions` | Playwright browser tests with a fully mocked backend |
 | `skills/backend-test-infra` | Integration vs API layers; Postgres, Mongo, proxy, RabbitMQ, Temporal test setup |
-| `skills/grill-with-docs`, `write-spec`, `test-plan` | Workflow phases (with templates) |
+| `skills/git-worktree` | Creating, entering, setting up, and removing a worktree per feature, for parallel work |
+| `workflow/grill-with-docs.md`, `write-spec.md`, `test-plan.md` | Phase guides that `/feature` reads (plain files, not skills) |
+| `workflow/workflow-improvement.md` | Where an improvement belongs, the document template, how to apply changes safely (read by `/retro` and `/review-mrs`) |
+| `workflow/templates/` | spec, plan, progress, and test-plan templates |
 | `scripts/` | Hook scripts, the convention checker, the mypy wrapper, and their tests |
 
 ---
@@ -41,7 +45,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 
 1. **Requirements:** `python` (3.10+) on PATH for the hooks. Per Python service: `uv`, plus `ruff`, `mypy`, `pytest-cov`, and `diff-cover` as dev dependencies. Frontend: Vitest + Vue Test Utils + MSW + `@pinia/testing` (see `skills/vitest-conventions` §7) and Playwright (see `skills/browser-test-conventions` §7).
 2. **Run from the project root:** `claude`. The first time, Claude Code asks you to trust the folder; the hooks in `settings.json` only run after you accept.
-3. **Generate the service map** once: `/map-services`. Review the generated `.claude/skills/service-map/SKILL.md` and commit it.
+3. **Keep a root `CLAUDE.md`** with the architecture, where things live, and the run/test commands. `/feature` reads it, and `/retro` recommends additions to it over time.
 
 ## LiteLLM models
 
@@ -63,7 +67,7 @@ The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) o
 ## What the hooks do
 
 - **After every Write/Edit**
-  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, the multiline-call rule, BOM) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH.
+  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, BOM; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH.
   - `.vue`/`.ts`: runs the project's `eslint` if one is installed in `node_modules`.
   - Problems are sent back to Claude (exit code 2) so it fixes them right away.
 - **Before every Write/Edit to a test file:** while a feature is active (`docs/features/.active`), it blocks adding a pytest, Vitest, or Playwright test whose name isn't in that feature's `test-plan.md`. Edits to existing tests are allowed. Outside the workflow, the guard does nothing.
@@ -83,3 +87,30 @@ python .claude/scripts/mypy_strict.py <paths>
 ```bash
 uv run --with pytest pytest .claude/scripts/tests
 ```
+
+## Improving the setup over time
+
+- **`/retro [focus]`** at the end of a session: reviews the conversation, the feature artifacts in `docs/features/` of every worktree (including every review round in `review/round-<n>/` and `review/history.md`), and the diff, then writes `docs/improvements/<date>-session-<topic>.md`. Every recommendation has evidence, a destination (hook, convention skill + checklist, reviewer, workflow guide, `CLAUDE.md`, glossary/ADR, or a new skill/command), and the exact text to add. It then asks which `IMP-n` to apply and applies only those.
+- **`/review-mrs <MR URL or group/project!iid> ...`**: the same, but the evidence is GitLab merge requests (human review comments, fix-up commits, the diff). It's **read-only on GitLab**. It needs a GitLab MCP server connected to Claude Code, with a token that has the `read_api` scope.
+
+Both follow `workflow/workflow-improvement.md`.
+
+## Parallel features (worktrees)
+
+- From a terminal: `claude -w <slug>`, then `/feature ...` inside it. To resume later: `claude -w <slug>`, then `/feature resume <slug>`.
+- From a session: `/feature --worktree <description>`. `/feature` also moves into a worktree automatically when another feature is already active in the checkout, and otherwise asks once.
+- Worktrees live in `.claude/worktrees/<slug>/` (gitignored) on branch `worktree-<slug>`, pushed as `feature/<slug>`. Each one has its own `docs/features/`. See `skills/git-worktree/SKILL.md` for setup (dependencies, `.worktreeinclude` for `.env` files, shared Docker infrastructure) and cleanup.
+- New worktrees branch from `main` on the remote, so **commit and push changes to `.claude/` to `main`** before starting worktrees. Otherwise they run the old workflow.
+
+## Model invocation
+
+`disable-model-invocation: true` means Claude can't load the item on its own: its description isn't in context, and Claude Code **refuses a Skill tool call to it** and tells Claude not to do the steps another way. That's why nothing the workflow depends on may carry the flag.
+
+| Item | Form / setting | Why |
+|---|---|---|
+| `python-conventions`, `pytest-conventions`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`, `backend-test-infra` | Skill, model-invoked | Claude must pick them up by itself whenever it writes that kind of code, inside or outside `/feature`, and the review agents load them |
+| `git-worktree` | Skill, model-invoked | Claude should reach for it when you start parallel work; `/feature` loads it in phase 0 |
+| `grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement` | **Plain files in `workflow/`**, not skills | Only meaningful inside their command. As flagged skills they got refused mid-workflow and stopped `/feature` at phase 5. As plain files they can't misfire on their own and can't be blocked |
+| `/feature`, `/retro`, `/review-mrs` | Command, `true` | Long-running and write files, so you start them on purpose |
+
+When you add something, decide its form with `workflow/workflow-improvement.md` §6. `/retro` does this for everything it proposes.

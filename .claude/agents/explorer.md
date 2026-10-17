@@ -12,7 +12,7 @@ You explore a monorepo (Vue/Vuetify frontend, FastAPI reverse proxy, a CRUD serv
 - The feature directory, e.g. `docs/features/<slug>/`.
 
 ## Steps
-1. Read the root `CLAUDE.md` and the `service-map` skill (`.claude/skills/service-map/SKILL.md`) if they exist.
+1. Read the root `CLAUDE.md` (and any `CLAUDE.md` inside the services you touch) if they exist.
 2. Decide which services the feature touches. For each one, find the files that will likely change and the closest existing feature that does something similar.
 3. **Pattern discovery.** For every kind of change the feature needs, find **1–2 existing examples** in the codebase and read them fully. Kinds of change to consider:
    new endpoint (router + schemas) · SQLModel model + migration · service manager/reader · Mongo collection access · reverse-proxy route · service-to-service call · RabbitMQ publisher/consumer · Temporal workflow/activity · Vue view/component/dialog · store · API client call · TS model types · backend integration test · backend API test · frontend component test · frontend integration test · browser test · test-data factory · MSW handler.

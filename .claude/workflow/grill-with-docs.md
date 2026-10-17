@@ -1,8 +1,3 @@
----
-name: grill-with-docs
-description: Use in the feature workflow after exploration and before writing the spec. Interviews the user in batches of up to 4 questions, each with a recommended answer, until every unknown about the feature is resolved. Updates the domain glossary and decision log as it goes.
----
-
 # Grill With Docs
 
 Find out exactly what the user wants **before** anything is planned, so that after the spec is approved the work can run without stopping to ask.
@@ -46,7 +41,7 @@ Go through every item and mark it covered or N/A in the notes. The order is a su
 - [ ] Backward compatibility: existing clients, existing data, other services' consumers
 - [ ] Tests: anything special beyond the defaults (backend: integration + API layers; frontend: component + integration in Vitest; ~100% of new code). Which **user journeys** deserve a browser test (Playwright, mocked backend)? Recommend one happy path per new journey plus its main failure.
 - [ ] Missing tooling from `context.md` (e.g. diff-cover): add it as part of this feature, or skip that check?
-- [ ] Git: branch name, commit per task or one commit at the end, open a PR or not
+- [ ] Git: the remote branch name (default `feature/<slug>`; in a worktree the local branch is `worktree-<slug>` and is pushed with `git push -u origin HEAD:feature/<slug>`), commit per task or one commit at the end, open an MR or not
 
 ## Readback
 When the ledger is empty, write a **readback** of 5–8 bullets: what will be built, what won't, and the riskiest decision. Ask one final question: "Is this what you want?" with the options "Yes, write the spec (Recommended)" and "No, I'll correct it". Loop until the user says yes.

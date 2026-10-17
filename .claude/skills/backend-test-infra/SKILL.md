@@ -5,7 +5,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 # Backend Test Infrastructure
 
-`pytest-conventions` defines how a test is written. This skill defines **what each layer tests and how its dependencies are set up**. Always follow the project's existing fixtures first: find them in the reference test files listed in the service map, and only add new fixtures when none exist.
+`pytest-conventions` defines how a test is written. This skill defines **what each layer tests and how its dependencies are set up**. Always follow the project's existing fixtures first: find them in the existing tests (see `patterns.md` and the root `CLAUDE.md`), and only add new fixtures when none exist.
 
 ---
 
@@ -24,7 +24,13 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 ---
 
-## 2. PostgreSQL (CRUD service)
+## 2. A Separate Test Database (all services)
+
+- Tests **always** run against their own database (Postgres database / Mongo database), never the one the application uses, unless the user explicitly says otherwise. That way test writes and cleanups can't touch application data, and the app can keep running while tests run.
+- The test database's name and URL come from `.env` (e.g. `TEST_DATABASE_URL`, `TEST_MONGO_DB`) like every other connection setting. They're never hardcoded.
+- Guard in the root `conftest.py`: fail fast if the configured test database name doesn't differ from the application's (e.g. it must end in `_test`).
+
+## 2a. PostgreSQL (CRUD service)
 
 - Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Use the project's test database (docker-compose service or testcontainers) as found in the reference tests.
 - Isolation: one transaction per test, rolled back at teardown (the `db_session` pattern in `pytest-conventions`), with the engine at `session` scope.
@@ -40,7 +46,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 ## 4. MongoDB service
 
 - Prefer a real Mongo (testcontainers or the compose service) when the code relies on indexes, aggregation, or transactions. `mongomock`/`mongomock-motor` is acceptable for simple CRUD, if the project already uses it.
-- Isolation: a unique database name per test (or drop the collections at teardown).
+- Isolation: a test database separate from the application's (§2), plus a unique database name per test or dropped collections at teardown.
 - Create the indexes the code relies on inside the fixture, using the app's own index setup function.
 
 ## 5. Reverse proxy

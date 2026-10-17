@@ -33,7 +33,7 @@ Every Vue SFC must follow this exact top-to-bottom block order:
 
 Separate static type declarations from reactive runtime logic using two `<script>` tags:
 
-1. `<script lang="ts">`: Contains component-specific interfaces, types, enums, and pure constants.
+1. `<script lang="ts">`: Contains component-specific interfaces (including the component's **props and emits interfaces**), types, enums, and pure constants, with one export block at the bottom (see §7).
 2. `<script setup lang="ts">`: Contains component runtime logic and reactive state.
 
 ```vue
@@ -44,13 +44,27 @@ Separate static type declarations from reactive runtime logic using two `<script
 </template>
 
 <script lang="ts">
-export interface UserCardItem {
+interface UserCardItem {
   id: string
   name: string
   role: string
 }
 
-export const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
+interface UserCardProps {
+  user: UserCardItem
+  initialStatus: boolean
+}
+
+// Emits: updated user ID and selection flag
+interface UserCardEmits {
+  'update': [string, boolean]
+  'close': []
+}
+
+const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
+
+export type { UserCardItem, UserCardProps, UserCardEmits }
+export { DEFAULT_AVATAR_FALLBACK }
 </script>
 
 <script setup lang="ts">
@@ -68,7 +82,7 @@ export const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
 
 The contents of `<script setup lang="ts">` must follow this exact sequence, with single empty lines separating each section:
 
-1. **Constants**: Component-local constants (timeout intervals, magic string constants, debounce delays).
+1. **Constants**: Component-local constants (timeout intervals, debounce delays, magic numbers, large strings).
    *(empty line)*
 2. **`defineEmits` & `defineProps`**:
    *(empty line)*
@@ -89,17 +103,10 @@ The contents of `<script setup lang="ts">` must follow this exact sequence, with
 const DEBOUNCE_DELAY_MS = 300
 const MAX_SELECTION_COUNT = 5
 
-// Emits & Props
-// Emits: updated entity ID and selection flag
-const emit = defineEmits<{
-  'update': [string, boolean]
-  'close': []
-}>()
+// Emits & Props (interfaces are declared in the <script lang="ts"> block)
+const emit = defineEmits<UserCardEmits>()
 
-const props = defineProps<{
-  userId: string
-  initialStatus: boolean
-}>()
+const props = defineProps<UserCardProps>()
 
 // Refs
 const isActionLoading = ref<boolean>(false)
@@ -113,7 +120,7 @@ const executeUserUpdate = async () => {
   isActionLoading.value = true
   try {
     // async work
-    emit('update', props.userId, true)
+    emit('update', props.user.id, true)
   } catch (error: unknown) {
     handleNetworkError(error)
   } finally {
@@ -137,6 +144,9 @@ onMounted(() => {
 
 ## 4. Props & Emits Rules
 
+- **Always use interfaces**: declare props and emits as named interfaces (`<Component>Props`, `<Component>Emits`) in the `<script lang="ts">` block, then pass them: `defineProps<UserCardProps>()`, `defineEmits<UserCardEmits>()`.
+  - **Never** write the type inline inside the macro: no `defineProps<{ ... }>()` and no `defineEmits<{ ... }>()`.
+  - A component with no props or no emits doesn't call that macro at all.
 - **`defineEmits` Parameter Naming**:
   - In `defineEmits`, do **NOT** name tuple parameters; specify types only.
   - BAD: `'update': [userId: string, isSelected: boolean]`
@@ -192,7 +202,18 @@ onMounted(() => {
     - Empty array / collection: `if (test.length === 0)`
     - Numeric check: `if (test === 0)` or `if (test < 0)`
   - **Boolean Exception**: Only when a variable is strictly of type `boolean` (`true` or `false`), you may use `if (test)` or `if (!test)`.
-- **Extract Constants**: Never leave magic numbers or static string literals scattered in template or script bodies. Extract them into named constants.
+- **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants.
+- **Strings**: **large strings** (long messages, long URLs paths, multi-line text) become named constants. **Short strings** (labels, keys, short messages, single words) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower.
+- **Configuration in `.env`**: API base URLs, links to other systems, ports, keys, and every other environment-specific value live in the app's `.env` files (`VITE_*`) and are read through `import.meta.env` in one config module. Never hardcode them. Add each new key to `.env.example` with a placeholder.
+- **Exports at the bottom**: never export at the declaration (`export const`, `export function`, `export interface`, `export type`, `export enum`, `export class`). Declare everything first, then end the file (or the `<script lang="ts">` block) with one export section:
+  ```ts
+  const fetchEntities = async (): Promise<Entity[]> => { /* ... */ }
+  interface Entity { id: number; name: string }
+
+  export type { Entity }
+  export { fetchEntities }
+  ```
+  The only exception is `export default`, where a tool requires it (e.g. `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`); keep it as the file's last statement.
 - **Indicative Variable Naming**: Use clear, descriptive variable and function names (e.g., `isUserDeletionPending`, `loadUserProfileDetails`), never generic names like `data`, `item`, or `load`.
 - **Minimal Docstrings**: Use docstrings very sparingly in frontend code — only when explaining complex mathematical logic or non-obvious third-party integrations. Clean, typed, well-named code is self-documenting.
 - **No Trailing `return`**: Functions that return nothing must not end with a bare `return`. Use `return` only for an early exit. Never write `return undefined` or `return null` to mean "nothing".

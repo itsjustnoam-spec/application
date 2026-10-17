@@ -218,7 +218,7 @@ Backend features are tested on two layers:
 - **Integration tests**: call the service manager/reader directly (e.g. the entities reader) against a real test database. They cover business logic, ORM behavior, and edge cases without HTTP.
 - **API tests**: call the endpoint through the FastAPI test client. They cover routing, validation, status codes, and response shapes.
 
-Every new endpoint gets both layers. Database, Mongo, Temporal, and RabbitMQ test setups are described in the **`backend-test-infra`** skill. Reviewers use `references/checklist.md`.
+Every new endpoint gets both layers. Both layers run against a **separate test database**, never the application's database, unless the user explicitly says otherwise. Its connection settings come from `.env`. Database, Mongo, Temporal, and RabbitMQ test setups are described in the **`backend-test-infra`** skill. Reviewers use `references/checklist.md`.
 
 ---
 
