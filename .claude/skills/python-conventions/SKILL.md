@@ -36,7 +36,7 @@ Use **`uv`** for every package and environment operation:
     - If you are not sure whether the type is clear, **always add the type annotation**.
 - **Static Verification**:
     - Run `uv run mypy --strict` at the end of each task to verify type correctness across all modified files.
-    - **Ignore** mypy's "missing return type annotation" errors on functions that return nothing. The no-`-> None` rule takes precedence. Never add `-> None` to silence mypy. The same error on a function that **does** return a value is real and must be fixed.
+    - **Ignore** mypy's "missing return type annotation" errors on functions that return nothing, and "call to untyped function" errors on calls to functions that have no parameters and return nothing (mypy calls them untyped only because `-> None` is omitted). The no-`-> None` rule takes precedence. Never add `-> None` to silence mypy. `.claude/scripts/mypy_strict.py` filters exactly these errors; the same errors on functions that **do** return a value are real and must be fixed.
 - **Optional Returns**: In a function annotated `-> X | None`, write `return None` explicitly. mypy rejects a bare `return` there ("Return value expected").
 
 ```python
@@ -365,7 +365,7 @@ Database access (sessions, transactions, queries) follows the **`sql-conventions
 - **Never raise Python base exceptions** (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, etc.).
 - Always define and raise custom application exceptions that clearly represent the domain failure.
 - Custom exception class names **must** end with `Error` (e.g. `NotFoundError`, `DatabaseTransactionError`, never `NotFound`).
-- **Empty classes end with `pass`**: a class whose body would otherwise be only its docstring (typically an exception that just inherits) always has `pass` on the line after the docstring. Never leave a class with only a docstring.
+- **Empty classes end with `pass`**: a class whose body would otherwise be only its docstring (typically an exception that just inherits) always has `pass` on the line after the docstring. Never leave a class with only a docstring. If ruff's `PIE790` ("unnecessary pass") is enabled, ignore it in the project's ruff config.
 
 ```python
 # GOOD:

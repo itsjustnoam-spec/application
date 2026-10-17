@@ -16,7 +16,7 @@ Strict conventions for frontend development using Vue 3 (Composition API), Vueti
   - **Never** make `v-dialog` the root element of a component.
   - Create the dialog's content as a standalone modal/card component.
   - Wrap it in `v-dialog` at the call site / parent view. This keeps the modal content independently reusable, testable, and embeddable.
-- **No redundant conditions**: never repeat a condition that a parent already guarantees. For example, content inside `<v-dialog :model-value="isDialogOpen">` only shows while the dialog is open, so it must not also have `v-if="isDialogOpen"`. If the content must start fresh each time it opens, the content component resets itself from its props (e.g. initialises its form when the edited item changes), not through a duplicate `v-if`.
+- **No redundant conditions**: never repeat a condition that a parent already guarantees. For example, content inside `<v-dialog :model-value="isDialogOpen">` only shows while the dialog is open, so it must not also have `v-if="isDialogOpen"`. If the content must start fresh each time it opens (e.g. a form that initialises from its props), give it a `:key` that the parent changes every time it opens the dialog, instead of a duplicate `v-if`. A new key remounts the content even when the props didn't change, e.g. opening "Add" twice in a row.
 - **Shared Code Extraction**:
   - Any logic, helper functions, or TypeScript interfaces used in more than one place **must** be extracted into `src/utils/` or `src/models/`.
 

@@ -4,9 +4,9 @@ Run this per changed Python file that uses a database session, a model, or a mig
 
 ## Sessions & transactions
 - [ ] SQL-01 Sessions come from a dependency function and are passed in as parameters; no global session
-- [ ] SQL-02 Each unit of work starts an explicit transaction before its first query and keeps the transaction object
-- [ ] SQL-03 Commit and rollback go through the transaction object; no `session.rollback()`, and no scattered `session.commit()`
-- [ ] SQL-04 Partial failures use a savepoint (`begin_nested()`), not a second top-level transaction
+- [ ] SQL-02 The unit of work (the request's session dependency, or the job function) owns one explicit transaction and commits or rolls it back through the transaction object
+- [ ] SQL-03 No `session.rollback()`, and managers never call `session.commit()` or `session.begin()`
+- [ ] SQL-04 Expected failures (e.g. constraints) use a savepoint opened with `begin_nested()` **before** the objects are changed, and roll back with `savepoint.rollback()`
 
 ## Queries
 - [ ] SQL-10 No SQL built with f-strings, `%`, or concatenation; raw SQL uses `text()` with bound parameters

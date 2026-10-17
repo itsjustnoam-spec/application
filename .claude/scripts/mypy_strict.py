@@ -18,6 +18,10 @@ from check_python_conventions import FUNCTION_NODE_TYPES, function_returns_value
 # ----- Consts ----- #
 
 MISSING_RETURN_MESSAGE = "Function is missing a return type annotation"
+UNTYPED_CALL_PATTERN = re.compile(
+    r'Call to untyped function "(?P<name>[^"]+)" in typed context',
+)
+SKIPPED_DIRECTORY_NAMES = {".venv", "node_modules", ".git"}
 MYPY_LINE_PATTERN = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?:\d+:)? (?P<severity>error|note): ",
 )
@@ -69,15 +73,90 @@ def find_none_returning_lines(path: Path) -> set[int]:
     return function_lines
 
 
+def is_unannotated_none_returning(
+    function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """
+    Tells whether a function has no annotations at all and returns nothing.
+
+    :param function_node: The function to inspect.
+    :return: True when mypy sees the function as untyped only because the
+        convention omits "-> None".
+    """
+    if function_node.returns is not None:
+        return False
+
+    arguments = [
+        *function_node.args.posonlyargs,
+        *function_node.args.args,
+        *function_node.args.kwonlyargs,
+    ]
+    if any(
+        argument.annotation is not None
+        for argument in arguments
+    ):
+        return False
+
+    return not function_returns_value(function_node)
+
+
+def find_untyped_none_returning_names(root: Path) -> set[str]:
+    """
+    Collects the names of functions that mypy calls untyped only because of the
+    no "-> None" convention.
+
+    :param root: The directory whose Python files are scanned.
+    :return: The names of functions without annotations that return nothing.
+    """
+    function_names: set[str] = set()
+    for python_file in root.rglob("*.py"):
+        if SKIPPED_DIRECTORY_NAMES.intersection(python_file.parts):
+            continue
+
+        try:
+            source = python_file.read_text(encoding="utf-8-sig")
+            tree = ast.parse(source)
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            continue
+
+        for node in ast.walk(tree):
+            if not isinstance(node, FUNCTION_NODE_TYPES):
+                continue
+
+            if is_unannotated_none_returning(node):
+                function_names.add(node.name)
+
+    return function_names
+
+
+def is_convention_untyped_call(
+    output_line: str,
+    function_names: set[str],
+) -> bool:
+    """
+    Tells whether a mypy line reports a call to a convention-untyped function.
+
+    :param output_line: One line of mypy output.
+    :param function_names: Names from find_untyped_none_returning_names.
+    :return: True when the error only exists because "-> None" is omitted.
+    """
+    call_match = UNTYPED_CALL_PATTERN.search(output_line)
+    if call_match is None:
+        return False
+
+    return call_match.group("name") in function_names
+
+
 def filter_mypy_output(output_lines: list[str]) -> list[str]:
     """
-    Removes missing-return-annotation errors (and their notes) on functions that return nothing.
+    Removes the errors that only exist because functions returning nothing omit "-> None".
 
     :param output_lines: Raw mypy output lines.
     :return: The output lines that still matter.
     """
     function_lines_by_path: dict[str, set[int]] = {}
     suppressed_locations: set[tuple[str, str]] = set()
+    untyped_names = find_untyped_none_returning_names(Path.cwd())
     kept_lines: list[str] = []
     for output_line in output_lines:
         line_match = MYPY_LINE_PATTERN.match(output_line)
@@ -89,6 +168,9 @@ def filter_mypy_output(output_lines: list[str]) -> list[str]:
         location = (file_name, line_match.group("line"))
         is_note = line_match.group("severity") == "note"
         if is_note and location in suppressed_locations:
+            continue
+
+        if is_convention_untyped_call(output_line, untyped_names):
             continue
 
         if MISSING_RETURN_MESSAGE not in output_line:
