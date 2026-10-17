@@ -151,6 +151,7 @@ def test_check_python_file_empty_file_returns_no_violations(write_python_file: C
     ("class Asset(SQLModel, table=True):\n    __table_args__ = ()\n    name: str\n", "PY-31"),
     ("def save_entity(entity: int):\n    print(entity)\n", "PY-35"),
     ("class Store:\n    def count_items(self) -> int:\n        return 1\n", "PY-35"),
+    ('def run_jobs():\n    """\n    Runs jobs.\n    """\n\n    def run_one():\n        print(1)\n\n    run_one()\n', "PY-35"),
     ("def save_entity(q: str):\n    print(q)\n", "PY-36"),
     ("try:\n    save()\nexcept OSError as e:\n    print(e)\n", "PY-36"),
     ("db = connect()\n", "PY-36"),

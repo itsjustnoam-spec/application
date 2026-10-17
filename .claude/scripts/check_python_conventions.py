@@ -1153,17 +1153,12 @@ def check_blank_line_after_if(
     return violations
 
 
-def check_function_docstrings(
-    path: Path,
-    tree: ast.Module,
-    parents: dict[ast.AST, ast.AST],
-) -> list[Violation]:
+def check_function_docstrings(path: Path, tree: ast.Module) -> list[Violation]:
     """
-    Checks that every module-level function and method has a docstring.
+    Checks that every function and method has a docstring (except __init__).
 
     :param path: The file being checked.
     :param tree: The parsed module.
-    :param parents: Child-to-parent node map of the module.
     :return: One violation per function without a docstring.
     """
     violations: list[Violation] = []
@@ -1172,10 +1167,6 @@ def check_function_docstrings(
             continue
 
         if node.name == "__init__":
-            continue
-
-        parent = parents.get(node)
-        if not isinstance(parent, (ast.Module, ast.ClassDef)):
             continue
 
         if get_docstring_node(node) is not None:
@@ -1599,11 +1590,7 @@ def check_python_file(path: Path) -> list[Violation]:
         violations += check_session_writes_in_tests(path, tree)
 
     if not is_test_file(path):
-        violations += check_function_docstrings(
-            path,
-            tree,
-            parents,
-        )
+        violations += check_function_docstrings(path, tree)
         violations += check_parameter_annotations(
             path,
             tree,

@@ -180,7 +180,7 @@ DOCSTRING EXPLANATION
 
 - **Always On Separate Lines**: Opening `"""` and closing `"""` must **always** be on their own separate lines (never placed on the same line as the description or content). This applies universally across all docstrings (functions, classes, modules, and exceptions).
 - **No empty lines between fields**: `:param:`, `:return:`, and `:raises:` must appear on consecutive lines with zero blank lines between them.
-- **Every function has a docstring**: every function and method in application code has one, including small helpers, managers, and endpoints. Exceptions: `__init__`, functions nested inside another function, and test functions and fixtures (their names explain them).
+- **Every function has a docstring**: every function and method in application code has one, including small helpers, managers, and endpoints. Exceptions: `__init__`, and test functions and fixtures (their names explain them).
 - **Which fields**: functions with business logic get `:param:`, `:return:` (when they return a value), and `:raises:` (when they raise). Small helpers without business logic may have only the description.
 - **Never mention past implementations**: Explain *why* the code works this way *now*, never what it used to do.
 - **Description Sentence**: The description is a short, concise sentence explaining what the function does, ending with a period (`.`). It must **never** mention raising errors (e.g. no "or raise an error if not found"). Exceptions are documented exclusively in `:raises:`.
@@ -295,7 +295,6 @@ class AssetType(SQLModel, table=True):
 ## 8. Configuration (`.env`)
 
 - **URLs, hosts, ports, database names, credentials, API keys, and every other environment-specific value** are stored in the service's `.env` file and read through the service's settings module. Never hardcode them in code, tests, or compose files when they can come from `.env`.
-- When you add a key, also add it to `.env.example` (create it if missing) with a placeholder value, so others know it exists. `.env` itself stays gitignored.
 
 ---
 

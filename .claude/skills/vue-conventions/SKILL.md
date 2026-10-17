@@ -225,7 +225,7 @@ The same applies to self-closing components: each attribute on its own line, and
   - **Boolean Exception**: Only when a variable is strictly of type `boolean` (`true` or `false`), you may use `if (test)` or `if (!test)`.
 - **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants.
 - **Strings**: **large strings** (long messages, long URLs paths, multi-line text) become named constants. **Short strings** (labels, keys, short messages, single words) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower.
-- **Configuration in `.env`**: API base URLs, links to other systems, ports, keys, and every other environment-specific value live in the app's `.env` files (`VITE_*`) and are read through `import.meta.env` in one config module. Never hardcode them. Add each new key to `.env.example` with a placeholder.
+- **Configuration in `.env`**: API base URLs, links to other systems, ports, keys, and every other environment-specific value live in the app's `.env` files (`VITE_*`) and are read through `import.meta.env` in one config module. Never hardcode them.
 - **Exports at the bottom**: never export at the declaration (`export const`, `export function`, `export interface`, `export type`, `export enum`, `export class`). Declare everything first, then end the file (or the `<script lang="ts">` block) with one export section:
   ```ts
   const fetchEntities = async (): Promise<Entity[]> => { /* ... */ }

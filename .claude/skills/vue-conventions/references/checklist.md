@@ -40,7 +40,7 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-24 Docstrings only for complex math or non-obvious integrations
 - [ ] VU-25 No trailing `return` in functions that return nothing, and no `return undefined`/`return null` to mean "nothing"
 - [ ] VU-28 No export at the declaration (`export const/function/interface/type/enum/class`). One export section at the bottom of the file or `<script lang="ts">` block (`export default` only where a tool requires it).
-- [ ] VU-29 URLs, links, ports, and keys come from `.env` (`VITE_*` via `import.meta.env`), never hardcoded. New keys are in `.env.example`.
+- [ ] VU-29 URLs, links, ports, and keys come from `.env` (`VITE_*` via `import.meta.env`), never hardcoded.
 
 ## Tests
 - [ ] VU-26 Shared code and important behavior are covered per `vitest-conventions` (no tests for one-off presentational details)

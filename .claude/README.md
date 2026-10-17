@@ -32,7 +32,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
 | `skills/vitest-conventions` | Frontend component tests (Vue Test Utils) and integration tests (real store/router + MSW) |
 | `skills/browser-test-conventions` | Playwright browser tests with a fully mocked backend |
-| `skills/sql-conventions` | Sessions, explicit transactions (`transaction.rollback()`), queries, constraints, migrations |
+| `skills/sql-conventions` | Explicit transactions, rolled back with `transaction.rollback()` (never `session.rollback()`) |
 | `agents/review-test-plan.md` | One-pass review of `test-plan.md` before tests are written |
 | `skills/backend-test-infra` | Integration vs API layers; Postgres, Mongo, proxy, RabbitMQ, Temporal test setup |
 | `skills/git-worktree` | Creating, entering, setting up, and removing a worktree per feature, for parallel work |
