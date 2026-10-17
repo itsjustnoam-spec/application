@@ -1,0 +1,89 @@
+name: fieldops
+
+services:
+  juniper:
+    build: ./web/juniper
+    ports:
+      - "8000:8000"
+    environment:
+      ATLAS_SERVICE_URL: http://atlas:8000
+      ORION_SERVICE_URL: http://orion:8000
+    depends_on:
+      - atlas
+      - orion
+
+  atlas:
+    build: ./services/atlas
+    environment:
+      DATABASE_URL: postgresql+psycopg://fieldops:fieldops@postgres:5432/fieldops
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  orion:
+    build: ./services/orion
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      MONGO_DATABASE_NAME: fieldops_documents
+    depends_on:
+      - mongo
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: fieldops
+      POSTGRES_PASSWORD: fieldops
+      POSTGRES_DB: fieldops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldops -d fieldops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongo:
+    image: mongo:8
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: fieldops
+      POSTGRES_PWD: fieldops
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "7233:7233"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8233:8080"
+    depends_on:
+      - temporal
+
+volumes:
+  postgres-data:
+  mongo-data:
+  rabbitmq-data:
