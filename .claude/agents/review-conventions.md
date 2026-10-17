@@ -13,10 +13,10 @@ You check **conventions only**. Not bugs, not spec coverage, not test quality. O
 
 ## Steps
 1. List changed files: `git diff --name-only <base>` plus `git ls-files --others --exclude-standard` (new files). Ignore files under `docs/features/`.
-2. **Run the convention checker first:** `python .claude/scripts/check_python_conventions.py <changed .py files>`. Every violation it prints is a finding (severity `major`), with the rule ID it gives. Then do the judgment items of the checklists by hand.
+2. **Run the automatic checks first:** `python .claude/scripts/check_python_conventions.py <changed .py files>`, and the project's eslint on the changed `.vue` and `.ts` files. Every violation they print is a finding (severity `major`), with the rule ID the checker gives (or the eslint rule name). Then do the judgment items of the checklists by hand.
 3. Pick the checklist(s) for each file:
    - `*.py` (not tests): the `python-conventions` skill's `references/checklist.md`, plus the `sql-conventions` checklist for files that use a database session, a model, or a migration
-   - Python test files (`tests/**`, `test_*.py`, `conftest.py`): the `pytest-conventions` checklist **and** the typing and exception items of the python checklist
+   - Python test files (`tests/**`, `test_*.py`, `conftest.py`): the `pytest-conventions` checklist **and** every item of the python checklist except the ones its header exempts for test files
    - `*.vue`, `*.ts` (not tests): the `vue-conventions` checklist
    - `tests/unit/**` and `tests/integration/**` `*.spec.ts` / `*.test.ts`: the `vitest-conventions` checklist
    - `tests/e2e/**` `*.spec.ts`: the `browser-test-conventions` checklist

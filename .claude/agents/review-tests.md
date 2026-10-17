@@ -21,6 +21,7 @@ You review **the tests**: whether they exist as planned, cover the new code, and
    - **Frontend over-testing**: flag tests of single-use presentational components, labels, styling, or every loading/empty state (see `vitest-conventions`, "What Gets a Frontend Test") as `minor`, with the fix "remove".
    - **Backend tests that shouldn't exist**: tests of migrations, or tests that only check which input a model or schema accepts. Flag them as `major`, with the fix "remove".
    - Backend test layout: `tests/<domain>/test_<operation>_<domain>.py`, manager and API tests of one operation in the same file, and no `session.add/commit/delete/execute` in test bodies.
+   - Backend test data: every object a test relies on but doesn't test comes from the `env` fixture in `tests/conftest.py`. No `make_*` factories, and a domain `conftest.py` creates no objects. The object under test is created through the app's managers or the API.
 5. **Layer discipline:** each test really is the layer it claims to be.
    - `fe-component`: uses `mount` (not `shallowMount`) and mocks only the app's API module and store actions.
    - `fe-integration`: real Pinia (actions not stubbed), real memory router, **no `vi.mock` of app modules**, network only through MSW, and mutation handlers that validate payloads.

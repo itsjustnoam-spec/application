@@ -55,9 +55,9 @@ From here on: **no questions to the user.**
 ## Phase 4: Implement
 For each task in `plan.md`, in order:
 1. Open the task's pattern reference file and mirror its structure.
-2. Load the relevant conventions skill (`python-conventions` / `vue-conventions`) before writing code in that stack.
+2. Load the relevant conventions skill (`python-conventions` / `vue-conventions`) before writing code in that stack, and `sql-conventions` when the task touches a database session, a model, or a migration.
 3. Implement the task. The post-edit hook reports convention and lint problems after every edit. Fix them immediately.
-4. Run the task's `Verify` command, plus the existing tests of the touched service (regressions only: don't write new tests yet). For Python, also run `uv run mypy --strict` on the changed package, and ignore only "missing return type annotation" errors on functions that return nothing.
+4. Run the task's `Verify` command, plus the existing tests of the touched service (regressions only: don't write new tests yet). For Python, also run `python .claude/scripts/mypy_strict.py <changed package>` and fix everything it reports. For the frontend, run the project's eslint on the changed `.vue` and `.ts` files and fix everything it reports.
 5. Tick the task in `progress.md` and record the check results. Commit if the git strategy says "per task".
 6. If the spec doesn't cover a situation, choose the most conservative option consistent with the spec, add a `DEV-n` line under "Deviations", and continue.
 
@@ -75,8 +75,8 @@ Set `Phase: TESTS`. Write exactly the planned tests, layer by layer, loading the
 - `fe-integration`: `vitest-conventions` + its `references/integration-tests.md`
 - `browser`: `browser-test-conventions`
 
-If the shared frontend test infrastructure is missing (mount helper, MSW server and handlers, factories, the Playwright `fixtures.ts`), create it first, exactly as the skills describe. If the hook blocks a test because it isn't in the plan, add the row to `test-plan.md` first (with a reason), then write the test.
-Run each layer (commands are in the root `CLAUDE.md`): pytest + diff-cover (backend changed-line coverage), Vitest, and Playwright. Then run `python .claude/scripts/check_python_conventions.py` on every changed Python file (`git diff --name-only <base>` plus untracked files), and fix everything it reports. The frontend has no coverage gate. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
+If the hook blocks a test because it isn't in the plan, add the row to `test-plan.md` first (with a reason), then write the test.
+Run each layer (commands are in the root `CLAUDE.md`): pytest + diff-cover (backend changed-line coverage), Vitest, and Playwright. Then run `python .claude/scripts/check_python_conventions.py` on every changed Python file, and the project's eslint on every changed frontend file (`git diff --name-only <base>` plus untracked files), and fix everything they report. The frontend has no coverage gate. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
 
 ## Phase 7: Review (round 1)
 Set `Phase: REVIEW-ROUND-1`. Run these four agents **in parallel**, giving each the feature directory, `<base>`, and the review directory `docs/features/<slug>/review/round-1/`:

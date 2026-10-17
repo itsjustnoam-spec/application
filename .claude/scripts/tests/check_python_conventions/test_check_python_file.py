@@ -258,6 +258,8 @@ def test_check_python_file_syntax_error_reports_syntax_rule(write_python_file: C
     "STATUSES = frozenset(\n    {\n        AssetStatus.OUT_OF_SERVICE,\n        AssetStatus.RETIRED,\n    },\n)\n",
     "handlers: dict[str, Callable[[int, str], bool]] = {}\n",
     "NAMES = ['single']\n",
+    "NAMES = ['North', 'South']\n",
+    "assert names == ['Compressor', 'Pump ABC']\n",
 ])
 def test_check_python_file_compliant_snippet_reports_nothing(
     write_python_file: Callable[..., Path],

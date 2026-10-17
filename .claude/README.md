@@ -23,7 +23,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 
 | Path | What |
 |---|---|
-| `settings.json` | Hooks: post-edit convention/lint check, test-plan guard |
+| `settings.json` | Hooks: post-edit convention/lint check, test-plan guard, and a Stop hook that keeps a run going until `Phase: DONE` |
 | `commands/feature.md` | The orchestrator (`/feature`) |
 | `commands/retro.md` | End-of-session retrospective → improvements document (`/retro`) |
 | `commands/review-mrs.md` | Learns from GitLab merge requests via the GitLab MCP → improvements document (`/review-mrs`) |
@@ -45,7 +45,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 
 ## Setup
 
-1. **Requirements:** `python` (3.10+) on PATH for the hooks. Per Python service: `uv`, plus `ruff`, `mypy`, `pytest-cov`, and `diff-cover` as dev dependencies. Frontend: Vitest + Vue Test Utils + MSW + `@pinia/testing` (see `skills/vitest-conventions` §7) and Playwright (see `skills/browser-test-conventions` §7).
+1. **Requirements:** `python` (3.10+) on PATH for the hooks. Per Python service: `uv`, plus `ruff`, `mypy`, `pytest-cov`, and `diff-cover` as dev dependencies. Frontend: ESLint, Vitest + Vue Test Utils + MSW + `@pinia/testing`, and Playwright, already set up in the project.
 2. **Run from the project root:** `claude`. The first time, Claude Code asks you to trust the folder; the hooks in `settings.json` only run after you accept.
 3. **Keep a root `CLAUDE.md`** with the architecture, where things live, and the run/test commands. `/feature` reads it, and `/retro` recommends additions to it over time.
 
@@ -69,7 +69,7 @@ The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) o
 ## What the hooks do
 
 - **After every Write/Edit**
-  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, a docstring on every function, no short or abbreviated names, no dependencies stored in constants, multi-line comprehensions, `pass` in empty classes, no `session.rollback()`, BOM; in test files: no page docstring or banners, and no `session.add/commit/...`; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH. Files outside the project (Claude's scratch scripts) are skipped.
+  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, a docstring on every function, no short or abbreviated names, no dependencies stored in constants, multi-line comprehensions, `pass` in empty classes, no `session.rollback()`, imperative-mood descriptions, `Whether ...` boolean returns, `StrEnum` for string enums, one item per line in list and set literals, BOM; in test files: no page docstring or banners, no `session.add/commit/...`, and no object creation outside the `env` fixture; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH. Files outside the project (Claude's scratch scripts) are skipped.
   - `.vue`/`.ts`: runs the project's `eslint` if one is installed in `node_modules`.
   - Problems are sent back to Claude (exit code 2) so it fixes them right away.
 - **Before every Write/Edit to a test file:** while a feature is active (`docs/features/.active`), it blocks adding a pytest, Vitest, or Playwright test whose name isn't in that feature's `test-plan.md`. Edits to existing tests are allowed. Outside the workflow, the guard does nothing.

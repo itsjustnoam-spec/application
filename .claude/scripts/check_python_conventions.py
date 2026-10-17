@@ -105,6 +105,7 @@ BOOLEAN_RETURN_WORDS = ("true", "false")
 ENUM_BASE_NAME = "Enum"
 STR_BASE_NAME = "str"
 COLLECTION_LITERAL_TYPES = (ast.List, ast.Set)
+SMALL_COLLECTION_MAX_LENGTH = 30
 SELF_ARGUMENT_NAMES = ("self", "cls")
 EXCEPTION_NAME_SUFFIXES = ("Error", "Exception")
 FUNCTION_NODE_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef)
@@ -1717,6 +1718,20 @@ def is_inside_annotation(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool
     return False
 
 
+def is_small_collection(node: ast.List | ast.Set) -> bool:
+    """
+    Check whether a list or set literal is small enough to stay on one line.
+
+    :param node: The list or set literal.
+    :return: Whether the literal is on one line and at most the small length.
+    """
+    if node.end_lineno != node.lineno or node.end_col_offset is None:
+        return False
+
+    literal_length = node.end_col_offset - node.col_offset
+    return literal_length <= SMALL_COLLECTION_MAX_LENGTH
+
+
 def is_collection_exploded(node: ast.List | ast.Set) -> bool:
     """
     Check whether every item of a list or set literal is on its own line.
@@ -1759,7 +1774,7 @@ def check_collection_literals(
         if len(node.elts) < 2 or is_inside_annotation(node, parents):
             continue
 
-        if is_collection_exploded(node):
+        if is_collection_exploded(node) or is_small_collection(node):
             continue
 
         violation = Violation(

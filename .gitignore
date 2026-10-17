@@ -9,6 +9,7 @@ coverage/
 docs/features/
 docs/improvements/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 .env
 .env.*
 !.env.example

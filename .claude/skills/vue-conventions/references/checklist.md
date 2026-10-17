@@ -6,6 +6,7 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-01 Components are small and focused, and large views are split into subcomponents
 - [ ] VU-02 No component has `v-dialog` as its root. Dialog content is its own card component, wrapped in `v-dialog` by the parent.
 - [ ] VU-03 Logic, helpers, and interfaces used in more than one place are in `src/utils/` or `src/models/`
+- [ ] VU-30 No condition repeats what a parent already guarantees (e.g. no `v-if="isOpen"` inside a `v-dialog` bound to `isOpen`)
 - [ ] VU-32 `.vue` files export nothing (no `export` in either script block); shared types, constants, and helpers live in `src/utils/`, `src/models/`, or their own module
 
 ## SFC structure
@@ -26,6 +27,7 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-13 Paginated or lazy lists use the generic loadable resource (`v-infinite-scroll`)
 - [ ] VU-14 Network errors go through `handleNetworkError`
 - [ ] VU-15 Important titles and primary actions are centered
+- [ ] VU-31 Elements with more than one attribute have one attribute per line, with `>` / `/>`, text content, and the closing tag each on their own line
 
 ## Styling
 - [ ] VU-16 No hardcoded colors. Uses Vuetify theme colors.
@@ -48,5 +50,3 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-29 URLs, links, ports, and keys come from `.env` (`VITE_*` via `import.meta.env`), never hardcoded.
 
 ## Tests
-- [ ] VU-30 No condition repeats what a parent already guarantees (e.g. no `v-if="isOpen"` inside a `v-dialog` bound to `isOpen`)
-- [ ] VU-31 Elements with more than one attribute have one attribute per line, with `>` / `/>`, text content, and the closing tag each on their own line

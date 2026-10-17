@@ -1,6 +1,6 @@
 # Python Conventions Checklist
 
-Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16, PY-35, and PY-02. Test files are exempt from PY-07 to PY-12, PY-35, PY-41, and PY-42.
+Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16, PY-35, and PY-02. Test files are exempt from PY-07 to PY-12, PY-17 to PY-21, PY-24, PY-35, PY-41, and PY-42.
 
 Run `python .claude/scripts/check_python_conventions.py <files>` first: it checks every item marked (auto). Copy its result for those items, then judge the rest. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
 
@@ -59,7 +59,7 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 
 ## Calls
 - [ ] PY-24 Calls with 3+ arguments, or whose single-line form would make the line 70+ characters (indentation included), have one argument per line and a trailing comma
-- [ ] PY-44 (auto) List and set literals with two or more items have one item per line, brackets on their own lines, and a trailing comma
+- [ ] PY-44 (auto) List and set literals with two or more items have one item per line, brackets on their own lines, and a trailing comma (a literal of at most 30 characters may stay on one line)
 
 ## Exceptions
 - [ ] PY-25 No raising of builtin exceptions (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, …)

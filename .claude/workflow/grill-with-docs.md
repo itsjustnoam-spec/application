@@ -39,7 +39,7 @@ Go through every item and mark it covered or N/A in the notes. The order is a su
 - [ ] Patterns: for every inconsistency `I-n` in `patterns.md`, which side to follow, and confirmation of every pattern that will be reused
 - [ ] Non-goals: what explicitly won't be built
 - [ ] Backward compatibility: existing clients, existing data, other services' consumers
-- [ ] Tests: anything special beyond the defaults (backend: integration + API layers; frontend: component + integration in Vitest; ~100% of new code). Which **user journeys** deserve a browser test (Playwright, mocked backend)? Recommend one happy path per new journey plus its main failure.
+- [ ] Tests: anything special beyond the defaults (backend: integration + API layers, 100% of new code; frontend: only shared code and important behavior, with no coverage target). Which **user journeys** deserve a browser test (Playwright, mocked backend)? Recommend one happy path per new journey plus its main failure.
 - [ ] Missing tooling from `context.md` (e.g. diff-cover): add it as part of this feature, or skip that check?
 - [ ] Git: the remote branch name (default `feature/<slug>`; in a worktree the local branch is `worktree-<slug>` and is pushed with `git push -u origin HEAD:feature/<slug>`), commit per task or one commit at the end, open an MR or not
 

@@ -254,7 +254,9 @@ raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 ```
 
 ### Collection literals
-A list or set written with its items (two or more) puts each item on its own line, with the brackets on their own lines and a trailing comma after the last item. This applies inside calls too (e.g. a set passed to `frozenset(...)`). Comprehensions follow §10.
+A list or set written with its items (two or more) puts each item on its own line, with the brackets on their own lines and a trailing comma after the last item. This applies inside calls too (e.g. a set passed to `frozenset(...)`), and in tests. Comprehensions follow §10.
+
+The only exception is a really small literal, at most 30 characters from bracket to bracket (e.g. `["A", "B"]`, `{1, 2}`), which may stay on one line. Not sure whether it's small enough? Put each item on its own line.
 
 ```python
 # GOOD:
