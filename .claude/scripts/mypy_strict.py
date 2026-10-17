@@ -30,6 +30,9 @@ MYPY_ARGUMENTS = ["--strict", "--show-error-codes", "--no-error-summary", "--no-
 
 
 def build_mypy_command(mypy_arguments: list[str]) -> list[str]:
+    """
+    Builds the mypy command, preferring uv, then mypy, then python -m mypy.
+    """
     if shutil.which("uv") is not None:
         return ["uv", "run", "mypy", *MYPY_ARGUMENTS, *mypy_arguments]
 
@@ -59,7 +62,10 @@ def find_none_returning_lines(path: Path) -> set[int]:
             continue
 
         function_lines.add(node.lineno)
-        function_lines.update(decorator.lineno for decorator in node.decorator_list)
+        function_lines.update(
+            decorator.lineno
+            for decorator in node.decorator_list
+        )
     return function_lines
 
 
@@ -103,6 +109,9 @@ def filter_mypy_output(output_lines: list[str]) -> list[str]:
 
 
 def main() -> int:
+    """
+    Runs mypy --strict and prints the errors that matter.
+    """
     mypy_arguments = sys.argv[1:] if len(sys.argv) > 1 else ["."]
     completed = subprocess.run(
         build_mypy_command(mypy_arguments),
@@ -113,14 +122,21 @@ def main() -> int:
         errors="replace",
     )
     output_lines = completed.stdout.splitlines()
-    has_mypy_findings = any(MYPY_LINE_PATTERN.match(output_line) is not None for output_line in output_lines)
+    has_mypy_findings = any(
+        MYPY_LINE_PATTERN.match(output_line) is not None
+        for output_line in output_lines
+    )
     if completed.returncode not in (0, 1) or (completed.returncode == 1 and not has_mypy_findings):
         sys.stderr.write(MYPY_UNAVAILABLE_MESSAGE)
         sys.stderr.write(completed.stdout + completed.stderr)
         return MYPY_UNAVAILABLE_EXIT_CODE
 
     kept_lines = filter_mypy_output(output_lines)
-    error_count = sum(1 for kept_line in kept_lines if ": error: " in kept_line)
+    error_count = sum(
+        1
+        for kept_line in kept_lines
+        if ": error: " in kept_line
+    )
     for kept_line in kept_lines:
         print(kept_line)
     if error_count == 0:

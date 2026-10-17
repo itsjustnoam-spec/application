@@ -38,6 +38,63 @@ MULTILINE_CALL_MIN_LINE_LENGTH = 70
 MIGRATION_DIRECTORY_NAMES = ("migrations", "versions")
 TABLE_NAME_ATTRIBUTE = "__tablename__"
 TABLE_ARGS_ATTRIBUTE = "__table_args__"
+SHORT_NAME_ALLOWLIST = {"_"}
+ABBREVIATED_NAMES = {
+    "arr",
+    "cfg",
+    "cnt",
+    "conn",
+    "ctx",
+    "db",
+    "dct",
+    "err",
+    "ex",
+    "idx",
+    "lst",
+    "msg",
+    "num",
+    "obj",
+    "qry",
+    "req",
+    "res",
+    "resp",
+    "sess",
+    "tmp",
+    "val",
+}
+SINGLE_TARGET_NODE_TYPES = (
+    ast.AnnAssign,
+    ast.AugAssign,
+    ast.NamedExpr,
+    ast.For,
+    ast.AsyncFor,
+    ast.comprehension,
+)
+ASSIGNMENT_NODE_TYPES = (ast.Assign, ast.AnnAssign)
+SINGLE_ELEMENT_COMPREHENSION_TYPES = (
+    ast.ListComp,
+    ast.SetComp,
+    ast.GeneratorExp,
+)
+COMPREHENSION_NODE_TYPES = (
+    ast.ListComp,
+    ast.SetComp,
+    ast.DictComp,
+    ast.GeneratorExp,
+)
+DEPENDS_NAME = "Depends"
+SESSION_NAME_PART = "session"
+ROLLBACK_METHOD = "rollback"
+SESSION_WRITE_METHODS = {
+    "add",
+    "add_all",
+    "commit",
+    "delete",
+    "execute",
+    "flush",
+    "merge",
+}
+CONFTEST_FILE_NAME = "conftest.py"
 SELF_ARGUMENT_NAMES = ("self", "cls")
 EXCEPTION_NAME_SUFFIXES = ("Error", "Exception")
 FUNCTION_NODE_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef)
@@ -63,31 +120,52 @@ class Violation:
     message: str
 
     def format_for_output(self) -> str:
+        """
+        Formats the violation as 'path:line: RULE message'.
+        """
         return f"{self.path}:{self.line}: {self.rule_id} {self.message}"
 
 # ----- Functions ----- #
 
 
 def is_test_file(path: Path) -> bool:
+    """
+    Tells whether a file is a test module, a conftest, or under tests/.
+    """
     is_conftest = path.name == "conftest.py"
     is_test_module = path.name.startswith("test_") or is_conftest
     return is_test_module or "tests" in path.parts
 
 
 def is_migration_file(path: Path) -> bool:
-    return any(part in MIGRATION_DIRECTORY_NAMES for part in path.parts[:-1])
+    """
+    Tells whether a file is a generated migration.
+    """
+    return any(
+        part in MIGRATION_DIRECTORY_NAMES
+        for part in path.parts[:-1]
+    )
 
 
 def is_call(node: ast.AST) -> TypeGuard[ast.Call]:
+    """
+    Tells whether a node is a function call.
+    """
     return isinstance(node, ast.Call)
 
 
 def is_docstring_field(docstring_line: str) -> bool:
+    """
+    Tells whether a docstring line starts a :param, :return, or :raises field.
+    """
     stripped_line = docstring_line.strip()
     return stripped_line.startswith(DOCSTRING_FIELD_PREFIXES)
 
 
 def is_single_generator_call(node: ast.Call) -> bool:
+    """
+    Tells whether a call's only argument is a generator expression.
+    """
     if len(node.args) != 1 or len(node.keywords) > 0:
         return False
 
@@ -95,6 +173,9 @@ def is_single_generator_call(node: ast.Call) -> bool:
 
 
 def is_statement_block(block: object) -> TypeGuard[list[ast.stmt]]:
+    """
+    Tells whether a value is a non-empty list of statements.
+    """
     if not isinstance(block, list) or len(block) == 0:
         return False
 
@@ -102,6 +183,9 @@ def is_statement_block(block: object) -> TypeGuard[list[ast.stmt]]:
 
 
 def is_trailing_bare_return(statement: ast.stmt) -> bool:
+    """
+    Tells whether a statement is a bare return.
+    """
     if not isinstance(statement, ast.Return):
         return False
 
@@ -109,6 +193,9 @@ def is_trailing_bare_return(statement: ast.stmt) -> bool:
 
 
 def is_init_method(node: ast.AST) -> bool:
+    """
+    Tells whether a node is an __init__ method.
+    """
     if not isinstance(node, FUNCTION_NODE_TYPES):
         return False
 
@@ -116,6 +203,9 @@ def is_init_method(node: ast.AST) -> bool:
 
 
 def get_target_name(target: ast.expr) -> str | None:
+    """
+    Returns the variable name of an assignment target, when it's a plain name.
+    """
     if not isinstance(target, ast.Name):
         return None
 
@@ -123,6 +213,9 @@ def get_target_name(target: ast.expr) -> str | None:
 
 
 def get_argument_owner_line(parent: ast.AST, child: ast.AST) -> int | None:
+    """
+    Returns the line of the call that has the child as an argument.
+    """
     if not isinstance(parent, ast.Call) or child is parent.func:
         return None
 
@@ -130,6 +223,9 @@ def get_argument_owner_line(parent: ast.AST, child: ast.AST) -> int | None:
 
 
 def build_parent_map(tree: ast.AST) -> dict[ast.AST, ast.AST]:
+    """
+    Maps every node of a tree to its parent node.
+    """
     parents: dict[ast.AST, ast.AST] = {}
     for parent in ast.walk(tree):
         for child in ast.iter_child_nodes(parent):
@@ -157,6 +253,9 @@ def iter_own_body_nodes(function_node: ast.FunctionDef | ast.AsyncFunctionDef) -
 
 
 def is_none_constant(node: ast.AST | None) -> bool:
+    """
+    Tells whether a node is the constant None.
+    """
     return isinstance(node, ast.Constant) and node.value is None
 
 
@@ -180,6 +279,9 @@ def function_returns_value(function_node: ast.FunctionDef | ast.AsyncFunctionDef
 
 
 def get_called_name(node: ast.AST) -> str | None:
+    """
+    Returns the plain name of a called function or method.
+    """
     if isinstance(node, ast.Call):
         node = node.func
 
@@ -193,6 +295,9 @@ def get_called_name(node: ast.AST) -> str | None:
 
 
 def annotation_allows_none(annotation: ast.expr | None) -> bool:
+    """
+    Tells whether a return annotation allows None.
+    """
     if annotation is None:
         return False
 
@@ -204,6 +309,9 @@ def annotation_allows_none(annotation: ast.expr | None) -> bool:
 
 
 def get_docstring_node(node: ast.AST) -> ast.Constant | None:
+    """
+    Returns the docstring constant of a module, class, or function.
+    """
     body = getattr(
         node,
         "body",
@@ -227,6 +335,9 @@ def get_docstring_node(node: ast.AST) -> ast.Constant | None:
 
 
 def count_blank_lines_above(lines: list[str], index: int) -> int:
+    """
+    Counts the blank lines right above a line.
+    """
     blank_count = 0
     cursor = index - 1
     while cursor >= 0 and lines[cursor].strip() == "":
@@ -236,6 +347,9 @@ def count_blank_lines_above(lines: list[str], index: int) -> int:
 
 
 def count_blank_lines_below(lines: list[str], index: int) -> int:
+    """
+    Counts the blank lines right below a line.
+    """
     blank_count = 0
     cursor = index + 1
     while cursor < len(lines) and lines[cursor].strip() == "":
@@ -270,6 +384,9 @@ def read_source_segment(
 
 
 def check_encoding(path: Path, raw_source: bytes) -> list[Violation]:
+    """
+    Checks that the file doesn't start with a UTF-8 BOM.
+    """
     if not raw_source.startswith(UTF8_BOM):
         return []
 
@@ -287,6 +404,9 @@ def check_parameter_annotations(
     tree: ast.Module,
     parents: dict[ast.AST, ast.AST],
 ) -> list[Violation]:
+    """
+    Checks that every function parameter has a type annotation.
+    """
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, FUNCTION_NODE_TYPES):
@@ -318,6 +438,9 @@ def check_parameter_annotations(
 
 
 def check_none_returns(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks the -> None, return None, and trailing return rules.
+    """
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, FUNCTION_NODE_TYPES):
@@ -365,6 +488,9 @@ def check_none_returns(path: Path, tree: ast.Module) -> list[Violation]:
 
 
 def check_module_header(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks the page docstring with :author: and :date:.
+    """
     docstring_node = get_docstring_node(tree)
     if docstring_node is None or docstring_node.lineno != 1:
         violation = Violation(
@@ -433,7 +559,10 @@ def check_docstring_layout(
         return violations
 
     lines_between_fields = docstring_lines[field_indexes[0]:field_indexes[-1]]
-    if any(docstring_line.strip() == "" for docstring_line in lines_between_fields):
+    if any(
+        docstring_line.strip() == ""
+        for docstring_line in lines_between_fields
+    ):
         violation = Violation(
             path,
             docstring_node.lineno,
@@ -446,6 +575,9 @@ def check_docstring_layout(
 
 
 def check_docstrings(path: Path, tree: ast.Module, lines: list[str]) -> list[Violation]:
+    """
+    Checks the layout of every docstring in the module.
+    """
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, DOCSTRING_OWNER_NODE_TYPES):
@@ -473,6 +605,9 @@ def check_docstrings(path: Path, tree: ast.Module, lines: list[str]) -> list[Vio
 
 
 def find_docstring_end_line(tree: ast.Module) -> int | None:
+    """
+    Returns the last line of the page docstring.
+    """
     docstring_node = get_docstring_node(tree)
     if docstring_node is None or docstring_node.lineno != 1:
         return None
@@ -538,13 +673,62 @@ def check_banner_spacing(
     return violations
 
 
-def check_banners(path: Path, tree: ast.Module, lines: list[str]) -> list[Violation]:
-    violations: list[Violation] = []
-    docstring_end_line = find_docstring_end_line(tree)
-    for index, line in enumerate(lines):
-        if BANNER_LIKE_PATTERN.match(line) is None:
+def is_non_string_constant(node: ast.expr) -> bool:
+    """
+    Tells whether a node is a constant that isn't a string.
+    """
+    if not isinstance(node, ast.Constant):
+        return False
+
+    return not isinstance(node.value, str)
+
+
+def get_string_literal_lines(tree: ast.Module) -> set[int]:
+    """
+    Lists the line numbers that lie inside string literals.
+
+    :param tree: The parsed module.
+    :return: Every line number covered by a string constant or f-string.
+    """
+    string_lines: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Constant, ast.JoinedStr)):
             continue
 
+        if is_non_string_constant(node):
+            continue
+
+        last_line = node.end_lineno or node.lineno
+        string_lines.update(range(node.lineno, last_line + 1))
+
+    return string_lines
+
+
+def find_banner_line_indexes(tree: ast.Module, lines: list[str]) -> list[int]:
+    """
+    Finds the indexes of banner-like comment lines outside string literals.
+
+    :param tree: The parsed module.
+    :param lines: The file's source lines.
+    :return: The 0-based indexes of lines that look like section banners.
+    """
+    string_lines = get_string_literal_lines(tree)
+    return [
+        index
+        for index, line in enumerate(lines)
+        if BANNER_LIKE_PATTERN.match(line) is not None
+        and index + 1 not in string_lines
+    ]
+
+
+def check_banners(path: Path, tree: ast.Module, lines: list[str]) -> list[Violation]:
+    """
+    Checks the format and spacing of every section banner.
+    """
+    violations: list[Violation] = []
+    docstring_end_line = find_docstring_end_line(tree)
+    for index in find_banner_line_indexes(tree, lines):
+        line = lines[index]
         banner_match = BANNER_PATTERN.match(line)
         if banner_match is None:
             violation = Violation(
@@ -567,6 +751,9 @@ def check_banners(path: Path, tree: ast.Module, lines: list[str]) -> list[Violat
 
 
 def check_dunder_all(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks that the module doesn't define __all__.
+    """
     violations: list[Violation] = []
     for node in tree.body:
         targets: list[ast.expr] = []
@@ -588,6 +775,9 @@ def check_dunder_all(path: Path, tree: ast.Module) -> list[Violation]:
 
 
 def is_exception_base(base: ast.expr) -> bool:
+    """
+    Tells whether a base class is an exception.
+    """
     base_name = get_called_name(base)
     if base_name is None:
         return False
@@ -597,6 +787,9 @@ def is_exception_base(base: ast.expr) -> bool:
 
 
 def check_exceptions(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks the custom exception rules.
+    """
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Raise) and node.exc is not None:
@@ -616,7 +809,10 @@ def check_exceptions(path: Path, tree: ast.Module) -> list[Violation]:
         if node.name.endswith("Error"):
             continue
 
-        if any(is_exception_base(base) for base in node.bases):
+        if any(
+            is_exception_base(base)
+            for base in node.bases
+        ):
             violation = Violation(
                 path,
                 node.lineno,
@@ -628,6 +824,9 @@ def check_exceptions(path: Path, tree: ast.Module) -> list[Violation]:
 
 
 def is_inside_f_string(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool:
+    """
+    Tells whether a node is part of an f-string.
+    """
     current = parents.get(node)
     while current is not None:
         if isinstance(current, ast.JoinedStr):
@@ -658,6 +857,9 @@ def is_argument_of_call_on_same_line(node: ast.Call, parents: dict[ast.AST, ast.
 
 
 def get_call_arguments(node: ast.Call) -> list[ast.expr | ast.keyword]:
+    """
+    Returns a call's arguments in source order.
+    """
     arguments: list[ast.expr | ast.keyword] = [*node.args, *node.keywords]
     return sorted(
         arguments,
@@ -688,6 +890,9 @@ def call_requires_multiline(
     arguments: list[ast.expr | ast.keyword],
     line_bytes: list[bytes],
 ) -> bool:
+    """
+    Tells whether a call must have one argument per line.
+    """
     if len(arguments) >= MULTILINE_CALL_MIN_ARGUMENTS:
         return True
 
@@ -735,10 +940,17 @@ def check_multiline_calls(
     line_bytes: list[bytes],
     parents: dict[ast.AST, ast.AST],
 ) -> list[Violation]:
+    """
+    Checks that long calls have one argument per line.
+    """
     violations: list[Violation] = []
     reported_lines: set[int] = set()
     calls = sorted(
-        (node for node in ast.walk(tree) if is_call(node)),
+        (
+            node
+            for node in ast.walk(tree)
+            if is_call(node)
+        ),
         key=lambda call: (call.lineno, call.col_offset),
     )
     for node in calls:
@@ -789,6 +1001,9 @@ def check_class_docstring_spacing(
     tree: ast.Module,
     lines: list[str],
 ) -> list[Violation]:
+    """
+    Checks that no blank line follows a class docstring.
+    """
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.ClassDef) or len(node.body) < 2:
@@ -812,6 +1027,9 @@ def check_class_docstring_spacing(
 
 
 def is_table_model(node: ast.ClassDef) -> bool:
+    """
+    Tells whether a class is a table model (table=True).
+    """
     for keyword in node.keywords:
         if keyword.arg != "table":
             continue
@@ -825,6 +1043,9 @@ def is_table_model(node: ast.ClassDef) -> bool:
 
 
 def get_assigned_name(statement: ast.stmt) -> str | None:
+    """
+    Returns the name a statement assigns to, when it's a single plain name.
+    """
     if isinstance(statement, ast.Assign):
         if len(statement.targets) != 1:
             return None
@@ -858,7 +1079,10 @@ def check_table_model_layout(path: Path, tree: ast.Module) -> list[Violation]:
 
         has_docstring = get_docstring_node(node) is not None
         body = node.body[1:] if has_docstring else node.body
-        names = [get_assigned_name(statement) for statement in body]
+        names = [
+            get_assigned_name(statement)
+            for statement in body
+        ]
         if TABLE_NAME_ATTRIBUTE in names and names[0] != TABLE_NAME_ATTRIBUTE:
             violation = Violation(
                 path,
@@ -880,6 +1104,9 @@ def check_table_model_layout(path: Path, tree: ast.Module) -> list[Violation]:
 
 
 def iter_statement_blocks(tree: ast.Module) -> list[list[ast.stmt]]:
+    """
+    Lists every block of statements in the module.
+    """
     blocks: list[list[ast.stmt]] = []
     for node in ast.walk(tree):
         for field_name in ("body", "orelse", "finalbody"):
@@ -898,6 +1125,9 @@ def check_blank_line_after_if(
     tree: ast.Module,
     lines: list[str],
 ) -> list[Violation]:
+    """
+    Checks that a blank line follows every if block that has code after it.
+    """
     violations: list[Violation] = []
     for block in iter_statement_blocks(tree):
         for statement, next_statement in itertools.pairwise(block):
@@ -920,6 +1150,386 @@ def check_blank_line_after_if(
                 "Leave one blank line after an if block when more code follows it.",
             )
             violations.append(violation)
+    return violations
+
+
+def check_function_docstrings(
+    path: Path,
+    tree: ast.Module,
+    parents: dict[ast.AST, ast.AST],
+) -> list[Violation]:
+    """
+    Checks that every module-level function and method has a docstring.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :param parents: Child-to-parent node map of the module.
+    :return: One violation per function without a docstring.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, FUNCTION_NODE_TYPES):
+            continue
+
+        if node.name == "__init__":
+            continue
+
+        parent = parents.get(node)
+        if not isinstance(parent, (ast.Module, ast.ClassDef)):
+            continue
+
+        if get_docstring_node(node) is not None:
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-35",
+            f"'{node.name}' needs a docstring.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def is_short_name(name: str) -> bool:
+    """
+    Tells whether a name is a single letter or a known abbreviation.
+    """
+    if name in SHORT_NAME_ALLOWLIST:
+        return False
+
+    return len(name) == 1 or name in ABBREVIATED_NAMES
+
+
+def iter_bound_names(node: ast.AST) -> list[tuple[str, int]]:
+    """
+    Lists the names a node binds, with their lines.
+
+    :param node: Any AST node.
+    :return: The (name, line) pairs of the variables the node creates.
+    """
+    bound_names: list[tuple[str, int]] = []
+    targets: list[ast.AST] = []
+    if isinstance(node, ast.Assign):
+        targets = list(node.targets)
+    elif isinstance(node, SINGLE_TARGET_NODE_TYPES):
+        targets = [node.target]
+    elif isinstance(node, ast.withitem):
+        if node.optional_vars is not None:
+            targets = [node.optional_vars]
+
+    elif isinstance(node, ast.ExceptHandler):
+        if node.name is not None:
+            bound_names.append((node.name, node.lineno))
+
+    elif isinstance(node, ast.arg):
+        bound_names.append((node.arg, node.lineno))
+
+    for target in targets:
+        for target_node in ast.walk(target):
+            if not isinstance(target_node, ast.Name):
+                continue
+
+            bound_names.append((target_node.id, target_node.lineno))
+
+    return bound_names
+
+
+def check_short_names(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks that variables, parameters, and except names aren't abbreviated.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per short or abbreviated name.
+    """
+    violations: list[Violation] = []
+    reported: set[tuple[str, int]] = set()
+    for node in ast.walk(tree):
+        for name, line in iter_bound_names(node):
+            if not is_short_name(name) or (name, line) in reported:
+                continue
+
+            reported.add((name, line))
+            violation = Violation(
+                path,
+                line,
+                "PY-36",
+                f"'{name}' is too short or abbreviated: write the full word.",
+            )
+            violations.append(violation)
+    return violations
+
+
+def contains_depends_call(node: ast.AST) -> bool:
+    """
+    Tells whether an expression contains a FastAPI Depends(...) call.
+    """
+    for child in ast.walk(node):
+        if is_call(child) and get_called_name(child) == DEPENDS_NAME:
+            return True
+
+    return False
+
+
+def check_dependency_constants(
+    path: Path,
+    tree: ast.Module,
+) -> list[Violation]:
+    """
+    Checks that no module or class constant stores a dependency.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per constant or alias holding Depends(...).
+    """
+    violations: list[Violation] = []
+    containers: list[ast.Module | ast.ClassDef] = [tree]
+    containers.extend(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef)
+    )
+    for container in containers:
+        for statement in container.body:
+            if not isinstance(statement, ASSIGNMENT_NODE_TYPES):
+                continue
+
+            value = statement.value
+            if value is None or not contains_depends_call(value):
+                continue
+
+            violation = Violation(
+                path,
+                statement.lineno,
+                "PY-37",
+                "Don't store a dependency in a constant: call Depends(...) "
+                "in each endpoint's signature.",
+            )
+            violations.append(violation)
+    return violations
+
+
+def get_comprehension_parts(node: ast.expr) -> list[tuple[int, int]]:
+    """
+    Lists the (first line, last line) of each part of a comprehension.
+
+    :param node: A list, set, or dict comprehension or a generator expression.
+    :return: The expression, each for clause, and each if clause, in order.
+    """
+    parts: list[tuple[int, int]] = []
+    if isinstance(node, ast.DictComp):
+        value_end = node.value.end_lineno or 0
+        parts.append((node.key.lineno, value_end))
+    elif isinstance(node, SINGLE_ELEMENT_COMPREHENSION_TYPES):
+        element_end = node.elt.end_lineno or 0
+        parts.append((node.elt.lineno, element_end))
+
+    generators: list[ast.comprehension] = getattr(
+        node,
+        "generators",
+        [],
+    )
+    for generator in generators:
+        iterable_end = generator.iter.end_lineno or 0
+        parts.append((generator.target.lineno, iterable_end))
+        for condition in generator.ifs:
+            condition_end = condition.end_lineno or 0
+            parts.append((condition.lineno, condition_end))
+
+    return parts
+
+
+def is_comprehension_exploded(node: ast.expr) -> bool:
+    """
+    Tells whether every part of a comprehension starts on a new line.
+    """
+    previous_end = node.lineno
+    for first_line, last_line in get_comprehension_parts(node):
+        if first_line <= previous_end:
+            return False
+
+        previous_end = last_line
+
+    return (node.end_lineno or 0) > previous_end
+
+
+def check_comprehension_layout(
+    path: Path,
+    tree: ast.Module,
+    parents: dict[ast.AST, ast.AST],
+) -> list[Violation]:
+    """
+    Checks that comprehensions put each part on its own line.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :param parents: Child-to-parent node map of the module.
+    :return: One violation per comprehension written on too few lines.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, COMPREHENSION_NODE_TYPES):
+            continue
+
+        if is_inside_f_string(node, parents):
+            continue
+
+        if is_comprehension_exploded(node):
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-38",
+            "Put the expression, each 'for', each 'if', and the closing "
+            "bracket of a comprehension on their own lines.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def check_empty_classes(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks that a class with only a docstring ends with pass.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per class whose body is only a docstring.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+
+        if len(node.body) != 1:
+            continue
+
+        if get_docstring_node(node) is None:
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-39",
+            f"Class '{node.name}' has only a docstring: add 'pass'.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def get_session_method_call(node: ast.AST) -> str | None:
+    """
+    Returns the method name when a node calls a method on a session.
+
+    :param node: Any AST node.
+    :return: The called method's name, when it's called on a session.
+    """
+    if not is_call(node) or not isinstance(node.func, ast.Attribute):
+        return None
+
+    receiver_name = get_called_name(node.func.value)
+    if receiver_name is None:
+        return None
+
+    if SESSION_NAME_PART not in receiver_name.lower():
+        return None
+
+    return node.func.attr
+
+
+def check_session_rollback(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Checks that no code rolls back through the session.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per session.rollback() call.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not is_call(node):
+            continue
+
+        if get_session_method_call(node) != ROLLBACK_METHOD:
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-40",
+            "Don't call session.rollback(): start a transaction and "
+            "call transaction.rollback().",
+        )
+        violations.append(violation)
+    return violations
+
+
+def check_test_file_header(
+    path: Path,
+    tree: ast.Module,
+    lines: list[str],
+) -> list[Violation]:
+    """
+    Checks that a test file has no page docstring and no section banners.
+
+    :param path: The test file being checked.
+    :param tree: The parsed module.
+    :param lines: The file's source lines.
+    :return: The header and banner violations of the test file.
+    """
+    violations: list[Violation] = []
+    if get_docstring_node(tree) is not None:
+        violation = Violation(
+            path,
+            1,
+            "TS-27",
+            "Test files have no page docstring.",
+        )
+        violations.append(violation)
+
+    for index in find_banner_line_indexes(tree, lines):
+        violation = Violation(
+            path,
+            index + 1,
+            "TS-27",
+            "Test files have no section banners.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def check_session_writes_in_tests(
+    path: Path,
+    tree: ast.Module,
+) -> list[Violation]:
+    """
+    Checks that test bodies don't create or change data through the session.
+
+    :param path: The test file being checked.
+    :param tree: The parsed module.
+    :return: One violation per session write in the test file.
+    """
+    violations: list[Violation] = []
+    if path.name == CONFTEST_FILE_NAME:
+        return violations
+
+    for node in ast.walk(tree):
+        if not is_call(node):
+            continue
+
+        method_name = get_session_method_call(node)
+        if method_name not in SESSION_WRITE_METHODS:
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "TS-28",
+            f"Don't call session.{method_name}() in a test: create data "
+            "with conftest fixtures or the app's own functions.",
+        )
+        violations.append(violation)
     return violations
 
 
@@ -946,7 +1556,10 @@ def check_python_file(path: Path) -> list[Violation]:
         )
         return [violation]
     lines = source.splitlines()
-    line_bytes = [line.encode("utf-8") for line in lines]
+    line_bytes = [
+        line.encode("utf-8")
+        for line in lines
+    ]
     parents = build_parent_map(tree)
     violations = check_encoding(path, raw_source)
     violations += check_none_returns(path, tree)
@@ -968,7 +1581,29 @@ def check_python_file(path: Path) -> list[Violation]:
         tree,
         lines,
     )
+    violations += check_short_names(path, tree)
+    violations += check_dependency_constants(path, tree)
+    violations += check_comprehension_layout(
+        path,
+        tree,
+        parents,
+    )
+    violations += check_empty_classes(path, tree)
+    violations += check_session_rollback(path, tree)
+    if is_test_file(path):
+        violations += check_test_file_header(
+            path,
+            tree,
+            lines,
+        )
+        violations += check_session_writes_in_tests(path, tree)
+
     if not is_test_file(path):
+        violations += check_function_docstrings(
+            path,
+            tree,
+            parents,
+        )
         violations += check_parameter_annotations(
             path,
             tree,
@@ -991,6 +1626,9 @@ def check_python_file(path: Path) -> list[Violation]:
 
 
 def collect_python_files(raw_paths: list[str]) -> list[Path]:
+    """
+    Collects the Python files in the given files and directories.
+    """
     python_files: list[Path] = []
     for raw_path in raw_paths:
         path = Path(raw_path)
@@ -1002,11 +1640,17 @@ def collect_python_files(raw_paths: list[str]) -> list[Path]:
 
 
 def write_utf8(text: str):
+    """
+    Writes text to stdout as UTF-8.
+    """
     sys.stdout.buffer.write(text.encode("utf-8"))
     sys.stdout.flush()
 
 
 def main() -> int:
+    """
+    Checks the given paths and prints every violation.
+    """
     parser = argparse.ArgumentParser(
         description="Check Python files against the house conventions.",
     )

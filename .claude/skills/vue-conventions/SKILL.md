@@ -16,6 +16,7 @@ Strict conventions for frontend development using Vue 3 (Composition API), Vueti
   - **Never** make `v-dialog` the root element of a component.
   - Create the dialog's content as a standalone modal/card component.
   - Wrap it in `v-dialog` at the call site / parent view. This keeps the modal content independently reusable, testable, and embeddable.
+- **No redundant conditions**: never repeat a condition that a parent already guarantees. For example, content inside `<v-dialog :model-value="isDialogOpen">` only shows while the dialog is open, so it must not also have `v-if="isDialogOpen"`. If the content must start fresh each time it opens, the content component resets itself from its props (e.g. initialises its form when the edited item changes), not through a duplicate `v-if`.
 - **Shared Code Extraction**:
   - Any logic, helper functions, or TypeScript interfaces used in more than one place **must** be extracted into `src/utils/` or `src/models/`.
 
@@ -157,6 +158,26 @@ onMounted(() => {
 
 ## 5. UI Elements & Layout Patterns
 
+### Template Formatting
+
+When an element or component has **more than one attribute** (props, directives, events, `data-testid`, ...), put each part on its own line: the opening tag name, each attribute, the closing `>`, the text content, and the closing tag. An element with at most one attribute may stay on one line when it's short.
+
+```vue
+<!-- GOOD: -->
+<v-btn
+  variant="text"
+  data-testid="retry-asset-types-button"
+  @click="loadPage"
+>
+  Retry
+</v-btn>
+
+<!-- BAD: -->
+<v-btn variant="text" data-testid="retry-asset-types-button" @click="loadPage">Retry</v-btn>
+```
+
+The same applies to self-closing components: each attribute on its own line, and `/>` on its own line.
+
 ### Tooltips (`EasyToolTip`)
 
 - **Always use `EasyToolTip`**: Never use raw `v-tooltip`.
@@ -222,4 +243,4 @@ onMounted(() => {
 
 ## 8. Testing
 
-Frontend tests follow the **`vitest-conventions`** skill (component tests with Vue Test Utils, integration tests with MSW) and the **`browser-test-conventions`** skill (Playwright with a mocked backend). All new frontend logic and components require ~100% test coverage of new code. Give interactive and asserted elements a stable `data-testid` (`<what>-<kind>`, e.g. `save-entity-button`) and accessible names (labels on inputs, text on buttons). Both kinds of test rely on them. Reviewers use `references/checklist.md`.
+Frontend tests follow the **`vitest-conventions`** skill (component tests with Vue Test Utils, integration tests with MSW) and the **`browser-test-conventions`** skill (Playwright with a mocked backend). Frontend tests cover **only core behavior**: shared code (used by more than one component) and important flows. There's no frontend coverage target (see `vitest-conventions`, "What Gets a Frontend Test"). Give interactive and asserted elements a stable `data-testid` (`<what>-<kind>`, e.g. `save-entity-button`) and accessible names (labels on inputs, text on buttons). Both kinds of test rely on them. Reviewers use `references/checklist.md`.

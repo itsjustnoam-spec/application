@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Callable
@@ -22,11 +23,22 @@ def write_python_file(tmp_path: Path) -> Callable[[str, str], Path]:
 
 
 @pytest.fixture
-def run_hook() -> Callable[[str, dict[str, object]], subprocess.CompletedProcess[str]]:
-    def _run(hook_name: str, payload: dict[str, object]) -> subprocess.CompletedProcess[str]:
+def run_hook() -> Callable[..., subprocess.CompletedProcess[str]]:
+    def _run(
+        hook_name: str,
+        payload: dict[str, object],
+        extra_environment: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        environment = {
+            name: value
+            for name, value in os.environ.items()
+            if name != "CLAUDE_PROJECT_DIR"
+        }
+        environment.update(extra_environment or {})
         return subprocess.run(
             [sys.executable, str(SCRIPTS_DIRECTORY / "hooks" / hook_name)],
             input=json.dumps(payload),
+            env=environment,
             capture_output=True,
             text=True,
             encoding="utf-8",

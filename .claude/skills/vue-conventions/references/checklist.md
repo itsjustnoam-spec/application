@@ -43,4 +43,6 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-29 URLs, links, ports, and keys come from `.env` (`VITE_*` via `import.meta.env`), never hardcoded. New keys are in `.env.example`.
 
 ## Tests
-- [ ] VU-26 New logic and components are covered by Vitest tests per `vitest-conventions`
+- [ ] VU-26 Shared code and important behavior are covered per `vitest-conventions` (no tests for one-off presentational details)
+- [ ] VU-30 No condition repeats what a parent already guarantees (e.g. no `v-if="isOpen"` inside a `v-dialog` bound to `isOpen`)
+- [ ] VU-31 Elements with more than one attribute have one attribute per line, with `>` / `/>`, text content, and the closing tag each on their own line

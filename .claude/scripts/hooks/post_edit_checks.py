@@ -7,6 +7,7 @@ PostToolUse hook: runs the convention checker and linters on the file Claude jus
 # ----- Imports ----- #
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,7 @@ from check_python_conventions import check_python_file
 # ----- Consts ----- #
 
 BLOCKING_EXIT_CODE = 2
+PROJECT_DIRECTORY_VARIABLE = "CLAUDE_PROJECT_DIR"
 LINTER_TIMEOUT_SECONDS = 45
 PYTHON_SUFFIXES = (".py",)
 FRONTEND_SUFFIXES = (".vue", ".ts", ".tsx", ".js", ".mjs")
@@ -31,6 +33,9 @@ ESLINT_BIN_CANDIDATES = ("node_modules/.bin/eslint.cmd", "node_modules/.bin/esli
 
 
 def read_hook_payload() -> dict[str, object]:
+    """
+    Reads the JSON payload Claude Code sends on stdin.
+    """
     raw_payload = sys.stdin.buffer.read().decode("utf-8")
     if raw_payload.strip() == "":
         return {}
@@ -40,6 +45,9 @@ def read_hook_payload() -> dict[str, object]:
 
 
 def get_edited_path(payload: dict[str, object]) -> Path | None:
+    """
+    Returns the path of the file the tool call edited.
+    """
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return None
@@ -51,7 +59,22 @@ def get_edited_path(payload: dict[str, object]) -> Path | None:
     return Path(file_path)
 
 
+def is_inside_project(path: Path) -> bool:
+    """
+    Tells whether a file belongs to the project (scratch files outside it don't).
+    """
+    project_directory = os.environ.get(PROJECT_DIRECTORY_VARIABLE)
+    if project_directory is None:
+        return True
+
+    project_root = Path(project_directory).resolve()
+    return path.resolve().is_relative_to(project_root)
+
+
 def find_project_root(path: Path, marker: str) -> Path | None:
+    """
+    Finds the nearest parent directory that contains a marker file.
+    """
     for directory in path.resolve().parents:
         if (directory / marker).is_file():
             return directory
@@ -59,6 +82,9 @@ def find_project_root(path: Path, marker: str) -> Path | None:
 
 
 def find_ruff(project_root: Path | None) -> str | None:
+    """
+    Finds the project's ruff, or the one on PATH.
+    """
     if project_root is not None:
         for candidate in RUFF_VENV_CANDIDATES:
             if (project_root / candidate).is_file():
@@ -82,6 +108,9 @@ def find_eslint(path: Path) -> tuple[str, Path] | None:
 
 
 def run_linter(command: list[str], working_directory: Path | None) -> str:
+    """
+    Runs a linter and returns its output when it reports problems.
+    """
     try:
         completed = subprocess.run(
             command,
@@ -102,8 +131,14 @@ def run_linter(command: list[str], working_directory: Path | None) -> str:
 
 
 def collect_python_problems(path: Path) -> list[str]:
+    """
+    Runs the convention checker and ruff on a Python file.
+    """
     violations = check_python_file(path)
-    problems = [violation.format_for_output() for violation in violations]
+    problems = [
+        violation.format_for_output()
+        for violation in violations
+    ]
     ruff = find_ruff(find_project_root(path, PYTHON_PROJECT_MARKER))
     if ruff is None:
         return problems
@@ -126,6 +161,9 @@ def collect_python_problems(path: Path) -> list[str]:
 
 
 def collect_frontend_problems(path: Path) -> list[str]:
+    """
+    Runs the project's eslint on a frontend file.
+    """
     eslint = find_eslint(path)
     if eslint is None:
         return []
@@ -139,6 +177,9 @@ def collect_frontend_problems(path: Path) -> list[str]:
 
 
 def report_problems(path: Path, problems: list[str]) -> int:
+    """
+    Sends the problems back to Claude and blocks until they're fixed.
+    """
     message = (
         f"Convention check failed for {path}. Fix every item below before continuing:\n"
         + "\n".join(problems)
@@ -150,8 +191,14 @@ def report_problems(path: Path, problems: list[str]) -> int:
 
 
 def main() -> int:
+    """
+    Checks the edited file against the conventions.
+    """
     edited_path = get_edited_path(read_hook_payload())
     if edited_path is None or not edited_path.is_file():
+        return 0
+
+    if not is_inside_project(edited_path):
         return 0
 
     problems: list[str] = []

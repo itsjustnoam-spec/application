@@ -3,12 +3,13 @@
 An integration test mounts **a whole view or feature**: the real components, the real Pinia store, the real router, and the real API client. It replaces **only the network**, using MSW. It proves that the pieces work together the way a user experiences them. This is the highest-confidence Vitest layer: most frontend confidence should come from here, and component tests fill in the details.
 
 ## 1. What to cover per view/feature
+Only the important behavior (see "What Gets a Frontend Test" in `SKILL.md`):
 - [ ] **The main flow** from the spec, end to end within the view (e.g. open → list loads → create → the list shows the new item)
-- [ ] **Every network failure the spec defines:** a 4xx/5xx from the backend shows the specified message (via `handleNetworkError`) and leaves the UI usable
-- [ ] **Empty data:** the empty state renders
-- [ ] **Store ↔ view wiring:** an action in one component updates another component through the store
-- [ ] **Navigation:** route changes and route params drive what's loaded (`/entities/7` loads entity 7)
-- [ ] **Edge cases `EC-n`** that live in the frontend (duplicate submit, stale responses, validation from the backend)
+- [ ] **Failures that matter**: backend errors on important actions (save, delete, archive) show a message and leave the UI usable. Not every error state of every request.
+- [ ] **Shared wiring**: store or composable behavior that several components depend on
+- [ ] **Frontend edge cases `EC-n`** where a bug would lose or corrupt data (duplicate submit, stale responses overwriting newer ones)
+
+Don't add tests for every empty state, label, or navigation detail.
 
 ## 2. Setup rules
 - **Pinia:** a real store, fresh per test: `const pinia = createPinia()` (or `createTestingPinia({ stubActions: false, createSpy: vi.fn })` if spies are needed). Never stub actions in integration tests.

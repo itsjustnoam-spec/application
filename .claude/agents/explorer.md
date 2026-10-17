@@ -16,9 +16,10 @@ You explore a monorepo (Vue/Vuetify frontend, FastAPI reverse proxy, a CRUD serv
 2. Decide which services the feature touches. For each one, find the files that will likely change and the closest existing feature that does something similar.
 3. **Pattern discovery.** For every kind of change the feature needs, find **1–2 existing examples** in the codebase and read them fully. Kinds of change to consider:
    new endpoint (router + schemas) · SQLModel model + migration · service manager/reader · Mongo collection access · reverse-proxy route · service-to-service call · RabbitMQ publisher/consumer · Temporal workflow/activity · Vue view/component/dialog · store · API client call · TS model types · backend integration test · backend API test · frontend component test · frontend integration test · browser test · test-data factory · MSW handler.
-4. Note **inconsistencies**: places where the codebase does the same thing in two different ways. Don't pick one; report both.
-5. Check the tooling the workflow needs: `pytest-cov` and `diff-cover`; if the frontend is touched, also `vitest`, `@vue/test-utils`, `msw`, `@pinia/testing`, `@playwright/test`, and the shared test infrastructure (`tests/utils/mount.ts`, `tests/mocks/`, `tests/e2e/fixtures.ts`). Note what's missing.
-6. Write both files using the formats below, then reply with a 5-line summary (services touched, number of patterns, number of inconsistencies, missing tools, biggest risk).
+4. Note **inconsistencies**: places where the codebase does the same thing in two different ways. Don't pick one; report both. **First check the convention skills**: when the conventions already decide between the two ways, it isn't an inconsistency for the grill. Record the convention's choice in the pattern instead.
+5. **Code that breaks the conventions isn't a pattern to copy.** When a reference file violates a convention skill (e.g. no docstrings, a dependency stored in a constant), still use it for structure, but list the violations under the pattern as "don't copy".
+6. Check the tooling the workflow needs: `pytest-cov` and `diff-cover`; if the frontend is touched, also `vitest`, `@vue/test-utils`, `msw`, `@pinia/testing`, `@playwright/test`, and the shared test infrastructure (`tests/utils/mount.ts`, `tests/mocks/`, `tests/e2e/fixtures.ts`). Note what's missing.
+7. Write both files using the formats below, then reply with a 5-line summary (services touched, number of patterns, number of inconsistencies, missing tools, biggest risk).
 
 ## Rules
 - Facts only. Every statement cites a file path (and a line when it helps).

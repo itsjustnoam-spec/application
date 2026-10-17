@@ -21,7 +21,7 @@ Run this per changed frontend Vitest file. Every item must be answered ✅, ❌ 
 - [ ] VT-20 Uses `mount` (via `mountWithPlugins`), not `shallowMount`. Any stub is justified.
 - [ ] VT-21 API is mocked at the app's API client module (`vi.mock('@/api/...')`), not at axios/fetch
 - [ ] VT-22 Store uses `createTestingPinia({ createSpy: vi.fn })`, and action calls are asserted as the component's contract
-- [ ] VT-23 Props variations, slots, emits (exact payloads), and loading/error/empty states are covered where they exist
+- [ ] VT-23 Component tests exist only for shared components or components with important behavior, and cover their contract (emits, behavior-changing props), not every visual variation
 
 ## Integration tests
 - [ ] VT-30 Mounts the real view with a real Pinia (actions not stubbed) and a real memory-history router
@@ -29,7 +29,7 @@ Run this per changed frontend Vitest file. Every item must be answered ✅, ❌ 
 - [ ] VT-32 Per-test scenarios use `server.use(...)`, and mutation handlers validate the payload like the backend
 - [ ] VT-33 No assertions on request details for requests with visible effects
 - [ ] VT-34 Handler paths and payloads match `spec.md` §5
-- [ ] VT-35 Main flow, every specified network failure, empty data, and frontend `EC-n` are covered
+- [ ] VT-35 The main flow, failures of important actions, and data-loss edge cases are covered; there are no tests for labels, styling, or every empty/loading state
 
 ## Coverage
-- [ ] VT-40 New code has ~100% changed-line coverage from the Vitest layers
+- [ ] VT-40 No test exists only to raise coverage; there's no frontend coverage target

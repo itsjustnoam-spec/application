@@ -13,18 +13,19 @@ You check **conventions only**. Not bugs, not spec coverage, not test quality. O
 
 ## Steps
 1. List changed files: `git diff --name-only <base>` plus `git ls-files --others --exclude-standard` (new files). Ignore files under `docs/features/`.
-2. Pick the checklist(s) for each file:
-   - `*.py` (not tests): the `python-conventions` skill's `references/checklist.md`
+2. **Run the convention checker first:** `python .claude/scripts/check_python_conventions.py <changed .py files>`. Every violation it prints is a finding (severity `major`), with the rule ID it gives. Then do the judgment items of the checklists by hand.
+3. Pick the checklist(s) for each file:
+   - `*.py` (not tests): the `python-conventions` skill's `references/checklist.md`, plus the `sql-conventions` checklist for files that use a database session, a model, or a migration
    - Python test files (`tests/**`, `test_*.py`, `conftest.py`): the `pytest-conventions` checklist **and** the typing and exception items of the python checklist
    - `*.vue`, `*.ts` (not tests): the `vue-conventions` checklist
    - `tests/unit/**` and `tests/integration/**` `*.spec.ts` / `*.test.ts`: the `vitest-conventions` checklist
    - `tests/e2e/**` `*.spec.ts`: the `browser-test-conventions` checklist
    - `tests/mocks/**` and `tests/utils/**` (factories, MSW handlers, mount helper): the `vue-conventions` checklist, plus the factory/handler rules of `vitest-conventions`
    Load each skill and read its `references/checklist.md`.
-3. For **each file**, read the whole file, then go through **every checklist item**: ✅, ❌ with `file:line`, or N/A. Don't skip items, and don't answer from memory of a similar file.
-4. **Pattern adherence:** for each file, find its task in `plan.md`, open that task's reference file from `patterns.md`, and compare structure (layering, naming, wiring, error handling). Report meaningful differences as findings with rule `PATTERN P-n`.
-5. Only judge changed lines and new files, plus their immediate context. Pre-existing violations in untouched code aren't findings.
-6. Write `<review directory>/conventions.md` (never overwrite an earlier round's file), then reply with one line: `conventions: <n> blocker, <n> major, <n> minor`.
+4. For **each file**, read the whole file, then go through **every checklist item**: ✅, ❌ with `file:line`, or N/A. Don't skip items, and don't answer from memory of a similar file.
+5. **Pattern adherence:** for each file, find its task in `plan.md`, open that task's reference file from `patterns.md`, and compare structure (layering, naming, wiring, error handling). Report meaningful differences as findings with rule `PATTERN P-n`.
+6. Only judge changed lines and new files, plus their immediate context. Pre-existing violations in untouched code aren't findings.
+7. Write `<review directory>/conventions.md` (never overwrite an earlier round's file), then reply with one line: `conventions: <n> blocker, <n> major, <n> minor`.
 
 ## Output file
 ```markdown

@@ -1,5 +1,5 @@
 ---
-description: "Spec-first feature workflow. Explore patterns, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan, tests, 4 parallel reviews, up to 3 fix rounds, summary."
+description: "Spec-first feature workflow. Explore patterns, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan with a one-pass review, tests, 4 parallel reviews, up to 3 fix rounds, summary."
 disable-model-invocation: true
 argument-hint: "[--worktree] <feature description> | resume <slug>"
 ---
@@ -11,6 +11,12 @@ Request: `$ARGUMENTS`
 **Phase guides are plain files, not skills.** The guides for the grill, the spec, and the test plan live in `.claude/workflow/`. Open them with the Read tool at the paths given below; there is no skill or slash command for them. Convention skills (`*-conventions`, `backend-test-infra`, `git-worktree`) are normal skills: load them with the Skill tool.
 
 **Never stop because a tool refused something.** If a tool call is refused or fails, find another way to do the same step (read the file directly, run the command differently) and continue. Stop only when you need an answer that only the user can give, and only before the gate.
+
+**Run to the end.** After the gate, a Stop hook won't let you end your turn until `progress.md` says `Phase: DONE`. Don't write a "final report" before then, and don't stop to ask for something (such as permission to push) in the middle: that question belongs in phase 9, after `Phase: DONE`. Only when you're genuinely blocked (a broken environment, or a decision the spec can't answer) write `BLOCKED: <reason>` in `progress.md` and stop.
+
+**Conventions win over existing code.** When existing code does something the conventions forbid, it isn't a precedent: follow the conventions in new and changed code.
+
+**Write files with the Write or Edit tools**, never with shell heredocs or redirects. The hooks only check files written through Write/Edit.
 
 You orchestrate the phases below **in order**. Each phase writes files to `docs/features/<slug>/`. Later phases read those files, not the chat, so keep them accurate. There is **one** human gate (phase 3). Before it, ask as much as needed. After it, **never ask the user anything**. Decide conservatively, log it, and keep going.
 
@@ -60,6 +66,8 @@ If a task can't be completed (e.g. a broken environment), record why in `progres
 ## Phase 5: Test plan
 Set `Phase: TEST-PLAN`. Read `.claude/workflow/test-plan.md` and write `test-plan.md` from `.claude/workflow/templates/test-plan.md`, covering every REQ, EC, and new code path, with each row in one of the layers `be-unit`, `be-integration`, `be-api`, `fe-unit`, `fe-component`, `fe-integration`, `browser`. For layer guidance, load `backend-test-infra` (backend), and `vitest-conventions` plus `browser-test-conventions` when the frontend is touched.
 
+**Test-plan review (one pass).** Run the `review-test-plan` agent once with the feature directory. It writes `review/test-plan-review.md`. Apply every finding you agree with to `test-plan.md`. For each one you don't apply, add a reason in that file. There is no second review round: continue to phase 6.
+
 ## Phase 6: Write tests
 Set `Phase: TESTS`. Write exactly the planned tests, layer by layer, loading the matching conventions before each layer:
 - `be-*`: `pytest-conventions` + `backend-test-infra`
@@ -68,7 +76,7 @@ Set `Phase: TESTS`. Write exactly the planned tests, layer by layer, loading the
 - `browser`: `browser-test-conventions`
 
 If the shared frontend test infrastructure is missing (mount helper, MSW server and handlers, factories, the Playwright `fixtures.ts`), create it first, exactly as the skills describe. If the hook blocks a test because it isn't in the plan, add the row to `test-plan.md` first (with a reason), then write the test.
-Run each layer and the changed-lines coverage (commands are in the root `CLAUDE.md`): pytest + diff-cover, Vitest + diff-cover, and Playwright. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
+Run each layer (commands are in the root `CLAUDE.md`): pytest + diff-cover (backend changed-line coverage), Vitest, and Playwright. Then run `python .claude/scripts/check_python_conventions.py` on every changed Python file (`git diff --name-only <base>` plus untracked files), and fix everything it reports. The frontend has no coverage gate. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
 
 ## Phase 7: Review (round 1)
 Set `Phase: REVIEW-ROUND-1`. Run these four agents **in parallel**, giving each the feature directory, `<base>`, and the review directory `docs/features/<slug>/review/round-1/`:
@@ -78,16 +86,18 @@ Wait for all four. Each writes `<review directory>/<name>.md`. **Never overwrite
 ## Phase 8: Triage & fix (max 3 fix rounds)
 For round `n` (starting at 1):
 1. Read every finding in `review/round-<n>/` and **verify it against the code yourself**. Reviewers can be wrong. Write `review/round-<n>/triage.md`:
-   `| Finding | Reviewer | Category | Decision (fix / dismiss) | Reason |`. Dismiss only with a concrete reason (e.g. "false positive: line 40 already checks None").
+   `| Finding | Reviewer | Category | Decision (fix / dismiss) | Reason |`. **Write the triage file before fixing anything.**
+   - There are only two decisions: `fix` or `dismiss`. There is no "defer", "later", or "out of scope".
+   - Dismiss only with a concrete reason that the finding is wrong, e.g. "false positive: line 40 already checks None", or "contradicts spec D-3". These are **not** valid reasons: "it's a refactor", "it's minor", "it matches the existing code", "it's out of scope". A finding that shows a convention or spec violation is fixed.
 2. Append one row per reviewer to `review/history.md` (create it with this header the first time):
    `| Round | Reviewer | Blocker | Major | Minor | Fixed | Dismissed | Recurring from earlier round |`
 3. If no finding was marked `fix`, go to phase 9.
-4. Set `Phase: FIX-ROUND-<n>`. Fix every `fix` finding: blockers first, then majors. Minors are fixed when cheap; otherwise dismiss them with a reason. Re-run the checks and tests.
+4. Set `Phase: FIX-ROUND-<n>`. Fix every `fix` finding: blockers first, then majors, then minors. Re-run the checks and tests.
 5. Re-review: re-run **only** the reviewers that had `fix` findings, with the review directory `review/round-<n+1>/` and the previous round's directory, so they can confirm each fix and don't re-raise dismissed findings without new evidence. Set `Phase: REVIEW-ROUND-<n+1>`.
 6. Repeat from step 1 for round `n+1`. **Stop after fix round 3**: triage the final review round (steps 1–2), but don't fix it. Remaining findings go into the summary.
 
 ## Phase 9: Summary
-Set `Phase: DONE`. Write `summary.md`:
+Write `summary.md`, then set `Phase: DONE`:
 ```markdown
 # Summary: <feature>
 ## Built
@@ -95,10 +105,10 @@ Set `Phase: DONE`. Write `summary.md`:
 ## Deviations
 - DEV-n …
 ## Tests
-- <n> tests per layer · changed-line coverage: backend <n>%, frontend <n>% · browser: <passed>/<total>
+- <n> tests per layer · backend changed-line coverage: <n>% · browser: <passed>/<total>
 ## Review
 - Rounds: <n> · Fixed: <n> (by reviewer) · Dismissed: <n> (see `review/round-*/triage.md`, `review/history.md`) · Still open: <list>
 ## Needs your attention
 - <anything still open, risky, or left undone>
 ```
-Apply the final git step from the spec (commit, push, open a PR) only if the spec says so. Delete `docs/features/.active`. Show the user the summary and the path to the feature folder.
+Only now, after `Phase: DONE`, apply the final git step from the spec (commit, push, open an MR) if the spec says so. If pushing or opening the MR needs the user's confirmation, ask for it now: this is the only question allowed after the gate. Delete `docs/features/.active` when the git step is done. Show the user the summary and the path to the feature folder.

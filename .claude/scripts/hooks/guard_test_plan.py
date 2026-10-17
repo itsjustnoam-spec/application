@@ -32,6 +32,9 @@ EDIT_TOOL_NAMES = ("Edit", "MultiEdit")
 
 
 def read_hook_payload() -> dict[str, object]:
+    """
+    Reads the JSON payload Claude Code sends on stdin.
+    """
     raw_payload = sys.stdin.buffer.read().decode("utf-8")
     if raw_payload.strip() == "":
         return {}
@@ -41,24 +44,39 @@ def read_hook_payload() -> dict[str, object]:
 
 
 def is_python_test_file(path: Path) -> bool:
+    """
+    Tells whether a path is a pytest test module.
+    """
     return path.suffix == ".py" and path.name.startswith("test_")
 
 
 def is_frontend_test_file(path: Path) -> bool:
+    """
+    Tells whether a path is a Vitest or Playwright test file.
+    """
     is_in_tests_folder = "__tests__" in path.parts
     has_test_suffix = path.name.endswith(FRONTEND_TEST_SUFFIXES)
     return has_test_suffix or is_in_tests_folder
 
 
 def extract_test_names(path: Path, source: str) -> list[str]:
+    """
+    Extracts the test names a test file declares.
+    """
     if is_python_test_file(path):
         return PYTHON_TEST_PATTERN.findall(source)
 
     test_matches = FRONTEND_TEST_PATTERN.finditer(source)
-    return [test_match.group(2) for test_match in test_matches]
+    return [
+        test_match.group(2)
+        for test_match in test_matches
+    ]
 
 
 def read_existing_source(path: Path) -> str:
+    """
+    Reads a file's current content, or an empty string when it doesn't exist.
+    """
     if not path.is_file():
         return ""
 
@@ -93,6 +111,9 @@ def collect_source_changes(tool_name: str, tool_input: dict[str, object]) -> lis
 
 
 def find_added_test_names(path: Path, source_changes: list[tuple[str, str]]) -> list[str]:
+    """
+    Lists the tests that a change adds.
+    """
     added_test_names: list[str] = []
     for old_source, new_source in source_changes:
         existing_names = set(extract_test_names(path, old_source))
@@ -121,12 +142,18 @@ def find_active_test_plan(start_directory: Path) -> tuple[str, Path] | None:
 
 
 def block(message: str) -> int:
+    """
+    Sends the reason back to Claude and blocks the edit.
+    """
     sys.stderr.buffer.write((message + "\n").encode("utf-8"))
     sys.stderr.flush()
     return BLOCKING_EXIT_CODE
 
 
 def main() -> int:
+    """
+    Blocks new tests that aren't in the active feature's test plan.
+    """
     payload = read_hook_payload()
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
@@ -155,7 +182,11 @@ def main() -> int:
         )
 
     test_plan = test_plan_path.read_text(encoding="utf-8")
-    unplanned_names = [test_name for test_name in added_test_names if test_name not in test_plan]
+    unplanned_names = [
+        test_name
+        for test_name in added_test_names
+        if test_name not in test_plan
+    ]
     if len(unplanned_names) == 0:
         return 0
 

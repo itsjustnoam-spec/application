@@ -1,6 +1,6 @@
 ---
 name: pytest-conventions
-description: Use when writing, maintaining, reviewing, or debugging Python tests with pytest. Enforces AAA structure, fixture patterns, parametrization, DAMP test naming, 100% coverage, and strict isolation.
+description: Use when writing, maintaining, reviewing, or debugging Python tests with pytest. Enforces the tests/<domain>/test_<operation> layout, test data only through conftest fixtures and app functions, what not to test (migrations, plain validation), AAA structure, fixture patterns, parametrization, DAMP test naming, 100% coverage, and strict isolation.
 ---
 
 # Pytest Testing Conventions
@@ -29,22 +29,22 @@ Opinionated, comprehensive testing patterns for Python and pytest. Incorporates 
 
 ### Directory Structure & Layout
 
-Mirror the source tree layout inside the `tests/` directory:
-
-We have `tests/`, and then directories for each module (e.g. `entities`, `entity_types`, etc.).
-Inside each module directory, we have the module's `conftest.py` and `utils` files:
+Tests are grouped by **domain** (a thing in the application, such as `sites` or `entities`), not by code layer. One domain directory holds the tests of its managers **and** its API. Inside it, each file covers **one operation**, and contains both the manager-level (integration) tests and the API tests for that operation:
 
 ```
 tests/
-  conftest.py                   # Root/global session fixtures
-  <module_name>/                # Directory for each module (e.g., entities, entity_types)
-    conftest.py                 # Module-specific fixtures
-    utils.py                    # Module test helpers and mock utilities (or utils/ directory)
-    test_<what_we_test>.py      # Test files for this module
+  conftest.py                   # Root/global fixtures: engine, session, client
+  <domain>/                     # e.g. sites, asset_types, entities
+    conftest.py                 # Fixtures that create this domain's objects (factories)
+    utils.py                    # Non-fixture helpers (builders of request bodies, assertions)
+    test_create_<domain>.py     # e.g. test_create_site.py: manager + API tests for creating
+    test_update_<domain>.py
+    test_list_<domain>.py
+    test_delete_<domain>.py
 ```
 
-- **Module Utils**: Use the `utils` files located inside each module directory for module-specific test helpers, factories, and mocks.
-- **Path format**: `tests/<module_name>/test_<what_we_test>.py`.
+- **No layer directories**: no `tests/routers/`, `tests/managers/`, or `tests/schemas/`. A router test and a manager test of the same operation live in the same file.
+- **Path format**: `tests/<domain>/test_<operation>_<domain>.py`.
 - **Test function naming**: `test_<unit>_<condition>_<expected>`:
   - `test_create_user_duplicate_email_raises_duplicate_user_error`
   - `test_calculate_discount_zero_percent_returns_original_price`
@@ -53,7 +53,7 @@ tests/
 ### Internal Test File Structure
 
 Every test file must follow this strict sequence:
-1. **Imports straight away**: Standard library, third-party, application code under test.
+1. **Imports straight away**: Standard library, third-party, application code under test. Test files have **no page docstring and no section banners**: the file-layout rules of `python-conventions` don't apply to tests.
 2. **Local Fixtures**: Module-specific fixtures immediately following imports.
 3. **Test Functions**: Standalone functions (`def test_*`).
    - **No classes in test files** unless strictly necessary.
@@ -211,7 +211,39 @@ Never assert generic `Exception` or `ValueError` when domain exceptions are defi
 
 ---
 
-## 8. Test Layers & Infrastructure
+## 8. Test Data
+
+- **Objects are created only in `conftest.py`**, by fixtures or fixture factories (e.g. `make_site(...)`), so there's exactly one place that knows how to create each object.
+- **A test never touches the session directly**: no `session.add`, `session.delete`, `session.commit`, or `session.execute` in a test body. To arrange state, a test uses fixtures, or calls the application's own functions (e.g. `create_site(...)`, `archive_site(...)`). To check the result, it uses the application's read functions or the API.
+
+```python
+# GOOD:
+def test_archive_site_existing_site_hides_it_from_list(session, make_site):
+    site = make_site(name="North plant")
+
+    archive_site(session, site.id)
+
+    assert list_sites(session).total == 0
+
+# BAD:
+def test_archive_site_existing_site_hides_it_from_list(session):
+    site = Site(name="North plant", timezone="UTC")
+    session.add(site)  # object created and saved directly in the test
+    session.commit()
+    ...
+```
+
+---
+
+## 9. What Not to Test
+
+- **Migrations.** Verify them by running them (see `sql-conventions`), not with tests.
+- **Plain object or schema validation**: tests that only construct a model or schema and check which input it accepts or rejects. Validation is tested through behavior instead, e.g. an API test that sends an invalid body and gets 422 with the right detail.
+- Framework or library behavior (that FastAPI routes, that SQLAlchemy saves), and trivial getters or constants.
+
+---
+
+## 10. Test Layers & Infrastructure
 
 Backend features are tested on two layers:
 
@@ -222,7 +254,7 @@ Every new endpoint gets both layers. Both layers run against a **separate test d
 
 ---
 
-## 9. Running Tests
+## 11. Running Tests
 
 Always execute test commands with `uv`:
 
