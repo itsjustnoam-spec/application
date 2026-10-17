@@ -33,7 +33,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 ## 2a. PostgreSQL (CRUD service)
 
 - Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Use the project's test database (docker-compose service or testcontainers) as found in the reference tests.
-- Isolation: one transaction per test, rolled back at teardown (the `db_session` pattern in `pytest-conventions`), with the engine at `session` scope.
+- Isolation: one connection and transaction per test, rolled back at teardown; the test's `Session` binds to that connection with `join_transaction_mode="create_savepoint"`, so the app's own commits and nested transactions stay inside it. The engine is `session`-scoped.
 - Data setup: the `env` fixture (see `pytest-conventions` §8).
 - Migrations aren't tested; they're verified by running them (see `sql-conventions`).
 
