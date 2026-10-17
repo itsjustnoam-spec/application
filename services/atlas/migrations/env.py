@@ -9,7 +9,8 @@ Alembic environment that applies Atlas schema migrations to PostgreSQL.
 from alembic import context
 from sqlmodel import SQLModel
 
-from atlas.database import DATABASE_URL, engine
+import atlas.entities  # noqa: F401  # registers tables on SQLModel.metadata
+from atlas.database import engine, settings
 
 # ----- Consts ----- #
 
@@ -20,7 +21,7 @@ TARGET_METADATA = SQLModel.metadata
 
 def run_migrations_offline():
     context.configure(
-        url=DATABASE_URL,
+        url=settings.database_url,
         target_metadata=TARGET_METADATA,
         literal_binds=True,
     )

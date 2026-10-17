@@ -6,22 +6,33 @@ PostgreSQL engine and request-scoped session setup for the Atlas service.
 """
 # ----- Imports ----- #
 
-import os
 from collections.abc import Generator
 
 from sqlmodel import Session, create_engine
 
+from atlas.settings import AtlasSettings
+
 # ----- Consts ----- #
 
-DATABASE_URL: str = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+psycopg://fieldops:fieldops@localhost:5432/fieldops",
-)
-engine = create_engine(DATABASE_URL)
+settings = AtlasSettings()
+engine = create_engine(settings.database_url)
 
 # ----- Functions ----- #
 
 
 def get_session() -> Generator[Session, None, None]:
+    """
+    Opens a session for one request and runs the request in one transaction.
+
+    :return: The request's session, inside a transaction that commits when the
+        request succeeds and rolls back when it fails.
+    """
     with Session(engine) as session:
-        yield session
+        transaction = session.begin()
+        try:
+            yield session
+        except Exception:
+            transaction.rollback()
+            raise
+
+        transaction.commit()

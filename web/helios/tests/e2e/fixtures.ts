@@ -7,7 +7,7 @@ type ApiMocks = {
   mockError: (method: string, path: string, status: number, detail: string) => Promise<void>
 }
 
-export const test = base.extend<{ api: ApiMocks; failOnUnmockedRequests: void }>({
+const test = base.extend<{ api: ApiMocks; failOnUnmockedRequests: void }>({
   failOnUnmockedRequests: [async ({ page }, use) => {
     const unmockedRequests: string[] = []
     await page.route((url) => url.pathname.startsWith(`${API_PATH_PREFIX}/`), async (route) => {
@@ -35,4 +35,4 @@ export const test = base.extend<{ api: ApiMocks; failOnUnmockedRequests: void }>
   },
 })
 
-export { expect }
+export { expect, test }
