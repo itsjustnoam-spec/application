@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { apiRequest, ApiError } from '@/api/client'
+import { apiRequest, apiRequestWithoutContent, ApiError } from '@/api/client'
 
 const SITE_NAME_TAKEN_DETAIL = 'A site with this name already exists'
 
@@ -61,9 +61,9 @@ describe('apiRequest', () => {
   it('resolves with no value when the backend responds with no content', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
 
-    const result = await apiRequest<void>('/atlas/sites/1', { method: 'DELETE' })
-
-    expect(result).toBeUndefined()
+    await expect(
+      apiRequestWithoutContent('/atlas/sites/1', { method: 'DELETE' }),
+    ).resolves.toBeUndefined()
   })
 
   it('returns a null detail when the error body has no detail field', async () => {

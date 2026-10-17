@@ -1,14 +1,13 @@
 const API_BASE_PATH = '/api'
-const NO_CONTENT_STATUS = 204
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
-export interface ApiRequestOptions {
+interface ApiRequestOptions {
   method?: HttpMethod
   body?: unknown
 }
 
-export class ApiError extends Error {
+class ApiError extends Error {
   readonly status: number
   readonly detail: string | null
 
@@ -35,10 +34,7 @@ const readErrorDetail = async (response: Response): Promise<string | null> => {
   }
 }
 
-export const apiRequest = async <ResponseBody>(
-  path: string,
-  options: ApiRequestOptions = {},
-): Promise<ResponseBody> => {
+const sendRequest = async (path: string, options: ApiRequestOptions): Promise<Response> => {
   const hasBody = options.body !== undefined
   const response = await fetch(`${API_BASE_PATH}${path}`, {
     method: options.method ?? 'GET',
@@ -48,8 +44,23 @@ export const apiRequest = async <ResponseBody>(
   if (!response.ok) {
     throw new ApiError(response.status, await readErrorDetail(response))
   }
-  if (response.status === NO_CONTENT_STATUS) {
-    return undefined as ResponseBody
-  }
+  return response
+}
+
+const apiRequest = async <ResponseBody>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<ResponseBody> => {
+  const response = await sendRequest(path, options)
   return (await response.json()) as ResponseBody
 }
+
+const apiRequestWithoutContent = async (
+  path: string,
+  options: ApiRequestOptions,
+): Promise<void> => {
+  await sendRequest(path, options)
+}
+
+export type { ApiRequestOptions, HttpMethod }
+export { ApiError, apiRequest, apiRequestWithoutContent }

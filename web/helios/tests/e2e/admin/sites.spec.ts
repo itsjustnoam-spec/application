@@ -60,7 +60,10 @@ test.describe('Admin sites', () => {
     await page.route(
       (url) => url.pathname.startsWith(`${SITES_API_PATH}/`),
       async (route) => {
-        sites.splice(0, sites.length)
+        const archivedSiteId = Number(new URL(route.request().url()).pathname.split('/').pop())
+        const remainingSites = sites.filter((site) => site.id !== archivedSiteId)
+        sites.length = 0
+        sites.push(...remainingSites)
         await route.fulfill({ status: 204 })
       },
     )
