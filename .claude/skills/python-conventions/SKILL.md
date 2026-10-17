@@ -1,6 +1,6 @@
 ---
 name: python-conventions
-description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint, naming, page/section headers, class and SQLModel layout, blank lines after if blocks, multiline calls and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, uv usage, and references the pytest-conventions and sql-conventions skills.
+description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint (imperative mood), naming, page/section headers, class and SQLModel layout, StrEnum, readable if conditions, blank lines after if blocks, multiline calls, collection literals and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, uv usage, and references the pytest-conventions and sql-conventions skills.
 ---
 
 # Python Backend Conventions
@@ -43,7 +43,7 @@ Use **`uv`** for every package and environment operation:
 # GOOD:
 def save_user_profile(user_id: str, email: str):
     """
-    Saves the profile of a user.
+    Save the profile of a user.
     """
     user_record: dict[str, str] = {"id": user_id, "email": email}
     active_tokens: list[str] = []  # Empty list where type is not obvious, type annotation required
@@ -52,7 +52,7 @@ def save_user_profile(user_id: str, email: str):
 
 def deactivate_user(user: UserRecord):
     """
-    Marks an active user as inactive.
+    Mark an active user as inactive.
     """
     if not user.is_active:
         return  # Bare return for an early exit
@@ -141,7 +141,7 @@ class EntityNotFoundError(Exception):
 
 def read_entity_by_id(session: Session, entity_id: int) -> Entity:
     """
-    Reads one entity by its id.
+    Read one entity by its id.
 
     :param session: The open database session.
     :param entity_id: The id of the entity to read.
@@ -184,7 +184,9 @@ DOCSTRING EXPLANATION
 - **Which fields**: functions with business logic get `:param:`, `:return:` (when they return a value), and `:raises:` (when they raise). Small helpers without business logic may have only the description.
 - **Never mention past implementations**: Explain *why* the code works this way *now*, never what it used to do.
 - **Description Sentence**: The description is a short, concise sentence explaining what the function does, ending with a period (`.`). It must **never** mention raising errors (e.g. no "or raise an error if not found"). Exceptions are documented exclusively in `:raises:`.
-- **API Endpoint Functions**: always have a docstring with **only** a short description of what the endpoint does (e.g. `Lists sites matching the search text, one page at a time.`). Do **NOT** include `:param:`, `:return:`, or `:raises:`.
+- **Imperative mood**: function, method, and endpoint descriptions are written as a command: `Lock the resource.`, `List sites matching the search text.`, never `Locks the resource.` or `Lists sites ...`. Class and exception docstrings describe the thing, so they keep their form (`A site where assets are installed.`, `Raised when ...`).
+- **Boolean returns**: describe what the value means, not when it's true or false. Write `:return: Whether the asset is overdue.`, never `:return: True when the asset is overdue, False otherwise.` The same applies to the description of a function that returns a `bool`: `Check whether the name is taken.`
+- **API Endpoint Functions**: always have a docstring with **only** a short description of what the endpoint does (e.g. `List sites matching the search text, one page at a time.`). Do **NOT** include `:param:`, `:return:`, or `:raises:`.
 - **Reverse Proxy / Pass-Through Endpoints**: If an endpoint or function is just a reverse proxy redirecting/forwarding requests without internal business logic, omit `:param:`, `:raises:`, and `:return:`. Write only a brief single-line explanation. Full `:param:`, `:return:`, `:raises:` docstrings apply only when business logic is present.
 - **Classes & `__init__`**: Classes get a standard description with opening `"""` on line 1, description on line 2, and closing `"""` on line 3 (no `:param:` or `:return:`). `__init__` methods do **NOT** get a docstring.
 - **No blank line after a class docstring**: the class body (`__init__`, attributes, `__tablename__`, anything) starts on the line right after the closing `"""`.
@@ -225,9 +227,30 @@ if not features:  # use len(features) == 0; also missing the blank line above
 publish_project(project)  # missing the blank line after the if block
 ```
 
+### Readable conditions
+Keep the `if` line easy to read. When a condition does real work (runs a query, chains calls, combines several checks), move that work into a variable first and let its name say what is being checked. The `if` then reads like a sentence.
+
+```python
+# GOOD:
+active_asset = session.exec(active_assets.limit(1)).first()
+has_active_assets = active_asset is not None
+if has_active_assets:
+    raise SiteHasActiveAssetsError(f"Site {site_id} still has active assets.")
+
+is_due_soon = next_due_date is not None and next_due_date <= today + REMINDER_WINDOW
+if is_due_soon:
+    notify_technicians(asset)
+
+# BAD:
+if session.exec(active_assets.limit(1)).first() is not None:  # what does this check?
+    raise SiteHasActiveAssetsError(f"Site {site_id} still has active assets.")
+```
+
+A simple check (`if site is None:`, `if len(names) == 0:`, `if is_active:`) stays as it is.
+
 ---
 
-## 6. Multiline Calls
+## 6. Multiline Calls and Collection Literals
 
 - A call (function call, constructor, decorator, `raise SomeError(...)`) **must** put each argument on its own line, with a trailing comma, when:
     - It has **3 or more arguments**, **or**
@@ -245,6 +268,29 @@ raise HTTPException(
 
 # BAD (as a single line it is 77 characters):
 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
+```
+
+### Collection literals
+A list or set written with its items (two or more) puts each item on its own line, with the brackets on their own lines and a trailing comma after the last item. This applies inside calls too (e.g. a set passed to `frozenset(...)`). Comprehensions follow §10.
+
+```python
+# GOOD:
+STATUSES_WITHOUT_DUE_DATE = frozenset(
+    {
+        AssetStatus.OUT_OF_SERVICE,
+        AssetStatus.RETIRED,
+    },
+)
+SORTABLE_COLUMNS = [
+    AssetSort.NAME,
+    AssetSort.NEXT_DUE_DATE,
+]
+
+# BAD:
+STATUSES_WITHOUT_DUE_DATE = frozenset(
+    {AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED},
+)
+SORTABLE_COLUMNS = [AssetSort.NAME, AssetSort.NEXT_DUE_DATE]
 ```
 
 ---
@@ -288,6 +334,24 @@ class AssetType(SQLModel, table=True):
     __table_args__ = (CheckConstraint("inspection_interval_days > 0"),)
 
     id: int | None = Field(default=None, primary_key=True)
+```
+
+### String enums
+An enum whose values are strings inherits from `StrEnum` (`from enum import StrEnum`), never `str, Enum`. Its members are real strings, so they compare, format, and serialize as their values.
+
+```python
+# GOOD:
+class AssetStatus(StrEnum):
+    """
+    The working condition of an asset.
+    """
+    OPERATIONAL = "Operational"
+    RETIRED = "Retired"
+
+
+# BAD:
+class AssetStatus(str, Enum):
+    ...
 ```
 
 ---
@@ -342,7 +406,7 @@ def list_sites(
     query: Annotated[str | None, Query(alias="q", max_length=100)] = None,
 ) -> SitePage:
     """
-    Lists sites matching the search text, one page at a time.
+    List sites matching the search text, one page at a time.
     """
     ...
 
@@ -377,7 +441,7 @@ class UserNotFoundError(Exception):
 
 def fetch_user_by_id(user_id: str) -> UserRecord:
     """
-    Fetches a user by id.
+    Fetch a user by id.
 
     :param user_id: The id of the user.
     :return: The user record.

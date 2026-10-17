@@ -36,7 +36,10 @@ def run_hook() -> Callable[..., subprocess.CompletedProcess[str]]:
         }
         environment.update(extra_environment or {})
         return subprocess.run(
-            [sys.executable, str(SCRIPTS_DIRECTORY / "hooks" / hook_name)],
+            [
+                sys.executable,
+                str(SCRIPTS_DIRECTORY / "hooks" / hook_name),
+            ],
             input=json.dumps(payload),
             env=environment,
             capture_output=True,

@@ -1,6 +1,6 @@
 # Python Conventions Checklist
 
-Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16, PY-35, and PY-02. Test files are exempt from PY-07 to PY-12 and PY-35.
+Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16, PY-35, and PY-02. Test files are exempt from PY-07 to PY-12, PY-35, PY-41, and PY-42.
 
 Run `python .claude/scripts/check_python_conventions.py <files>` first: it checks every item marked (auto). Copy its result for those items, then judge the rest. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
 
@@ -29,6 +29,8 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-17 Docstrings of business-logic functions have `:param` / `:return` / `:raises` as needed; small helpers may have only the description
 - [ ] PY-35 (auto) Every function and method has a docstring (except `__init__` and tests), and every endpoint has a description-only docstring
 - [ ] PY-18 Description is one concise sentence ending in `.` and doesn't mention raising errors
+- [ ] PY-41 (auto) Function, method, and endpoint descriptions are in the imperative mood (`Lock the resource.`, not `Locks the resource.`)
+- [ ] PY-42 (auto) Boolean returns say what the value means (`:return: Whether the asset is overdue.`), never `True when ..., False when ...`
 - [ ] PY-19 API endpoint docstrings have only a description (no `:param`/`:return`/`:raises`)
 - [ ] PY-20 Proxy pass-through functions have a single-line docstring only
 - [ ] PY-21 No docstring or comment mentions past implementations
@@ -36,6 +38,7 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 ## Classes & SQLModel
 - [ ] PY-30 Table models: `__tablename__` is on the line right after the class docstring
 - [ ] PY-31 Table models: `__table_args__` (constraints, indexes) is at the end of the class, after the fields
+- [ ] PY-43 (auto) String enums inherit from `StrEnum`, never `str, Enum`
 
 ## Configuration & strings
 - [ ] PY-33 URLs, hosts, ports, DB names, credentials, and keys come from `.env` via settings (never hardcoded)
@@ -53,9 +56,11 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-23 No truthy/falsy checks on non-bool values. Uses `is None` / `is not None` / `len(x) == 0`.
 - [ ] PY-38 (auto) Comprehensions and generator expressions: expression, each `for`, and each `if` on their own lines; brackets on their own lines
 - [ ] PY-32 Exactly one blank line after every `if` block (with its `elif`/`else`) that is followed by more code in the same block
+- [ ] PY-45 `if` conditions that do real work (a query, chained calls, several combined checks) are moved into a well-named variable first
 
 ## Calls
 - [ ] PY-24 Calls with 3+ arguments, or whose single-line form would make the line 70+ characters (indentation included), have one argument per line and a trailing comma
+- [ ] PY-44 (auto) List and set literals with two or more items have one item per line, brackets on their own lines, and a trailing comma
 
 ## Exceptions
 - [ ] PY-25 No raising of builtin exceptions (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, …)

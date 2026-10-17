@@ -21,34 +21,59 @@ MISSING_RETURN_MESSAGE = "Function is missing a return type annotation"
 UNTYPED_CALL_PATTERN = re.compile(
     r'Call to untyped function "(?P<name>[^"]+)" in typed context',
 )
-SKIPPED_DIRECTORY_NAMES = {".venv", "node_modules", ".git"}
+SKIPPED_DIRECTORY_NAMES = {
+    ".venv",
+    "node_modules",
+    ".git",
+}
 MYPY_LINE_PATTERN = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?:\d+:)? (?P<severity>error|note): ",
 )
 MYPY_UNAVAILABLE_EXIT_CODE = 2
 MYPY_UNAVAILABLE_MESSAGE = "mypy could not run (is it installed in this project?)\n"
 SUCCESS_MESSAGE = "Success: no issues found (functions without '-> None' are allowed)."
-MYPY_ARGUMENTS = ["--strict", "--show-error-codes", "--no-error-summary", "--no-color-output"]
+MYPY_ARGUMENTS = [
+    "--strict",
+    "--show-error-codes",
+    "--no-error-summary",
+    "--no-color-output",
+]
 
 # ----- Functions ----- #
 
 
 def build_mypy_command(mypy_arguments: list[str]) -> list[str]:
     """
-    Builds the mypy command, preferring uv, then mypy, then python -m mypy.
+    Build the mypy command, preferring uv, then mypy, then python -m mypy.
     """
     if shutil.which("uv") is not None:
-        return ["uv", "run", "mypy", *MYPY_ARGUMENTS, *mypy_arguments]
+        return [
+            "uv",
+            "run",
+            "mypy",
+            *MYPY_ARGUMENTS,
+            *mypy_arguments,
+        ]
 
     if shutil.which("mypy") is not None:
-        return ["mypy", *MYPY_ARGUMENTS, *mypy_arguments]
+        return [
+            "mypy",
+            *MYPY_ARGUMENTS,
+            *mypy_arguments,
+        ]
 
-    return [sys.executable, "-m", "mypy", *MYPY_ARGUMENTS, *mypy_arguments]
+    return [
+        sys.executable,
+        "-m",
+        "mypy",
+        *MYPY_ARGUMENTS,
+        *mypy_arguments,
+    ]
 
 
 def find_none_returning_lines(path: Path) -> set[int]:
     """
-    Finds the lines mypy may report for functions that never return a value.
+    Find the lines mypy may report for functions that never return a value.
 
     :param path: The Python file to inspect.
     :return: The `def` and decorator line numbers of every function that returns nothing.
@@ -77,10 +102,10 @@ def is_unannotated_none_returning(
     function_node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> bool:
     """
-    Tells whether a function has no annotations at all and returns nothing.
+    Check whether a function has no annotations at all and returns nothing.
 
     :param function_node: The function to inspect.
-    :return: True when mypy sees the function as untyped only because the
+    :return: Whether mypy sees the function as untyped only because the
         convention omits "-> None".
     """
     if function_node.returns is not None:
@@ -102,7 +127,7 @@ def is_unannotated_none_returning(
 
 def find_untyped_none_returning_names(root: Path) -> set[str]:
     """
-    Collects the names of functions that mypy calls untyped only because of the
+    Collect the names of functions that mypy calls untyped only because of the
     no "-> None" convention.
 
     :param root: The directory whose Python files are scanned.
@@ -134,11 +159,11 @@ def is_convention_untyped_call(
     function_names: set[str],
 ) -> bool:
     """
-    Tells whether a mypy line reports a call to a convention-untyped function.
+    Check whether a mypy line reports a call to a convention-untyped function.
 
     :param output_line: One line of mypy output.
     :param function_names: Names from find_untyped_none_returning_names.
-    :return: True when the error only exists because "-> None" is omitted.
+    :return: Whether the error only exists because "-> None" is omitted.
     """
     call_match = UNTYPED_CALL_PATTERN.search(output_line)
     if call_match is None:
@@ -149,7 +174,7 @@ def is_convention_untyped_call(
 
 def filter_mypy_output(output_lines: list[str]) -> list[str]:
     """
-    Removes the errors that only exist because functions returning nothing omit "-> None".
+    Remove the errors that only exist because functions returning nothing omit "-> None".
 
     :param output_lines: Raw mypy output lines.
     :return: The output lines that still matter.
@@ -192,7 +217,7 @@ def filter_mypy_output(output_lines: list[str]) -> list[str]:
 
 def main() -> int:
     """
-    Runs mypy --strict and prints the errors that matter.
+    Run mypy --strict and print the errors that matter.
     """
     mypy_arguments = sys.argv[1:] if len(sys.argv) > 1 else ["."]
     completed = subprocess.run(

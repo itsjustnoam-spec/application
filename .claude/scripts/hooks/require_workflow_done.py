@@ -42,7 +42,7 @@ CONTINUE_MESSAGE = (
 
 def read_hook_payload() -> dict[str, object]:
     """
-    Reads the JSON payload Claude Code sends on stdin.
+    Read the JSON payload Claude Code sends on stdin.
     """
     raw_payload = sys.stdin.buffer.read().decode("utf-8")
     if raw_payload.strip() == "":
@@ -54,7 +54,7 @@ def read_hook_payload() -> dict[str, object]:
 
 def read_text(path: Path) -> str:
     """
-    Reads a text file, or returns an empty string when it doesn't exist.
+    Read a text file, or return an empty string when it doesn't exist.
     """
     if not path.is_file():
         return ""
@@ -64,11 +64,14 @@ def read_text(path: Path) -> str:
 
 def run_git(arguments: list[str], working_directory: Path) -> str:
     """
-    Runs a read-only git command and returns its output.
+    Run a read-only git command and return its output.
     """
     try:
         completed = subprocess.run(
-            ["git", *arguments],
+            [
+                "git",
+                *arguments,
+            ],
             cwd=working_directory,
             check=False,
             capture_output=True,
@@ -88,7 +91,7 @@ def build_progress_fingerprint(
     working_directory: Path,
 ) -> str:
     """
-    Summarizes the feature files and the git state into one hash.
+    Summarize the feature files and the git state into one hash.
 
     :param feature_directory: The active feature's folder.
     :param working_directory: The checkout the session works in.
@@ -106,11 +109,17 @@ def build_progress_fingerprint(
         digest.update(file_marker.encode("utf-8"))
 
     git_head = run_git(
-        ["rev-parse", "HEAD"],
+        [
+            "rev-parse",
+            "HEAD",
+        ],
         working_directory,
     )
     git_status = run_git(
-        ["status", "--porcelain"],
+        [
+            "status",
+            "--porcelain",
+        ],
         working_directory,
     )
     digest.update(git_head.encode("utf-8"))
@@ -120,7 +129,7 @@ def build_progress_fingerprint(
 
 def count_blocks_without_progress(state_path: Path, fingerprint: str) -> int:
     """
-    Counts consecutive blocks with no progress, and records this block.
+    Count consecutive blocks with no progress, and record this block.
 
     :param state_path: The file that remembers the previous block.
     :param fingerprint: The current progress fingerprint.
@@ -146,7 +155,7 @@ def count_blocks_without_progress(state_path: Path, fingerprint: str) -> int:
 
 def block(message: str) -> int:
     """
-    Sends the reason back to Claude and blocks it from stopping.
+    Send the reason back to Claude and block it from stopping.
     """
     sys.stderr.buffer.write((message + "\n").encode("utf-8"))
     sys.stderr.flush()
@@ -155,7 +164,7 @@ def block(message: str) -> int:
 
 def main() -> int:
     """
-    Decides whether the session may stop.
+    Decide whether the session may stop.
     """
     payload = read_hook_payload()
     working_directory = Path(str(payload.get("cwd", "."))).resolve()

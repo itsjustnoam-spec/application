@@ -20,7 +20,7 @@ How application code commits and rolls back database changes. The code itself al
 # GOOD: the request's session dependency owns the transaction
 def get_session() -> Generator[Session, None, None]:
     """
-    Opens a session for one request and runs the request in one transaction.
+    Open a session for one request and run the request in one transaction.
     """
     with Session(engine) as session:
         transaction = session.begin()

@@ -34,7 +34,7 @@ ESLINT_BIN_CANDIDATES = ("node_modules/.bin/eslint.cmd", "node_modules/.bin/esli
 
 def read_hook_payload() -> dict[str, object]:
     """
-    Reads the JSON payload Claude Code sends on stdin.
+    Read the JSON payload Claude Code sends on stdin.
     """
     raw_payload = sys.stdin.buffer.read().decode("utf-8")
     if raw_payload.strip() == "":
@@ -46,7 +46,7 @@ def read_hook_payload() -> dict[str, object]:
 
 def get_edited_path(payload: dict[str, object]) -> Path | None:
     """
-    Returns the path of the file the tool call edited.
+    Return the path of the file the tool call edited.
     """
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
@@ -61,7 +61,7 @@ def get_edited_path(payload: dict[str, object]) -> Path | None:
 
 def is_inside_project(path: Path) -> bool:
     """
-    Tells whether a file belongs to the project (scratch files outside it don't).
+    Check whether a file belongs to the project (scratch files outside it don't).
     """
     project_directory = os.environ.get(PROJECT_DIRECTORY_VARIABLE)
     if project_directory is None:
@@ -73,7 +73,7 @@ def is_inside_project(path: Path) -> bool:
 
 def find_project_root(path: Path, marker: str) -> Path | None:
     """
-    Finds the nearest parent directory that contains a marker file.
+    Find the nearest parent directory that contains a marker file.
     """
     for directory in path.resolve().parents:
         if (directory / marker).is_file():
@@ -83,7 +83,7 @@ def find_project_root(path: Path, marker: str) -> Path | None:
 
 def find_ruff(project_root: Path | None) -> str | None:
     """
-    Finds the project's ruff, or the one on PATH.
+    Find the project's ruff, or the one on PATH.
     """
     if project_root is not None:
         for candidate in RUFF_VENV_CANDIDATES:
@@ -95,7 +95,7 @@ def find_ruff(project_root: Path | None) -> str | None:
 
 def find_eslint(path: Path) -> tuple[str, Path] | None:
     """
-    Finds the nearest project-local eslint binary above the edited file.
+    Find the nearest project-local eslint binary above the edited file.
 
     :param path: The edited frontend file.
     :return: The eslint executable and the directory to run it from, when one is installed.
@@ -109,7 +109,7 @@ def find_eslint(path: Path) -> tuple[str, Path] | None:
 
 def run_linter(command: list[str], working_directory: Path | None) -> str:
     """
-    Runs a linter and returns its output when it reports problems.
+    Run a linter and return its output when it reports problems.
     """
     try:
         completed = subprocess.run(
@@ -132,7 +132,7 @@ def run_linter(command: list[str], working_directory: Path | None) -> str:
 
 def collect_python_problems(path: Path) -> list[str]:
     """
-    Runs the convention checker and ruff on a Python file.
+    Run the convention checker and ruff on a Python file.
     """
     violations = check_python_file(path)
     problems = [
@@ -162,7 +162,7 @@ def collect_python_problems(path: Path) -> list[str]:
 
 def collect_frontend_problems(path: Path) -> list[str]:
     """
-    Runs the project's eslint on a frontend file.
+    Run the project's eslint on a frontend file.
     """
     eslint = find_eslint(path)
     if eslint is None:
@@ -170,7 +170,10 @@ def collect_frontend_problems(path: Path) -> list[str]:
 
     eslint_executable, working_directory = eslint
     eslint_output = run_linter(
-        [eslint_executable, str(path)],
+        [
+            eslint_executable,
+            str(path),
+        ],
         working_directory,
     )
     return [] if eslint_output == "" else [eslint_output]
@@ -178,7 +181,7 @@ def collect_frontend_problems(path: Path) -> list[str]:
 
 def report_problems(path: Path, problems: list[str]) -> int:
     """
-    Sends the problems back to Claude and blocks until they're fixed.
+    Send the problems back to Claude and block until they're fixed.
     """
     message = (
         f"Convention check failed for {path}. Fix every item below before continuing:\n"
@@ -192,7 +195,7 @@ def report_problems(path: Path, problems: list[str]) -> int:
 
 def main() -> int:
     """
-    Checks the edited file against the conventions.
+    Check the edited file against the conventions.
     """
     edited_path = get_edited_path(read_hook_payload())
     if edited_path is None or not edited_path.is_file():
