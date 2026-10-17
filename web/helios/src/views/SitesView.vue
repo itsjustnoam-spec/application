@@ -57,7 +57,11 @@
       </template>
     </v-data-table-server>
 
-    <v-dialog v-model="isFormDialogOpen" max-width="560">
+    <v-dialog
+      :model-value="isFormDialogOpen"
+      max-width="560"
+      @update:model-value="closeFormDialog"
+    >
       <SiteFormDialog
         v-if="isFormDialogOpen"
         :site="editingSite"
@@ -66,7 +70,11 @@
       />
     </v-dialog>
 
-    <v-dialog v-model="isDeleteDialogOpen" max-width="420">
+    <v-dialog
+      :model-value="isDeleteDialogOpen"
+      max-width="420"
+      @update:model-value="closeDeleteDialog"
+    >
       <ConfirmDeleteDialog
         v-if="isDeleteDialogOpen && siteToDelete !== null"
         :title="ARCHIVE_TITLE"
@@ -148,20 +156,19 @@ const closeDeleteDialog = (): void => {
 }
 
 const confirmArchive = async (): Promise<void> => {
-  if (siteToDelete.value === null) {
-    return
-  }
-
-  isArchiving.value = true
-  archiveErrorMessage.value = null
-  try {
-    await archiveSite(siteToDelete.value.id)
-    closeDeleteDialog()
-    await loadPage()
-  } catch (error: unknown) {
-    archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
-  } finally {
-    isArchiving.value = false
+  const site = siteToDelete.value
+  if (site !== null) {
+    isArchiving.value = true
+    archiveErrorMessage.value = null
+    try {
+      await archiveSite(site.id)
+      closeDeleteDialog()
+      await loadPage()
+    } catch (error: unknown) {
+      archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+    } finally {
+      isArchiving.value = false
+    }
   }
 }
 

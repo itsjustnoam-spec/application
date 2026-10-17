@@ -1,4 +1,4 @@
-import { onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 
 import { handleNetworkError } from '@/api/errors'
 import type { ListParams, Page } from '@/models/page'
@@ -50,12 +50,6 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
     }, SEARCH_DEBOUNCE_MS)
   }
 
-  onUnmounted(() => {
-    if (searchTimer !== null) {
-      clearTimeout(searchTimer)
-    }
-  })
-
   return {
     items,
     total,
@@ -69,4 +63,4 @@ const usePagedList = <Item>(fetchPage: (params: ListParams) => Promise<Page<Item
   }
 }
 
-export { PAGE_SIZE, usePagedList }
+export { PAGE_SIZE, SEARCH_DEBOUNCE_MS, usePagedList }

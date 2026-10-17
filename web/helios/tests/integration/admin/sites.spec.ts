@@ -1,0 +1,231 @@
+import { flushPromises } from '@vue/test-utils'
+import { http, HttpResponse } from 'msw'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { SERVER_ERROR_MESSAGE } from '@/api/errors'
+import { SEARCH_DEBOUNCE_MS } from '@/utils/use-paged-list'
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
+import SiteFormDialog from '@/components/SiteFormDialog.vue'
+import SitesView from '@/views/SitesView.vue'
+import { makeSite, makeSitePage } from '../../mocks/factories/site'
+import { server } from '../../mocks/server'
+import { mountWithPlugins } from '../../utils/mount'
+
+const mountSitesView = async () => {
+  const wrapper = mountWithPlugins(SitesView)
+  await flushPromises()
+  return wrapper
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+describe('Admin: sites', () => {
+  it('lists sites returned by the API with their name and address', async () => {
+    const wrapper = await mountSitesView()
+
+    expect(wrapper.text()).toContain('North Depot')
+    expect(wrapper.text()).toContain('1 Main Street')
+  })
+
+  it('shows the empty state when there are no sites', async () => {
+    server.use(
+      http.get('/api/atlas/sites', () => HttpResponse.json(makeSitePage([]))),
+    )
+
+    const wrapper = await mountSitesView()
+
+    expect(wrapper.get('[data-testid="sites-empty"]').text()).toContain('No sites yet.')
+  })
+
+  it('shows the error state with retry when loading sites fails', async () => {
+    server.use(
+      http.get(
+        '/api/atlas/sites',
+        () => HttpResponse.json({ detail: 'Database unavailable' }, { status: 503 }),
+        { once: true },
+      ),
+    )
+
+    const wrapper = await mountSitesView()
+    await wrapper.get('[data-testid="retry-sites-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('North Depot')
+    expect(wrapper.find('[data-testid="sites-error"]').exists()).toBe(false)
+  })
+
+  it('shows the server error message when loading sites fails', async () => {
+    server.use(
+      http.get('/api/atlas/sites', () => HttpResponse.json({ detail: 'Database unavailable' }, { status: 503 })),
+    )
+
+    const wrapper = await mountSitesView()
+
+    expect(wrapper.get('[data-testid="sites-error"]').text()).toContain(SERVER_ERROR_MESSAGE)
+  })
+
+  it('creates a site and shows it in the list', async () => {
+    let sites = [makeSite()]
+    server.use(
+      http.get('/api/atlas/sites', () => HttpResponse.json(makeSitePage(sites))),
+      http.post('/api/atlas/sites', async ({ request }) => {
+        const body = (await request.json()) as { name: string; address: string }
+        const createdSite = makeSite({ id: 2, name: body.name, address: body.address })
+        sites = [...sites, createdSite]
+        return HttpResponse.json(createdSite, { status: 201 })
+      }),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="create-site-button"]').trigger('click')
+    const formDialog = wrapper.findComponent(SiteFormDialog)
+    await formDialog.get('[data-testid="site-name-input"] input').setValue('Harbour Yard')
+    await formDialog.get('[data-testid="site-address-input"] input').setValue('4 Quay Street')
+    await formDialog.get('[data-testid="site-timezone-input"] input').setValue('Europe/Berlin')
+    await formDialog.get('[data-testid="site-timezone-input"] input').trigger('keydown', { key: 'Enter' })
+    await formDialog.get('[data-testid="site-form-save-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Harbour Yard')
+  })
+
+  it('shows only the sites matching the search text after the debounce', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    server.use(
+      http.get('/api/atlas/sites', ({ request }) => {
+        const query = new URL(request.url).searchParams.get('q') ?? ''
+        const allSites = [
+          makeSite({ id: 1, name: 'North Depot' }),
+          makeSite({ id: 2, name: 'South Depot' }),
+        ]
+        return HttpResponse.json(
+          makeSitePage(allSites.filter((site) => site.name.toLowerCase().includes(query.toLowerCase()))),
+        )
+      }),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="site-search-input"] input').setValue('north')
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('North Depot')
+    expect(wrapper.text()).not.toContain('South Depot')
+  })
+
+  it('removes a site from the list after the archive is confirmed', async () => {
+    let sites = [makeSite()]
+    server.use(
+      http.get('/api/atlas/sites', () => HttpResponse.json(makeSitePage(sites))),
+      http.delete('/api/atlas/sites/:siteId', ({ params }) => {
+        sites = sites.filter((site) => String(site.id) !== params.siteId)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="archive-site-button"]').trigger('click')
+    await wrapper.findComponent(ConfirmDeleteDialog).get('[data-testid="confirm-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('North Depot')
+  })
+
+  it('updates a site and shows its new name in the list', async () => {
+    let sites = [makeSite()]
+    server.use(
+      http.get('/api/atlas/sites', () => HttpResponse.json(makeSitePage(sites))),
+      http.put('/api/atlas/sites/:siteId', async ({ request, params }) => {
+        const body = (await request.json()) as { name: string; address: string; timezone: string }
+        const updatedSite = makeSite({ id: Number(params.siteId), ...body })
+        sites = [updatedSite]
+        return HttpResponse.json(updatedSite)
+      }),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="edit-site-button"]').trigger('click')
+    const formDialog = wrapper.findComponent(SiteFormDialog)
+    await formDialog.get('[data-testid="site-name-input"] input').setValue('Renamed Depot')
+    await formDialog.get('[data-testid="site-form-save-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Renamed Depot')
+  })
+
+  it('shows the server error when archiving a site fails', async () => {
+    server.use(
+      http.delete('/api/atlas/sites/:siteId', () =>
+        HttpResponse.json({ detail: 'The site is linked to open work orders.' }, { status: 409 }),
+      ),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="archive-site-button"]').trigger('click')
+    const confirmDialog = wrapper.findComponent(ConfirmDeleteDialog)
+    await confirmDialog.get('[data-testid="confirm-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog.get('[data-testid="confirm-delete-error"]').text()).toContain(
+      'The site is linked to open work orders.',
+    )
+  })
+
+  it('loads the next page of sites when the next page button is clicked', async () => {
+    server.use(
+      http.get('/api/atlas/sites', ({ request }) => {
+        const offset = Number(new URL(request.url).searchParams.get('offset'))
+        const pageSite =
+          offset === 0
+            ? makeSite({ id: 1, name: 'North Depot' })
+            : makeSite({ id: 21, name: 'Page Two Depot' })
+        return HttpResponse.json({ items: [pageSite], total: 21, limit: 20, offset })
+      }),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="v-pagination-next"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Page Two Depot')
+  })
+
+  it('shows only the latest search text when the user keeps typing', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    server.use(
+      http.get('/api/atlas/sites', ({ request }) => {
+        const query = new URL(request.url).searchParams.get('q') ?? ''
+        const allSites = [
+          makeSite({ id: 1, name: 'North Depot' }),
+          makeSite({ id: 2, name: 'South Depot' }),
+        ]
+        return HttpResponse.json(
+          makeSitePage(
+            allSites.filter((site) => site.name.toLowerCase().includes(query.toLowerCase())),
+          ),
+        )
+      }),
+    )
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="site-search-input"] input').setValue('north')
+    await wrapper.get('[data-testid="site-search-input"] input').setValue('south')
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('South Depot')
+    expect(wrapper.text()).not.toContain('North Depot')
+  })
+
+  it('keeps the site in the list when the archive confirmation is cancelled', async () => {
+    const wrapper = await mountSitesView()
+
+    await wrapper.get('[data-testid="archive-site-button"]').trigger('click')
+    await wrapper.findComponent(ConfirmDeleteDialog).get('[data-testid="cancel-delete-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('North Depot')
+  })
+})

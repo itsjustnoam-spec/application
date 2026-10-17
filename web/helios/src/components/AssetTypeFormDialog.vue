@@ -20,11 +20,11 @@
         data-testid="asset-type-category-select"
       />
       <div class="flex items-center gap-2">
-        <span class="text-sm">Inspection interval (days)</span>
         <EasyToolTip text="Whole days between inspections, from 1 to 3650." />
       </div>
       <v-text-field
         v-model="intervalText"
+        label="Inspection interval (days)"
         type="number"
         :error-messages="intervalErrorMessages"
         data-testid="asset-type-interval-input"

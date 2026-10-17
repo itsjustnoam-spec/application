@@ -11,7 +11,6 @@
         :error-messages="nameErrorMessages"
         :counter="NAME_MAX_LENGTH"
         data-testid="site-name-input"
-        @blur="hasSubmitAttempted = true"
       />
       <v-text-field
         v-model="address"
@@ -19,14 +18,13 @@
         :error-messages="addressErrorMessages"
         :counter="ADDRESS_MAX_LENGTH"
         data-testid="site-address-input"
-        @blur="hasSubmitAttempted = true"
       />
       <div class="flex items-center gap-2">
-        <span class="text-sm">Timezone</span>
         <EasyToolTip text="IANA timezone name, for example Europe/Berlin." />
       </div>
       <v-autocomplete
         v-model="timezone"
+        label="Timezone"
         :items="TIMEZONE_OPTIONS"
         :error-messages="timezoneErrorMessages"
         data-testid="site-timezone-input"

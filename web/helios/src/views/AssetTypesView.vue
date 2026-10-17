@@ -62,7 +62,11 @@
       </template>
     </v-data-table-server>
 
-    <v-dialog v-model="isFormDialogOpen" max-width="560">
+    <v-dialog
+      :model-value="isFormDialogOpen"
+      max-width="560"
+      @update:model-value="closeFormDialog"
+    >
       <AssetTypeFormDialog
         v-if="isFormDialogOpen"
         :asset-type="editingAssetType"
@@ -71,7 +75,11 @@
       />
     </v-dialog>
 
-    <v-dialog v-model="isDeleteDialogOpen" max-width="420">
+    <v-dialog
+      :model-value="isDeleteDialogOpen"
+      max-width="420"
+      @update:model-value="closeDeleteDialog"
+    >
       <ConfirmDeleteDialog
         v-if="isDeleteDialogOpen && assetTypeToDelete !== null"
         :title="ARCHIVE_TITLE"
@@ -155,20 +163,19 @@ const closeDeleteDialog = (): void => {
 }
 
 const confirmArchive = async (): Promise<void> => {
-  if (assetTypeToDelete.value === null) {
-    return
-  }
-
-  isArchiving.value = true
-  archiveErrorMessage.value = null
-  try {
-    await archiveAssetType(assetTypeToDelete.value.id)
-    closeDeleteDialog()
-    await loadPage()
-  } catch (error: unknown) {
-    archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
-  } finally {
-    isArchiving.value = false
+  const assetType = assetTypeToDelete.value
+  if (assetType !== null) {
+    isArchiving.value = true
+    archiveErrorMessage.value = null
+    try {
+      await archiveAssetType(assetType.id)
+      closeDeleteDialog()
+      await loadPage()
+    } catch (error: unknown) {
+      archiveErrorMessage.value = getErrorDetail(error) ?? handleNetworkError(error)
+    } finally {
+      isArchiving.value = false
+    }
   }
 }
 
