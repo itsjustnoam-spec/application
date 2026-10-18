@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Merge requests: `$ARGUMENTS`
 
-Read `.claude/workflow/workflow-improvement.md` first and follow it for every step below.
+Read `~/.claude/workflow/workflow-improvement.md` first and follow it for every step below.
 
 ## 0. Check access
 - Find the GitLab MCP tools available in this session: tool names containing `gitlab`, `merge_request`, or `mr`. You need tools to read an MR, its diff/changes, its discussions or notes, and its commits.
@@ -34,7 +34,7 @@ For each human comment, classify it:
 Look **across** MRs as well: the same kind of comment in two or more MRs gets a higher priority.
 
 ## 2. Compare with the current setup
-Read the root `CLAUDE.md`, the relevant `.claude/skills/*/SKILL.md` files and checklists, `.claude/workflow/`, the reviewer agents, and earlier `docs/improvements/` documents before recommending anything, so you don't duplicate an existing rule.
+Read the root `CLAUDE.md`, the relevant `~/.claude/skills/*/SKILL.md` files and checklists, `~/.claude/workflow/`, the reviewer agents, and earlier `docs/improvements/` documents before recommending anything, so you don't duplicate an existing rule.
 
 ## 3. Write the document
 Use the template in the guide. Write to `docs/improvements/<YYYY-MM-DD>-mr-<ids>.md`. Evidence links point to the MR note (URL, or `project!iid` plus `file:line`). Quote only short excerpts of comments.

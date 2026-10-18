@@ -41,7 +41,7 @@ Go through every item and mark it covered or N/A in the notes. The order is a su
 - [ ] Backward compatibility: existing clients, existing data, other services' consumers
 - [ ] Tests: anything special beyond the defaults (backend: integration + API layers, 100% of new code; frontend: only shared code and important behavior, with no coverage target). Which **user journeys** deserve a browser test (Playwright, mocked backend)? Recommend one happy path per new journey plus its main failure.
 - [ ] Missing tooling from `context.md` (e.g. diff-cover): add it as part of this feature, or skip that check?
-- [ ] Git: the remote branch name (default `feature/<slug>`; in a worktree the local branch is `worktree-<slug>` and is pushed with `git push -u origin HEAD:feature/<slug>`), commit per task or one commit at the end, open an MR or not
+- [ ] Git: the Jira issue (the branch is `BTRC-<JIRA-ISSUE>-<what-we-do>` in kebab case, e.g. `BTRC-1234-add-authentication`, inside a worktree too), commit per task or one commit at the end, open an MR or not
 
 ## Readback
 When the ledger is empty, write a **readback** of 5–8 bullets: what will be built, what won't, and the riskiest decision. Ask one final question: "Is this what you want?" with the options "Yes, write the spec (Recommended)" and "No, I'll correct it". Loop until the user says yes.

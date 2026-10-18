@@ -67,6 +67,8 @@ tests/
 
 *If the project already has a different layout when Vitest is set up, follow that one and update this section.*
 
+**Tests go in the main file.** A new test joins the existing spec file of its component or flow; a new file is only for a new component or flow. Don't create a file for each small case.
+
 Internal file order (as in pytest-conventions): imports, then module-level mocks (`vi.mock`, which is hoisted anyway), then local helpers/constants, then one `describe('<UnitName>')` containing the tests.
 
 ---
@@ -87,6 +89,7 @@ Internal file order (as in pytest-conventions): imports, then module-level mocks
 - Build every object through a typed factory from `tests/mocks/factories/`: `makeEntity({ name: 'Pump' })`. Factories return the **API types from `src/models/`**, so a contract change breaks the factories at compile time.
 - Defaults are valid and realistic. Each test overrides only the fields that matter to it, so the arrange step shows what the test is about.
 - The same factories feed MSW handlers, `vi.mock` return values, and Playwright fixtures.
+- Build mock data and expected values **by hand** in the test (or in a factory). Never produce them with the application's own functions, such as a converter that turns an API response into a view model: if that function has a bug, the test copies the bug and never finds it. Importing the app's types and enums is fine.
 
 ---
 

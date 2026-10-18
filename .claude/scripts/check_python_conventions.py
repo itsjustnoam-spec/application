@@ -95,6 +95,7 @@ SESSION_WRITE_METHODS = {
     "merge",
 }
 CONFTEST_FILE_NAME = "conftest.py"
+MODELS_LIBRARY_NAME = "midnight_models"
 ENVIRONMENT_FIXTURE_NAME = "env"
 THIRD_PERSON_SUFFIX = "s"
 NON_THIRD_PERSON_ENDINGS = ("ss", "us", "is")
@@ -1508,16 +1509,16 @@ def check_test_file_header(
     return violations
 
 
-def check_session_writes_in_tests(
+def check_session_use_in_tests(
     path: Path,
     tree: ast.Module,
 ) -> list[Violation]:
     """
-    Check that test bodies don't create or change data through the session.
+    Check that tests never call the session themselves.
 
     :param path: The test file being checked.
     :param tree: The parsed module.
-    :return: One violation per session write in the test file.
+    :return: One violation per session method call in the test file.
     """
     violations: list[Violation] = []
     if path.name == CONFTEST_FILE_NAME:
@@ -1528,15 +1529,15 @@ def check_session_writes_in_tests(
             continue
 
         method_name = get_session_method_call(node)
-        if method_name not in SESSION_WRITE_METHODS:
+        if method_name is None:
             continue
 
         violation = Violation(
             path,
             node.lineno,
             "TS-28",
-            f"Don't call session.{method_name}() in a test: create data "
-            "with conftest fixtures or the app's own functions.",
+            f"Don't call session.{method_name}() in a test: take data from "
+            "the env fixture and check results with the app's own functions.",
         )
         violations.append(violation)
     return violations
@@ -1826,6 +1827,43 @@ def check_environment_fixture(path: Path, tree: ast.Module) -> list[Violation]:
     return violations
 
 
+def is_models_library_file(path: Path) -> bool:
+    """
+    Check whether a file belongs to the midnight_models library.
+
+    :param path: The file being checked.
+    :return: Whether a folder of the path is the models library.
+    """
+    return MODELS_LIBRARY_NAME in path.parts[:-1]
+
+
+def check_models_library_raises(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that the models library never raises errors.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per raise statement in a models library file.
+    """
+    violations: list[Violation] = []
+    if not is_models_library_file(path):
+        return violations
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Raise):
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-48",
+            f"Don't raise in {MODELS_LIBRARY_NAME}: errors belong to the "
+            "applications that use the models.",
+        )
+        violations.append(violation)
+    return violations
+
+
 def check_python_file(path: Path) -> list[Violation]:
     """
     Run every convention check on one Python file.
@@ -1895,12 +1933,13 @@ def check_python_file(path: Path) -> list[Violation]:
             tree,
             lines,
         )
-        violations += check_session_writes_in_tests(path, tree)
+        violations += check_session_use_in_tests(path, tree)
         violations += check_environment_fixture(path, tree)
 
     if not is_test_file(path):
         violations += check_function_docstrings(path, tree)
         violations += check_docstring_mood(path, tree)
+        violations += check_models_library_raises(path, tree)
         violations += check_boolean_return_docs(path, tree)
         violations += check_parameter_annotations(
             path,

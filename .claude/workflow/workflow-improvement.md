@@ -34,10 +34,10 @@ Pick the **first** row that fits. Prefer strengthening something that exists ove
 
 | # | Destination | Use when | Don't use for |
 |---|---|---|---|
-| 1 | **Hook / script check** (`.claude/scripts/`) | A rule that a script can check reliably was broken | Judgment calls |
+| 1 | **Hook / script check** (`~/.claude/scripts/`) | A rule that a script can check reliably was broken | Judgment calls |
 | 2 | **Existing convention skill + its checklist** | A coding or testing rule for a stack an existing skill already covers | Project facts |
-| 3 | **Reviewer agent** (`.claude/agents/review-*.md`) | A reviewer missed a class of problem, or produced false positives | New coding rules (those go to #2, which the reviewer already reads) |
-| 4 | **Workflow guide or command** (`.claude/workflow/*.md`, `.claude/commands/*.md`) | A phase of the workflow went wrong (bad questions, a weak spec, a missing test layer) | Coding rules |
+| 3 | **Reviewer agent** (`~/.claude/agents/review-*.md`) | A reviewer missed a class of problem, or produced false positives | New coding rules (those go to #2, which the reviewer already reads) |
+| 4 | **Workflow guide or command** (`~/.claude/workflow/*.md`, `~/.claude/commands/*.md`) | A phase of the workflow went wrong (bad questions, a weak spec, a missing test layer) | Coding rules |
 | 5 | **Root `CLAUDE.md`** (or a service's own `CLAUDE.md`) | A project fact needed in most sessions: architecture, where things live, run/test commands, gotchas | Style rules, long procedures |
 | 6 | **`docs/CONTEXT.md` / `docs/adr/`** | A domain term, or a decision with lasting consequences | Anything Claude must follow while coding |
 | 7 | **New convention skill** | At least 3 related rules for an area no skill covers (e.g. Temporal, RabbitMQ, SQLModel) | One or two rules (add them to the closest existing skill instead) |
@@ -100,10 +100,10 @@ Apply each picked recommendation and set its **Status** to `applied` (or `skippe
 
 - **Convention skill:** add the rule in the right section of `SKILL.md`, then add a checklist item to `references/checklist.md` with the **next free ID** (e.g. `PY-29`). Never renumber or reuse IDs: old review files refer to them. Try never to take a skill past about 200 lines; if it already is past that, or the change would take it there, don't cut or move anything on your own: ask the user what to do.
 - **CLAUDE.md:** create it if missing. Keep the sections `Architecture`, `Where things live`, `Commands`, `Gotchas`. Keep each line a fact, and keep the file under about 200 lines.
-- **New skill:** `.claude/skills/<kebab-name>/SKILL.md` with frontmatter `name` and `description` (starts with "Use when …"). Only create a skill if Claude should load it by itself (see §6); otherwise it's a workflow guide. Try never to take a skill past about 200 lines. If a change would, don't cut or move anything on your own: ask the user what to do. If it adds rules a reviewer should check, add `references/checklist.md` and add the skill to the file-type routing in `agents/review-conventions.md`.
-- **New workflow guide:** `.claude/workflow/<name>.md`, plain markdown with no frontmatter, plus templates in `.claude/workflow/templates/`. The command that uses it says "Read `.claude/workflow/<name>.md`".
-- **New command:** `.claude/commands/<name>.md` with `description`, `argument-hint`, and `disable-model-invocation: true`.
-- **Hook or script change:** add or update tests in `.claude/scripts/tests/`, and run them (`uv run --with pytest pytest .claude/scripts/tests`) before reporting it as applied. A broken hook blocks every edit.
+- **New skill:** `~/.claude/skills/<kebab-name>/SKILL.md` with frontmatter `name` and `description` (starts with "Use when …"). Only create a skill if Claude should load it by itself (see §6); otherwise it's a workflow guide. Try never to take a skill past about 200 lines. If a change would, don't cut or move anything on your own: ask the user what to do. If it adds rules a reviewer should check, add `references/checklist.md` and add the skill to the file-type routing in `agents/review-conventions.md`.
+- **New workflow guide:** `~/.claude/workflow/<name>.md`, plain markdown with no frontmatter, plus templates in `~/.claude/workflow/templates/`. The command that uses it says "Read `~/.claude/workflow/<name>.md`".
+- **New command:** `~/.claude/commands/<name>.md` with `description`, `argument-hint`, and `disable-model-invocation: true`.
+- **Hook or script change:** add or update tests in `~/.claude/scripts/tests/`, and run them (`uv run --with pytest pytest ~/.claude/scripts/tests`) before reporting it as applied. A broken hook blocks every edit.
 - **YAML frontmatter:** wrap a `description` in double quotes if it contains `: `, otherwise the frontmatter fails to parse and the item loads with no metadata.
 - After applying, list every file you changed.
 
@@ -117,7 +117,7 @@ Claude Code refuses a Skill tool call to a skill that has `disable-model-invocat
 |---|---|---|
 | Rules Claude must apply on its own whenever it touches that kind of code (`*-conventions` incl. `sql-conventions`, `backend-test-infra`) | Skill, model-invoked (no flag) | Claude and the review agents load them automatically, inside or outside `/feature` |
 | Know-how Claude should reach for at the right moment (`git-worktree`) | Skill, model-invoked (no flag) | The description is what triggers it |
-| Steps used only inside a command (`grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement`) | **Plain file in `.claude/workflow/`**, not a skill | They'd misfire if loaded on their own, but the commands must be able to read them. A plain file has no invocation rules to block it |
+| Steps used only inside a command (`grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement`) | **Plain file in `~/.claude/workflow/`**, not a skill | They'd misfire if loaded on their own, but the commands must be able to read them. A plain file has no invocation rules to block it |
 | Commands the user starts on purpose (`feature`, `retro`, `review-mrs`) | Command with `disable-model-invocation: true` | Long-running, they write files, and the user decides when to start them |
 
 **Never** give a skill `disable-model-invocation: true` if a command or another skill depends on it. Make it a workflow guide instead. State the chosen form and the reason in the improvements document for every new item.

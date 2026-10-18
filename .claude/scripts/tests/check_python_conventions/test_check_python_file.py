@@ -303,6 +303,7 @@ def test_check_python_file_migration_file_is_exempt(tmp_path: Path, directory: s
     ("import pytest\n\n# ----- Tests ----- #\n", "TS-27"),
     ("def test_archive_site(session):\n    session.add(Site(name='a'))\n", "TS-28"),
     ("def test_archive_site(db_session):\n    db_session.commit()\n", "TS-28"),
+    ("def test_archive_site(db_session):\n    assert db_session.get(Site, 1) is None\n", "TS-28"),
 ])
 def test_check_python_file_test_module_violation_reports_rule(
     write_python_file: Callable[..., Path],
@@ -347,3 +348,21 @@ def test_check_python_file_banner_text_inside_string_is_ignored(
     violations = check_python_file(path)
 
     assert violations == []
+
+
+def test_check_python_file_raise_in_models_library_reports_py48(tmp_path: Path):
+    path = tmp_path / "midnight_models" / "site.py"
+    path.parent.mkdir(parents=True)
+    path.write_text(HEADER + "# ----- Imports ----- #\n\nimport os\n\n# ----- Functions ----- #\n\n\nraise SiteError('bad')\n", encoding="utf-8")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert "PY-48" in reported_rule_ids
+
+
+def test_check_python_file_raise_in_application_is_allowed(write_python_file: Callable[..., Path]):
+    path = write_python_file(HEADER + "# ----- Imports ----- #\n\nimport os\n\n# ----- Functions ----- #\n\n\nraise SiteError('bad')\n")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert "PY-48" not in reported_rule_ids

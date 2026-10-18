@@ -1,6 +1,6 @@
 # Test Plan
 
-Write `docs/features/<slug>/test-plan.md` from `.claude/workflow/templates/test-plan.md`. **No test code is written before this file exists.** A hook blocks any new test whose name isn't in the plan.
+Write `docs/features/<slug>/test-plan.md` from `~/.claude/workflow/templates/test-plan.md`. **No test code is written before this file exists.** A hook blocks any new test whose name isn't in the plan.
 
 ## Inputs
 - `spec.md` (REQ and EC IDs), `plan.md`, `progress.md` (deviations).
@@ -13,7 +13,7 @@ Write `docs/features/<slug>/test-plan.md` from `.claude/workflow/templates/test-
    - pytest: the function name, `test_<unit>_<condition>_<expected>`.
    - Vitest: the exact `it(...)` string, e.g. `shows an error message when loading entities fails`.
    - Playwright: the exact `test(...)` string, e.g. `user creates an entity and sees it in the list`.
-3. **The file path column holds the exact path** the test will live in, following `pytest-conventions` / `vitest-conventions` / `browser-test-conventions`.
+3. **The file path column holds the exact path** the test will live in, following `pytest-conventions` / `vitest-conventions` / `browser-test-conventions`. Put rows in the existing main file of their operation, component, or flow; plan a new file only for a new one.
 4. **The expected result is observable:** a return value, status code plus body, raised exception plus message, DB state, emitted event, rendered text, URL. "Works correctly" isn't a result.
 5. **Layers.** Use exactly these names in the Layer column:
 
@@ -31,7 +31,7 @@ Write `docs/features/<slug>/test-plan.md` from `.claude/workflow/templates/test-
 
    Put edge-case depth in the cheapest layer that can prove it (`be-integration`, `fe-component`). Put "does it work together" in `fe-integration`. Keep `browser` to journeys.
 6. **Coverage mapping:** every `REQ-n` and `EC-n` appears in "Covers" at least once. On the **backend**, every new public function, endpoint, consumer, workflow, and activity has at least one row, and every error branch in the diff has a row. Pure proxy pass-through routes are exempt (write them under "Exempt" with the reason). On the **frontend**, only shared code and important behavior get rows.
-7. **Never plan these:** tests of migrations, tests that only check which input a model or schema accepts (validation is tested through the API, e.g. a 422), and frontend tests outside the core scope.
+7. **Never plan these:** tests in `midnight_models`, tests of migrations, tests that only check which input a model or schema accepts (validation is tested through the API, e.g. a 422), and frontend tests outside the core scope.
 8. Don't plan tests that only restate the implementation (e.g. "the mock was called") when a real result can be checked.
 
 ## Self-check

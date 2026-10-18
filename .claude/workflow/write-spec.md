@@ -1,20 +1,20 @@
 # Write Spec & Plan
 
-Produce `spec.md` and `plan.md` in `docs/features/<slug>/` from the templates in `.claude/workflow/templates/` (`spec.md`, `plan.md`). After the user approves them, nobody asks the user anything again, so the spec must be complete.
+Produce `spec.md` and `plan.md` in `docs/features/<slug>/` from the templates in `~/.claude/workflow/templates/` (`spec.md`, `plan.md`). After the user approves them, nobody asks the user anything again, so the spec must be complete.
 
 ## Preconditions (stop if any one fails)
 - `patterns.md` exists. If not, run the explorer first.
 - `grill-notes.md` has no unknown that is `open` or `assumed`.
 
 ## Writing `spec.md`
-- Use `.claude/workflow/templates/spec.md`. Fill every section, or write `N/A: <why>`. Never delete a section.
+- Use `~/.claude/workflow/templates/spec.md`. Fill every section, or write `N/A: <why>`. Never delete a section.
 - **IDs:** requirements are `REQ-1…`, edge cases `EC-1…`, decisions `D-1…` (copied from grill-notes). Every requirement has testable acceptance criteria: "returns 404 with `EntityNotFoundError` detail", not "handles missing entities".
 - **Contracts are exact:** field names, types, nullability, status codes, message schemas. The TS types must mirror the Pydantic/SQLModel schemas field for field.
 - **Every decision is traceable:** each `REQ`/`EC` cites the `D-n` it comes from, when it comes from a decision.
 - **Open questions must be empty.** If you discover a new unknown while writing, stop and go back to the grill for it.
 
 ## Writing `plan.md`
-- Use `.claude/workflow/templates/plan.md`.
+- Use `~/.claude/workflow/templates/plan.md`.
 - Order tasks by dependency: model/migration, then service manager/reader, then API route, then proxy route, then frontend types and client, then components/views. Async pieces (RabbitMQ, Temporal) come right after the code they depend on.
 - Every task lists: files, covered `REQ` IDs, **the pattern it follows (`P-n` plus a reference file)**, and a verify command (from the root `CLAUDE.md`, or the service's own scripts).
 - A task that follows no existing pattern must say `Pattern: NEW, because <reason>`, so the user sees it at the gate.

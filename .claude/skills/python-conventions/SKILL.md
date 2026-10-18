@@ -1,6 +1,6 @@
 ---
 name: python-conventions
-description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint (imperative mood), naming, page/section headers, class and SQLModel layout, StrEnum, readable if conditions, blank lines after if blocks, multiline calls, collection literals and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, uv usage, and references the pytest-conventions and sql-conventions skills.
+description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint (imperative mood), naming, page/section headers, class and SQLModel layout, StrEnum, Annotated pydantic validators, readable if conditions, mappings over if chains, blank lines after if blocks, multiline calls, collection literals and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, the midnight_models library, uv usage, and references the pytest-conventions and sql-conventions skills.
 ---
 
 # Python Backend Conventions
@@ -36,7 +36,7 @@ Use **`uv`** for every package and environment operation:
     - If you are not sure whether the type is clear, **always add the type annotation**.
 - **Static Verification**:
     - Run `uv run mypy --strict` at the end of each task to verify type correctness across all modified files.
-    - Never add `-> None` to silence mypy: run it through `.claude/scripts/mypy_strict.py`, which drops only the errors the no-`-> None` rule causes.
+    - Never add `-> None` to silence mypy: run it through `~/.claude/scripts/mypy_strict.py`, which drops only the errors the no-`-> None` rule causes.
 - **Optional Returns**: In a function annotated `-> X | None`, write `return None` explicitly. mypy rejects a bare `return` there ("Return value expected").
 
 ```python
@@ -231,6 +231,28 @@ if session.exec(active_assets.limit(1)).first() is not None:  # what does this c
 
 A simple check (`if site is None:`, `if len(names) == 0:`, `if is_active:`) stays as it is.
 
+### Mappings over long if chains
+Make behavior that depends on a type or a key dynamic and generic: put it in a dict (type → value, handler, or class) and look it up, instead of one `if`/`elif` per type. Adding a type then means adding one entry, not another branch.
+
+```python
+# GOOD:
+INSPECTION_HANDLERS: dict[AssetCategory, Callable[[Asset], Inspection]] = {
+    AssetCategory.ELECTRICAL: build_electrical_inspection,
+    AssetCategory.MECHANICAL: build_mechanical_inspection,
+    AssetCategory.HVAC: build_hvac_inspection,
+}
+
+inspection = INSPECTION_HANDLERS[asset.category](asset)
+
+# BAD:
+if asset.category == AssetCategory.ELECTRICAL:
+    inspection = build_electrical_inspection(asset)
+elif asset.category == AssetCategory.MECHANICAL:
+    inspection = build_mechanical_inspection(asset)
+elif asset.category == AssetCategory.HVAC:
+    inspection = build_hvac_inspection(asset)
+```
+
 ---
 
 ## 6. Multiline Calls and Collection Literals
@@ -327,6 +349,42 @@ class AssetStatus(str, Enum):
     ...
 ```
 
+### Pydantic validators
+Prefer `Annotated` types with `BeforeValidator` / `AfterValidator` over `@field_validator` methods. The validation then sits on the field's type, and the same type can be reused on other models.
+
+```python
+# GOOD:
+def validate_timezone(timezone: str) -> str:
+    """
+    Accept only IANA timezone names.
+
+    :param timezone: IANA name such as Europe/Berlin.
+    :return: The same name, when it resolves.
+    :raises InvalidTimezoneError: When the name isn't a known IANA timezone.
+    """
+    ...
+
+
+Timezone = Annotated[str, AfterValidator(validate_timezone)]
+
+
+class SiteInput(BaseModel):
+    """
+    The values a client sends to create or update a site.
+    """
+    timezone: Timezone
+
+
+# BAD:
+class SiteInput(BaseModel):
+    timezone: str
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, timezone: str) -> str:
+        ...
+```
+
 ---
 
 ## 8. Configuration (`.env`)
@@ -337,8 +395,8 @@ class AssetStatus(str, Enum):
 
 ## 9. String Constants
 
-- **Large strings** (long messages, SQL, templates, multi-line text) become named constants in the `Consts` section, so they're easy to find and change.
-- **Short strings** (keys, labels, short messages, single words) stay inline where they're used. Moving them into constants only hides them and makes quick changes slower.
+- **Strings of more than 3 words** (messages, SQL, templates, multi-line text) become named constants in the `Consts` section, so they're easy to find and change.
+- **Strings of 3 words or fewer** (keys, labels, `"Site not found"`) stay inline where they're used. Moving them into constants only hides them and makes quick changes slower.
 
 ---
 
@@ -435,3 +493,13 @@ Testing is governed by the dedicated **`pytest-conventions`** skill. Whenever wr
 
 - **100% Test Coverage**: All new backend code requires 100% test coverage (pure reverse proxy redirects excepted).
 - **Separate test database**: tests always run against their own database, never the application's, unless the user explicitly says otherwise (see `backend-test-infra`).
+
+---
+
+## 14. The `midnight_models` Library
+
+`midnight_models` is the shared library of models that the applications use.
+
+- **Never raise errors in `midnight_models`.** It only describes data. Raising errors (and deciding what a failure means) belongs to the applications that use the models.
+- **Every new model is exported from the package's `__init__.py`**, so applications import it from the package (`from midnight_models import Site`), not from the module that defines it.
+- **No tests in `midnight_models`** (see `pytest-conventions`). The models are tested through the applications that use them.

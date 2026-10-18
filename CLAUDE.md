@@ -1,6 +1,6 @@
 # FieldOps
 
-Industrial equipment maintenance platform in one monorepo. This project is a test bed for the Claude workflow in `.claude/`.
+Industrial equipment maintenance platform in one monorepo. This project is a test bed for the Claude workflow, which is installed in `~/.claude/` (its source is this repo's `.claude/` folder).
 
 ## Architecture
 - `web/helios/`: Vue 3 + Vuetify + TypeScript (Vite) web app. Vite proxies `/api` to Juniper on port 8000.
@@ -16,7 +16,7 @@ Industrial equipment maintenance platform in one monorepo. This project is a tes
 
 ## Commands
 - Infrastructure: `docker compose up -d postgres mongo rabbitmq temporal` from the repo root.
-- Python project (run inside its directory): `uv sync`, `uv run ruff check .`, `uv run pytest` (writes `coverage.xml`), `python ../../.claude/scripts/mypy_strict.py src tests`.
+- Python project (run inside its directory): `uv sync`, `uv run ruff check .`, `uv run pytest` (writes `coverage.xml`), `python ~/.claude/scripts/mypy_strict.py src tests`.
 - Changed-line coverage (Python): `uv run diff-cover coverage.xml --compare-branch=main --fail-under=100`.
 - Atlas migrations: `PYTHONPATH=src uv run alembic upgrade head` from `services/atlas`.
 - Helios (inside `web/helios`): `npm install`, `npm run typecheck`, `npm test` (Vitest), `npx playwright test` (browser tests, backend mocked), `npm run dev`.
@@ -25,4 +25,4 @@ Industrial equipment maintenance platform in one monorepo. This project is a tes
 - Atlas reads `DATABASE_URL` and `TEST_DATABASE_URL` from `services/atlas/.env`. Copy it from `.env.example`. The test database (`fieldops_test`) must exist in the Postgres container; the tests create its tables.
 - Alembic needs `PYTHONPATH=src`, because `alembic.ini` doesn't add `src` to the path.
 - Helios has no ESLint config yet, so the post-edit hook doesn't lint frontend files here.
-- Frontend tests have no coverage target (see `.claude/skills/vitest-conventions`), even though the root `README.md` shows a frontend diff-cover command.
+- Frontend tests have no coverage target (see `~/.claude/skills/vitest-conventions`), even though the root `README.md` shows a frontend diff-cover command.

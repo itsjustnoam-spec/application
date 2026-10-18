@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Focus (optional): `$ARGUMENTS`
 
-Read `.claude/workflow/workflow-improvement.md` first and follow it for every step below.
+Read `~/.claude/workflow/workflow-improvement.md` first and follow it for every step below.
 
 ## 1. Gather evidence from this session
 Use what is in this conversation, plus files on disk:
@@ -22,7 +22,7 @@ Use what is in this conversation, plus files on disk:
   - the same category or rule ID across **several features** (compare with the `review/history.md` of older features): the strongest evidence for a new rule or a hook
   - a reviewer that found nothing on a feature where another reviewer found problems in its area: a gap in that reviewer's checklist
 - **The diff:** `git diff` and `git log` for this session's commits. Look for patterns in what had to be fixed.
-- **The current setup:** the root `CLAUDE.md`, `.claude/skills/*/SKILL.md`, the checklists, `.claude/workflow/`, `.claude/agents/`, `.claude/commands/`, and `.claude/settings.json`. Read the relevant ones before recommending anything, so you don't duplicate an existing rule.
+- **The current setup:** the root `CLAUDE.md`, `~/.claude/skills/*/SKILL.md`, the checklists, `~/.claude/workflow/`, `~/.claude/agents/`, `~/.claude/commands/`, and `~/.claude/settings.json`. Read the relevant ones before recommending anything, so you don't duplicate an existing rule.
 - **Earlier improvement documents** in `docs/improvements/`: don't re-propose something the user already skipped, unless there is new evidence (and say so).
 
 If a focus was given, concentrate on it, but still report High-priority items from other areas.

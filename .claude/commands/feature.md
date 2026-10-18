@@ -1,20 +1,24 @@
 ---
 description: "Spec-first feature workflow. Explore patterns, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan with a one-pass review, tests, 4 parallel reviews, up to 3 fix rounds, summary."
 disable-model-invocation: true
-argument-hint: "[--worktree] <feature description> | resume <slug>"
+argument-hint: "[--worktree] <Jira issue> <feature description> | resume <branch>"
 ---
 
 # Feature workflow
 
 Request: `$ARGUMENTS`
 
-**Phase guides are plain files, not skills.** The guides for the grill, the spec, and the test plan live in `.claude/workflow/`. Open them with the Read tool at the paths given below; there is no skill or slash command for them. Convention skills (`*-conventions`, `backend-test-infra`, `git-worktree`) are normal skills: load them with the Skill tool.
+**Where things live.** This workflow is installed in `~/.claude/` (the home directory's `.claude` folder). In a shell, that's `$HOME/.claude`; for the Read tool, expand it to the absolute path. The feature folder (`docs/features/`) and worktrees (`.claude/worktrees/`) belong to the project you're working in.
+
+**Phase guides are plain files, not skills.** The guides for the grill, the spec, and the test plan live in `~/.claude/workflow/`. Open them with the Read tool at the paths given below; there is no skill or slash command for them. Convention skills (`*-conventions`, `backend-test-infra`, `git-worktree`) are normal skills: load them with the Skill tool.
 
 **Never stop because a tool refused something.** If a tool call is refused or fails, find another way to do the same step (read the file directly, run the command differently) and continue. Stop only when you need an answer that only the user can give, and only before the gate.
 
 **Run to the end.** After the gate, a Stop hook won't let you end your turn until `progress.md` says `Phase: DONE`. Don't write a "final report" before then, and don't stop to ask for something (such as permission to push) in the middle: that question belongs in phase 9, after `Phase: DONE`. Only when you're genuinely blocked (a broken environment, or a decision the spec can't answer) write `BLOCKED: <reason>` in `progress.md` and stop.
 
 **Conventions win over existing code.** When existing code does something the conventions forbid, it isn't a precedent: follow the conventions in new and changed code.
+
+**Don't change existing code the feature doesn't need.** No refactoring, renaming, or reformatting of code the feature doesn't touch, even when it breaks a convention.
 
 **Write files with the Write or Edit tools**, never with shell heredocs or redirects. The hooks only check files written through Write/Edit.
 
@@ -24,8 +28,8 @@ You orchestrate the phases below **in order**. Each phase writes files to `docs/
 
 ## Phase 0: Setup
 1. If the request is `resume <slug>`: if this session isn't in a worktree but `.claude/worktrees/<slug>/` exists, call `EnterWorktree` with that path first. Then read `docs/features/<slug>/progress.md`, continue from its `Phase:` line, and skip everything already done.
-2. Otherwise pick a short kebab-case `<slug>` from the description.
-3. **Worktree.** Skip this step if the session is already in a worktree (`git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`). Otherwise load the `git-worktree` skill and create and enter a worktree named `<slug>` when **any** of these holds:
+2. Otherwise build `<slug>`, which is also the branch name: `BTRC-<JIRA-ISSUE>-<what-we-do>` in kebab case, e.g. `BTRC-1234-add-authentication`. Take the Jira issue from the request. If it isn't there, ask the user for it (one question). The feature folder, the worktree folder, and the branch all use this name. Never add a prefix such as `worktree-`.
+3. **Worktree.** Skip this step if the session is already in a worktree (`git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`). Otherwise load the `git-worktree` skill and create and enter a worktree for `<slug>` (branch `<slug>`, as the skill describes) when **any** of these holds:
    - the request contains `--worktree` (remove the flag from the description)
    - `docs/features/.active` already exists in this checkout, meaning another feature is in progress here
    - the user answers yes to one question: "Run this feature in its own git worktree, so you can work on other features in parallel?" with the options "Yes, use a worktree (Recommended)" and "No, use this checkout"
@@ -42,13 +46,13 @@ Run the `explorer` agent with: the feature description and the feature directory
 Check that `context.md` and `patterns.md` exist and that `patterns.md` has at least one `P-n`. **Don't continue to phase 2 without `patterns.md`.**
 
 ## Phase 2: Grill
-Read `.claude/workflow/grill-with-docs.md` and follow it fully with the user. It ends when `grill-notes.md` has no open or assumed unknowns and the user has confirmed the readback.
+Read `~/.claude/workflow/grill-with-docs.md` and follow it fully with the user. It ends when `grill-notes.md` has no open or assumed unknowns and the user has confirmed the readback.
 
 ## Phase 3: Spec, plan & ★ GATE
-Read `.claude/workflow/write-spec.md`. Write `spec.md` and `plan.md`, run its self-check, and present them for approval.
+Read `~/.claude/workflow/write-spec.md`. Write `spec.md` and `plan.md`, run its self-check, and present them for approval.
 - On "I have changes", revise and ask again.
-- On approval, set `Status: APPROVED (<date>)` in both files, create `progress.md` from `.claude/workflow/templates/progress.md` with every task unchecked, and set `Phase: IMPLEMENT`.
-- Apply the git strategy from the spec (e.g. create the branch).
+- On approval, set `Status: APPROVED (<date>)` in both files, create `progress.md` from `~/.claude/workflow/templates/progress.md` with every task unchecked, and set `Phase: IMPLEMENT`.
+- Apply the git strategy from the spec. Outside a worktree, create and switch to the branch `<slug>`.
 
 From here on: **no questions to the user.**
 
@@ -57,14 +61,14 @@ For each task in `plan.md`, in order:
 1. Open the task's pattern reference file and mirror its structure.
 2. Load the relevant conventions skill (`python-conventions` / `vue-conventions`) before writing code in that stack, and `sql-conventions` when the task touches a database session, a model, or a migration.
 3. Implement the task. The post-edit hook reports convention and lint problems after every edit. Fix them immediately.
-4. Run the task's `Verify` command, plus the existing tests of the touched service (regressions only: don't write new tests yet). For Python, also run `python .claude/scripts/mypy_strict.py <changed package>` and fix everything it reports. For the frontend, run the project's eslint on the changed `.vue` and `.ts` files and fix everything it reports.
+4. Run the task's `Verify` command, plus the existing tests of the touched service (regressions only: don't write new tests yet). For Python, also run `python ~/.claude/scripts/mypy_strict.py <changed package>` and fix everything it reports. For the frontend, run the project's eslint on the changed `.vue` and `.ts` files and fix everything it reports.
 5. Tick the task in `progress.md` and record the check results. Commit if the git strategy says "per task".
 6. If the spec doesn't cover a situation, choose the most conservative option consistent with the spec, add a `DEV-n` line under "Deviations", and continue.
 
 If a task can't be completed (e.g. a broken environment), record why in `progress.md`, skip only what depends on it, and carry on.
 
 ## Phase 5: Test plan
-Set `Phase: TEST-PLAN`. Read `.claude/workflow/test-plan.md` and write `test-plan.md` from `.claude/workflow/templates/test-plan.md`, covering every REQ, EC, and new code path, with each row in one of the layers `be-unit`, `be-integration`, `be-api`, `fe-unit`, `fe-component`, `fe-integration`, `browser`. For layer guidance, load `backend-test-infra` (backend), and `vitest-conventions` plus `browser-test-conventions` when the frontend is touched.
+Set `Phase: TEST-PLAN`. Read `~/.claude/workflow/test-plan.md` and write `test-plan.md` from `~/.claude/workflow/templates/test-plan.md`, covering every REQ, EC, and new code path, with each row in one of the layers `be-unit`, `be-integration`, `be-api`, `fe-unit`, `fe-component`, `fe-integration`, `browser`. For layer guidance, load `backend-test-infra` (backend), and `vitest-conventions` plus `browser-test-conventions` when the frontend is touched.
 
 **Test-plan review (one pass).** Run the `review-test-plan` agent once with the feature directory. It writes `review/test-plan-review.md`. Apply every finding you agree with to `test-plan.md`. For each one you don't apply, add a reason in that file. There is no second review round: continue to phase 6.
 
@@ -76,7 +80,7 @@ Set `Phase: TESTS`. Write exactly the planned tests, layer by layer, loading the
 - `browser`: `browser-test-conventions`
 
 If the hook blocks a test because it isn't in the plan, add the row to `test-plan.md` first (with a reason), then write the test.
-Run each layer (commands are in the root `CLAUDE.md`): pytest + diff-cover (backend changed-line coverage), Vitest, and Playwright. Then run `python .claude/scripts/check_python_conventions.py` on every changed Python file, and the project's eslint on every changed frontend file (`git diff --name-only <base>` plus untracked files), and fix everything they report. The frontend has no coverage gate. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
+Run each layer (commands are in the root `CLAUDE.md`): pytest + diff-cover (backend changed-line coverage), Vitest, and Playwright. Then run `python ~/.claude/scripts/check_python_conventions.py` on every changed Python file, and the project's eslint on every changed frontend file (`git diff --name-only <base>` plus untracked files), and fix everything they report. The frontend has no coverage gate. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
 
 ## Phase 7: Review (round 1)
 Set `Phase: REVIEW-ROUND-1`. Run these four agents **in parallel**, giving each the feature directory, `<base>`, and the review directory `docs/features/<slug>/review/round-1/`:
@@ -111,4 +115,10 @@ Write `summary.md`, then set `Phase: DONE`:
 ## Needs your attention
 - <anything still open, risky, or left undone>
 ```
-Only now, after `Phase: DONE`, apply the final git step from the spec (commit, push, open an MR) if the spec says so. If pushing or opening the MR needs the user's confirmation, ask for it now: this is the only question allowed after the gate. Delete `docs/features/.active` when the git step is done. Show the user the summary and the path to the feature folder.
+Only now, after `Phase: DONE`, do the final git step from the spec (commit, push, open an MR).
+1. Commit everything the spec's git strategy says to commit.
+2. Ask the user once: "May I push on my own and follow the pipeline until it passes?" with the options "Yes, push and follow the pipeline (Recommended)" and "No, I'll push myself". This is the only question allowed after the gate.
+3. On yes: push the branch (`git push -u origin <slug>`) and open the merge request if the spec says so. Then follow the pipeline through the GitLab MCP server, if one is connected: wait for it to finish, and when a job fails, read its log, fix the cause, commit, push, and check again. Stop when the pipeline passes, or after 3 failed fix attempts, and report what's left. If no GitLab MCP server is connected, say so and stop after pushing.
+4. On no: leave the work committed and tell the user the branch name.
+
+Delete `docs/features/.active` when the git step is done. Show the user the summary and the path to the feature folder.

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/guard_test_plan.py\"",
+            "command": "python \"$HOME/.claude/scripts/hooks/guard_test_plan.py\"",
             "timeout": 15
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/post_edit_checks.py\"",
+            "command": "python \"$HOME/.claude/scripts/hooks/post_edit_checks.py\"",
             "timeout": 60
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/require_workflow_done.py\"",
+            "command": "python \"$HOME/.claude/scripts/hooks/require_workflow_done.py\"",
             "timeout": 30
           }
         ]

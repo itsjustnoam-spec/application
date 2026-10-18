@@ -40,6 +40,7 @@ tests/
 
 - **No layer directories**: no `tests/routers/`, `tests/managers/`, or `tests/schemas/`. A router test and a manager test of the same operation live in the same file.
 - **Path format**: `tests/<domain>/test_<operation>_<domain>.py`.
+- **Tests go in the main file of their operation.** A new test joins the existing file for that operation; a new file is only for a new operation. Don't create a file (or a helpers module) for each small case.
 - **Test function naming**: `test_<unit>_<condition>_<expected>`:
   - `test_create_user_duplicate_email_raises_duplicate_user_error`
   - `test_calculate_discount_zero_percent_returns_original_price`
@@ -122,6 +123,7 @@ Never assert generic `Exception` or `ValueError` when domain exceptions are defi
   If `services/user.py` imports `send_email` from `utils/email.py`, patch `services.user.send_email`, NOT `utils.email.send_email`.
 - **Deterministic Time**: Use `monkeypatch` or `freezegun` to freeze clock values in time-dependent tests.
 - **Never mock the subject under test**: Only mock external network calls, system timers, and third-party APIs.
+- **Mocks and expected values are hand-made**: Build mock data and expected values **by hand** in the test (or in `env`). Never produce them with the application's own functions, such as a converter that turns a row into its API model: if that function has a bug, the test copies the bug and never finds it. Importing the app's types and enums is fine.
 
 ---
 
@@ -131,8 +133,9 @@ All the data a test relies on, but doesn't test, comes from **one fixture, `env`
 
 - **`env` is the only place that creates objects in the database for tests.** It may add them through the session or the application's managers.
 - **The object under test is created through the application's own functions.** A test about creating or changing something calls the manager (`create_asset(...)`, `archive_site(...)`) or the API. That's the only creation allowed outside `env`.
+- **Never call a manager to create something just to test something else with it.** When creating isn't what the test is about, the object comes from `env`.
 - **No factory fixtures and no creating helpers** (`make_site`, `make_asset`, ...), in any `conftest.py` or `utils.py`, root or domain. A domain's `conftest.py` and `utils.py` hold fixtures and helpers for that domain's tests, but objects still come only from `env`.
-- **A test never touches the session directly**: no `session.add`, `session.delete`, `session.commit`, or `session.execute` in a test body. To check the result, it uses the application's read functions or the API.
+- **A test never uses the session directly**: no `session.add`, `session.get`, `session.exec`, `session.commit`, or any other session call in a test body. A test only passes the session to the application's functions. To check the result, it uses the application's read functions or the API.
 - **When a test needs something `env` doesn't have**, add it to `env` under a name that says what's special about it (`archived_site`, `retired_compressor`, `asset_due_yesterday`). Don't build it in the test.
 - Tests never depend on what another test created. `env` is function-scoped, so every test starts from the same world.
 
@@ -205,6 +208,7 @@ def test_list_assets_archived_site_is_hidden(db_session: Session):
 - **Migrations.** Verify them by running them (see `sql-conventions`), not with tests.
 - **Plain object or schema validation**: tests that only construct a model or schema and check which input it accepts or rejects. Validation is tested through behavior instead, e.g. an API test that sends an invalid body and gets 422 with the right detail.
 - Framework or library behavior (that FastAPI routes, that SQLAlchemy saves), and trivial getters or constants.
+- **The `midnight_models` library.** It has no tests; its models are tested through the applications that use them.
 
 ---
 

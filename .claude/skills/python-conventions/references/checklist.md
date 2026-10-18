@@ -2,7 +2,7 @@
 
 Run this per changed `.py` file (tests use the pytest checklist as well). Migration files (Alembic `versions/` / `migrations/`) are exempt from PY-07 to PY-16, PY-35, and PY-02. Test files are exempt from PY-07 to PY-12, PY-17 to PY-21, PY-24, PY-35, PY-41, and PY-42.
 
-Run `python .claude/scripts/check_python_conventions.py <files>` first: it checks every item marked (auto). Copy its result for those items, then judge the rest. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
+Run `python ~/.claude/scripts/check_python_conventions.py <files>` first: it checks every item marked (auto). Copy its result for those items, then judge the rest. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
 
 ## Typing
 - [ ] PY-01 Every function parameter has a type annotation (except `self`/`cls`)
@@ -38,10 +38,11 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-30 Table models: `__tablename__` is on the line right after the class docstring
 - [ ] PY-31 Table models: `__table_args__` (constraints, indexes) is at the end of the class, after the fields
 - [ ] PY-43 (auto) String enums inherit from `StrEnum`, never `str, Enum`
+- [ ] PY-46 Pydantic field validation uses `Annotated[..., BeforeValidator(...)]` / `AfterValidator(...)`, not `@field_validator` methods
 
 ## Configuration & strings
 - [ ] PY-33 URLs, hosts, ports, DB names, credentials, and keys come from `.env` via settings (never hardcoded)
-- [ ] PY-34 Large strings (long messages, SQL, templates) are named constants; short strings stay inline
+- [ ] PY-34 Strings of more than 3 words (messages, SQL, templates) are named constants; strings of 3 words or fewer stay inline
 
 ## FastAPI & database
 - [ ] PY-37 (auto) Dependencies are functions passed with `Depends(...)` in each endpoint's signature, never stored in a constant or type alias
@@ -55,6 +56,7 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 - [ ] PY-23 No truthy/falsy checks on non-bool values. Uses `is None` / `is not None` / `len(x) == 0`.
 - [ ] PY-38 (auto) Comprehensions and generator expressions: expression, each `for`, and each `if` on their own lines; brackets on their own lines
 - [ ] PY-32 Exactly one blank line after every `if` block (with its `elif`/`else`) that is followed by more code in the same block
+- [ ] PY-47 Behavior that depends on a type or key is a dict lookup (type → value, handler, or class), not a chain of `if`/`elif` per type
 - [ ] PY-45 `if` conditions that do real work (a query, chained calls, several combined checks) are moved into a well-named variable first
 
 ## Calls
@@ -69,3 +71,7 @@ Run `python .claude/scripts/check_python_conventions.py <files>` first: it check
 
 ## Tooling
 - [ ] PY-28 Dependencies added with `uv add`, and commands run through `uv run`
+
+## midnight_models
+- [ ] PY-48 (auto) No `raise` in `midnight_models`: errors are raised only in the applications
+- [ ] PY-49 Every new model in `midnight_models` is exported from the package's `__init__.py`

@@ -31,7 +31,7 @@ BLOCKED_PATTERN = re.compile(r"^BLOCKED:\s*\S", re.MULTILINE)
 CONTINUE_MESSAGE = (
     "The /feature workflow for '{slug}' isn't finished: progress.md says "
     "'Phase: {phase}'. Don't stop and don't write a final report yet. "
-    "Continue with the next step of .claude/commands/feature.md "
+    "Continue with the next step of ~/.claude/commands/feature.md "
     "(triage, fixes, the next review round, then summary.md and "
     "'Phase: DONE'). Only if you are genuinely blocked, write "
     "'BLOCKED: <reason>' in progress.md, then stop."

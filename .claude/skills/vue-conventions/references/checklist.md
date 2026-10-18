@@ -3,7 +3,7 @@
 Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (with `file:line`), or N/A.
 
 ## Architecture
-- [ ] VU-01 Components are small and focused, and large views are split into subcomponents
+- [ ] VU-01 Components are small and focused, and large views are split into reusable subcomponents
 - [ ] VU-02 No component has `v-dialog` as its root. Dialog content is its own card component, wrapped in `v-dialog` by the parent.
 - [ ] VU-03 Logic, helpers, and interfaces used in more than one place are in `src/utils/` or `src/models/`
 - [ ] VU-30 No condition repeats what a parent already guarantees (e.g. no `v-if="isOpen"` inside a `v-dialog` bound to `isOpen`)
@@ -42,7 +42,8 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-34 Choosing which function to call (or whether to call one) uses a full `if` / `else`, never a ternary
 - [ ] VU-35 No `void` before function calls
 - [ ] VU-36 Component state is a `ref`, not a reassigned `let`
-- [ ] VU-22 No magic numbers in template or script; large strings are named constants, short strings stay inline
+- [ ] VU-37 Behavior that depends on a type or key is an object/`Record` lookup, not a chain of `if`s per type
+- [ ] VU-22 No magic numbers in template or script; strings of more than 3 words are named constants, strings of 3 words or fewer stay inline
 - [ ] VU-23 Names are descriptive (no `data`, `item`, `load`)
 - [ ] VU-24 Docstrings only for complex math or non-obvious integrations
 - [ ] VU-25 No trailing `return` in functions that return nothing, and no `return undefined`/`return null` to mean "nothing"

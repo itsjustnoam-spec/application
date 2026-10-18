@@ -18,4 +18,4 @@ Spec: `spec.md` · Status: DRAFT | APPROVED (<date>)
 TASK-1 → TASK-2 → …
 
 ## Git
-- Branch: <name> · Commits: <per task | single> · PR: <yes/no>
+- Branch: BTRC-<JIRA-ISSUE>-<what-we-do> · Commits: <per task | single> · PR: <yes/no>

@@ -11,7 +11,7 @@ Strict conventions for frontend development using Vue 3 (Composition API), Vueti
 
 ## 1. Component Architecture & Sizing
 
-- **Small, Focused Components**: Prefer small, focused components over monolithic ones. Break complex views into small, reusable subcomponents.
+- **Small, Focused Components**: Prefer small, focused components over monolithic ones. Break complex views into small, reusable subcomponents: when a part of a template could be used elsewhere (a field group, a toolbar, a status chip), split it into its own component.
 - **Dialog Decomposition (`v-dialog`)**:
   - **Never** make `v-dialog` the root element of a component.
   - Create the dialog's content as a standalone modal/card component.
@@ -228,7 +228,8 @@ The same applies to self-closing components: each attribute on its own line, and
 - **No `void` before calls**: call the function as it is (`loadPage()`), or `await` it when the order matters. Never write `void loadPage()`.
 - **Prefer `ref` over `let`**: component state in `<script setup>` is a `ref` (`const selectedSiteId = ref<number | null>(null)`), not a reassigned `let`. A `let` isn't reactive, so the template and watchers never see its changes.
 - **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants.
-- **Strings**: **large strings** (long messages, long URLs paths, multi-line text) become named constants. **Short strings** (labels, keys, short messages, single words) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower.
+- **Strings**: strings of **more than 3 words** (messages, long URL paths, multi-line text) become named constants. Strings of **3 words or fewer** (labels, keys, `'Save asset'`) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower.
+- **Mappings over long if chains**: behavior that depends on a type or key is a lookup in an object or `Record` (type → value, handler, or component), not one `if` per type. Adding a type then means adding one entry.
 - **Configuration in `.env`**: API base URLs, links to other systems, ports, keys, and every other environment-specific value live in the app's `.env` files (`VITE_*`) and are read through `import.meta.env` in one config module. Never hardcode them.
 - **Exports at the bottom**: in `.ts` files, never export at the declaration (`export const`, `export function`, `export interface`, `export type`, `export enum`, `export class`). Declare everything first, then end the file with one export section (`.vue` files export nothing, see §1):
   ```ts

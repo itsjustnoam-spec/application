@@ -16,6 +16,8 @@ Run this per changed frontend Vitest file. Every item must be answered ✅, ❌ 
 - [ ] VT-11 Fresh Pinia/router per test, and no shared mutable state between tests
 - [ ] VT-12 Debounce tests use fake timers and the component's named debounce constant
 - [ ] VT-13 Explicit checks and named constants per `vue-conventions` inside test code
+- [ ] VT-14 New tests are added to the existing spec file of their component or flow; no new file for a small case
+- [ ] VT-15 Mock data and expected values are built by hand (factories with fixed values), never with the app's own functions (converters, mappers); importing types is fine
 
 ## Component tests
 - [ ] VT-20 Uses `mount` (via `mountWithPlugins`), not `shallowMount`. Any stub is justified.

@@ -1,6 +1,6 @@
-# Claude Code workflow (project-level)
+# Claude Code workflow (user-level, `~/.claude`)
 
-A spec-first Claude Code workflow for a Vue/Vuetify + FastAPI microservices monorepo. Everything lives in this `.claude/` folder, so running `claude` from the project root picks it up automatically. Nothing needs installing.
+A spec-first Claude Code workflow for a Vue/Vuetify + FastAPI microservices monorepo. It's installed in `~/.claude/` (on Ubuntu, `/home/<you>/.claude/`), so Claude Code loads its skills, agents, commands, and hooks in every project. This repo's `.claude/` folder is its source. Feature files (`docs/features/`) and worktrees (`.claude/worktrees/`) still live in each project.
 
 ```
 /feature "<what you want>"
@@ -23,6 +23,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 
 | Path | What |
 |---|---|
+| `CLAUDE.md` | General working rules loaded in every session (think first, keep it simple, surgical changes, checkable goals, branch names, pushing) |
 | `settings.json` | Hooks: post-edit convention/lint check, test-plan guard, and a Stop hook that keeps a run going until `Phase: DONE` |
 | `commands/feature.md` | The orchestrator (`/feature`) |
 | `commands/retro.md` | End-of-session retrospective → improvements document (`/retro`) |
@@ -46,12 +47,12 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 ## Setup
 
 1. **Requirements:** `python` (3.10+) on PATH for the hooks. Per Python service: `uv`, plus `ruff`, `mypy`, `pytest-cov`, and `diff-cover` as dev dependencies. Frontend: ESLint, Vitest + Vue Test Utils + MSW + `@pinia/testing`, and Playwright, already set up in the project.
-2. **Run from the project root:** `claude`. The first time, Claude Code asks you to trust the folder; the hooks in `settings.json` only run after you accept.
-3. **Keep a root `CLAUDE.md`** with the architecture, where things live, and the run/test commands. `/feature` reads it, and `/retro` recommends additions to it over time.
+2. **Install:** copy `CLAUDE.md`, `agents/`, `commands/`, `skills/`, `workflow/`, and `scripts/` into `~/.claude/`. Merge the `hooks` block of `settings.json` into your existing `~/.claude/settings.json` instead of replacing that file. The hooks call `$HOME/.claude/scripts/hooks/...`.
+3. **Keep a root `CLAUDE.md` in each project** with the architecture, where things live, and the run/test commands. `/feature` reads it, and `/retro` recommends additions to it over time.
 
 ## LiteLLM models
 
-The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) or `haiku` (review-conventions). Map those aliases to your LiteLLM models in your **user** settings (`~/.claude/settings.json`), or in `.claude/settings.local.json` (git-ignored by Claude Code), never in the shared `settings.json`, because the key is personal. The model names below are placeholders; use the `model_name`s from your LiteLLM config:
+The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) or `haiku` (review-conventions). Map those aliases to your LiteLLM models in the `env` block of `~/.claude/settings.json`, next to the hooks. Never commit the key. The model names below are placeholders; use the `model_name`s from your LiteLLM config:
 
 ```json
 {
@@ -69,7 +70,7 @@ The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) o
 ## What the hooks do
 
 - **After every Write/Edit**
-  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, a docstring on every function, no short or abbreviated names, no dependencies stored in constants, multi-line comprehensions, `pass` in empty classes, no `session.rollback()`, imperative-mood descriptions, `Whether ...` boolean returns, `StrEnum` for string enums, one item per line in list and set literals, BOM; in test files: no page docstring or banners, no `session.add/commit/...`, and no object creation outside the `env` fixture; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH. Files outside the project (Claude's scratch scripts) are skipped.
+  - `.py`: runs `scripts/check_python_conventions.py` (page header, banners and spacing, `-> None`, `return None`, trailing `return`, untyped params, builtin exceptions, `Error` suffix, `__all__`, docstring layout, no blank line after a class docstring, `__tablename__` first and `__table_args__` last in table models, a blank line after `if` blocks, the 70-character multiline-call rule, a docstring on every function, no short or abbreviated names, no dependencies stored in constants, multi-line comprehensions, `pass` in empty classes, no `session.rollback()`, imperative-mood descriptions, `Whether ...` boolean returns, `StrEnum` for string enums, one item per line in list and set literals, no `raise` in `midnight_models`, BOM; in test files: no page docstring or banners, no session calls at all, and no object creation outside the `env` fixture; migration files are skipped) plus `ruff check` when ruff is installed in the service's `.venv` or on PATH. Files outside the project (Claude's scratch scripts) are skipped.
   - `.vue`/`.ts`: runs the project's `eslint` if one is installed in `node_modules`.
   - Problems are sent back to Claude (exit code 2) so it fixes them right away.
 - **Before every Write/Edit to a test file:** while a feature is active (`docs/features/.active`), it blocks adding a pytest, Vitest, or Playwright test whose name isn't in that feature's `test-plan.md`. Edits to existing tests are allowed. Outside the workflow, the guard does nothing.
@@ -78,17 +79,17 @@ The agents ask for `sonnet` (explorer, review-spec, review-bugs, review-tests) o
 ## Using the scripts directly (e.g. in CI)
 
 ```bash
-python .claude/scripts/check_python_conventions.py <files or dirs>
+python ~/.claude/scripts/check_python_conventions.py <files or dirs>
 ```
 
 ```bash
-python .claude/scripts/mypy_strict.py <paths>
+python ~/.claude/scripts/mypy_strict.py <paths>
 ```
 
 ## Testing the scripts
 
 ```bash
-uv run --with pytest pytest .claude/scripts/tests
+uv run --with pytest pytest ~/.claude/scripts/tests
 ```
 
 ## Improving the setup over time
@@ -100,10 +101,10 @@ Both follow `workflow/workflow-improvement.md`.
 
 ## Parallel features (worktrees)
 
-- From a terminal: `claude -w <slug>`, then `/feature ...` inside it. To resume later: `claude -w <slug>`, then `/feature resume <slug>`.
-- From a session: `/feature --worktree <description>`. `/feature` also moves into a worktree automatically when another feature is already active in the checkout, and otherwise asks once.
-- Worktrees live in `.claude/worktrees/<slug>/` (gitignored) on branch `worktree-<slug>`, pushed as `feature/<slug>`. Each one has its own `docs/features/`. See `skills/git-worktree/SKILL.md` for setup (dependencies, `.worktreeinclude` for `.env` files, shared Docker infrastructure) and cleanup.
-- New worktrees branch from `main` on the remote, so **commit and push changes to `.claude/` to `main`** before starting worktrees. Otherwise they run the old workflow.
+- Branches and worktree folders are named `BTRC-<JIRA-ISSUE>-<what-we-do>` (e.g. `BTRC-1234-add-authentication`), never `worktree-...`.
+- From a session: `/feature --worktree <Jira issue> <description>`. `/feature` also moves into a worktree automatically when another feature is already active in the checkout, and otherwise asks once. It creates the worktree with git and enters it with `EnterWorktree` (`path`), because `EnterWorktree` with a name, and `claude -w`, would name the branch `worktree-<name>`.
+- From a terminal: `git worktree add .claude/worktrees/<branch> -b <branch> origin/main`, then run `claude` inside `.claude/worktrees/<branch>`. To resume later, run `claude` there again, then `/feature resume <branch>`.
+- Each worktree has its own `docs/features/`. See `skills/git-worktree/SKILL.md` for setup (dependencies, `.worktreeinclude` for `.env` files, shared Docker infrastructure) and cleanup.
 
 ## Model invocation
 

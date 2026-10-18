@@ -46,7 +46,7 @@ Status: DRAFT | APPROVED (<date>)
 - <area> → P-n (`reference file`)
 
 ## 11. Git
-- Branch: <name> · Commits: <per task | single> · PR: <yes/no>
+- Branch: BTRC-<JIRA-ISSUE>-<what-we-do> · Commits: <per task | single> · PR: <yes/no>
 
 ## 12. Open questions
 <must be empty before approval>
