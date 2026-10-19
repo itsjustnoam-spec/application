@@ -28,6 +28,8 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 | `commands/feature.md` | The orchestrator (`/feature`) |
 | `commands/retro.md` | End-of-session retrospective → improvements document (`/retro`) |
 | `commands/review-mrs.md` | Learns from GitLab merge requests via the GitLab MCP → improvements document (`/review-mrs`) |
+| `commands/map-library.md` | Audits a library's docs against its code and maps the skills it needs (`/map-library <path>`). Standalone: not part of `/feature` |
+| `agents/doc-auditor.md`, `agents/skill-mapper.md` | Used only by `/map-library` |
 | `agents/explorer.md` | Pattern discovery before planning |
 | `agents/review-*.md` | The four reviewers |
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
@@ -115,6 +117,6 @@ Both follow `workflow/workflow-improvement.md`.
 | `python-conventions`, `pytest-conventions`, `sql-conventions`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`, `backend-test-infra` | Skill, model-invoked | Claude must pick them up by itself whenever it writes that kind of code, inside or outside `/feature`, and the review agents load them |
 | `git-worktree` | Skill, model-invoked | Claude should reach for it when you start parallel work; `/feature` loads it in phase 0 |
 | `grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement` | **Plain files in `workflow/`**, not skills | Only meaningful inside their command. As flagged skills they got refused mid-workflow and stopped `/feature` at phase 5. As plain files they can't misfire on their own and can't be blocked |
-| `/feature`, `/retro`, `/review-mrs` | Command, `true` | Long-running and write files, so you start them on purpose |
+| `/feature`, `/retro`, `/review-mrs`, `/map-library` | Command, `true` | Long-running and write files, so you start them on purpose |
 
 When you add something, decide its form with `workflow/workflow-improvement.md` §6. `/retro` does this for everything it proposes.
