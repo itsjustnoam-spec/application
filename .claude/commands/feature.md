@@ -1,5 +1,5 @@
 ---
-description: "Spec-first feature workflow. Explore patterns, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan with a one-pass review, tests, 4 parallel reviews, up to 3 fix rounds, summary."
+description: "Spec-first feature workflow. Explore patterns with two explorers, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan with a one-pass review, tests, 5 parallel reviews (two for conventions), up to 3 fix rounds, summary."
 disable-model-invocation: true
 argument-hint: "[--worktree] <Jira issue> <feature description> | resume <branch>"
 ---
@@ -42,8 +42,19 @@ You orchestrate the phases below **in order**. Each phase writes files to `docs/
 8. Read the root `CLAUDE.md` if it exists (architecture, run and test commands). If it's missing or thin, continue anyway and let `/retro` recommend what to add at the end of the session.
 
 ## Phase 1: Explore & discover patterns (mandatory)
-Run the `explorer` agent with: the feature description and the feature directory. Wait for it.
-Check that `context.md` and `patterns.md` exist and that `patterns.md` has at least one `P-n`. **Don't continue to phase 2 without `patterns.md`.**
+Run **two** `explorer` agents **in parallel**, each with the feature description:
+- explorer 1: starting point `backend`, output directory `docs/features/<slug>/explore-1/`
+- explorer 2: starting point `frontend`, output directory `docs/features/<slug>/explore-2/`
+
+Wait for both. Then **merge** their files into `docs/features/<slug>/context.md` and `patterns.md`, in the same formats:
+- **Context:** combine the services, files, similar features, integration points, and risks of both. A tool counts as missing if either explorer reports it missing and you confirm it.
+- **Patterns found by both** with the same reference file: one `P-n`, combining their notes on its shape.
+- **Patterns found by only one:** open the reference file yourself. Keep the pattern when the file exists and fits; drop it otherwise.
+- **Disagreements** (different reference files or different shapes for the same kind of change): read both files. Keep the one that follows the conventions (and is newer, when both do). When the codebase really does it two ways, record it as an inconsistency `I-n` for the grill.
+- **Inconsistencies:** combine both lists, without duplicates.
+- End `patterns.md` with `## Explorer agreement`: what only one explorer found, and every disagreement with how you resolved it.
+
+Keep `explore-1/` and `explore-2/` (`/retro` learns from them). Check that `context.md` and `patterns.md` exist and that `patterns.md` has at least one `P-n`. **Don't continue to phase 2 without `patterns.md`.**
 
 ## Phase 2: Grill
 Read `~/.claude/workflow/grill-with-docs.md` and follow it fully with the user. It ends when `grill-notes.md` has no open or assumed unknowns and the user has confirmed the readback.
@@ -83,9 +94,21 @@ If the hook blocks a test because it isn't in the plan, add the row to `test-pla
 Run each layer (commands are in the root `CLAUDE.md`): pytest + diff-cover (backend changed-line coverage), Vitest, and Playwright. Then run `python ~/.claude/scripts/check_python_conventions.py` on every changed Python file, and the project's eslint on every changed frontend file (`git diff --name-only <base>` plus untracked files), and fix everything they report. The frontend has no coverage gate. Fix failing tests: when a failure reveals a real bug, fix the code and note it in `progress.md`. Record the results in `test-plan.md` → "Results".
 
 ## Phase 7: Review (round 1)
-Set `Phase: REVIEW-ROUND-1`. Run these four agents **in parallel**, giving each the feature directory, `<base>`, and the review directory `docs/features/<slug>/review/round-1/`:
-`review-conventions` · `review-spec` · `review-bugs` · `review-tests`.
-Wait for all four. Each writes `<review directory>/<name>.md`. **Never overwrite or delete an earlier round's files.** They are the review history that `/retro` learns from.
+Set `Phase: REVIEW-ROUND-1`.
+
+**Split the conventions work.** List the convention skills that apply to the changed files (`python-conventions`, `sql-conventions`, `pytest-conventions`, `backend-test-infra`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`; see the file table in `review-conventions`). Give each of the two conventions reviewers a list of **whole skills**. Never split one skill between them. Use the first case that fits, leaving out skills that apply to no changed file:
+- Backend and frontend changed: reviewer 1 gets `python-conventions`, `sql-conventions`, `pytest-conventions`, `backend-test-infra`; reviewer 2 gets `vue-conventions`, `vitest-conventions`, `browser-test-conventions`.
+- Only the backend changed: reviewer 1 gets `python-conventions`, `sql-conventions`; reviewer 2 gets `pytest-conventions`, `backend-test-infra`.
+- Only the frontend changed: reviewer 1 gets `vue-conventions`; reviewer 2 gets `vitest-conventions`, `browser-test-conventions`.
+- If one list ends up empty, run only the other conventions reviewer.
+
+Record the two skill lists in `progress.md`, so later rounds reuse them.
+
+Run these agents **in parallel**, giving each the feature directory, `<base>`, and the review directory `docs/features/<slug>/review/round-1/`:
+- `review-conventions` twice: as reviewer 1 and as reviewer 2, each with its skill list
+- `review-spec` · `review-bugs` · `review-tests`
+
+Wait for all of them. Each writes `<review directory>/<name>.md` (the conventions reviewers write `conventions-1.md` and `conventions-2.md`). In triage and `history.md`, `conventions-1` and `conventions-2` are two separate reviewers. **Never overwrite or delete an earlier round's files.** They are the review history that `/retro` learns from.
 
 ## Phase 8: Triage & fix (max 3 fix rounds)
 For round `n` (starting at 1):
@@ -97,7 +120,7 @@ For round `n` (starting at 1):
    `| Round | Reviewer | Blocker | Major | Minor | Fixed | Dismissed | Recurring from earlier round |`
 3. If no finding was marked `fix`, go to phase 9.
 4. Set `Phase: FIX-ROUND-<n>`. Fix every `fix` finding: blockers first, then majors, then minors. Re-run the checks and tests.
-5. Re-review: re-run **only** the reviewers that had `fix` findings, with the review directory `review/round-<n+1>/` and the previous round's directory, so they can confirm each fix and don't re-raise dismissed findings without new evidence. Set `Phase: REVIEW-ROUND-<n+1>`.
+5. Re-review: re-run **only** the reviewers that had `fix` findings (a conventions reviewer with the same number and skill list as before), with the review directory `review/round-<n+1>/` and the previous round's directory, so they can confirm each fix and don't re-raise dismissed findings without new evidence. Set `Phase: REVIEW-ROUND-<n+1>`.
 6. Repeat from step 1 for round `n+1`. **Stop after fix round 3**: triage the final review round (steps 1–2), but don't fix it. Remaining findings go into the summary.
 
 ## Phase 9: Summary

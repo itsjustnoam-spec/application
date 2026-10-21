@@ -18,6 +18,7 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-07 `defineEmits` tuples are types only (`[string, boolean]`), with no parameter names
 - [ ] VU-27 Props and emits are interfaces named exactly `Props` and `Emits` (no component prefix) in `<script lang="ts">`, used as `defineProps<Props>()` / `defineEmits<Emits>()`. No inline type literals in the macros.
 - [ ] VU-08 A comment above the emit declaration explains non-obvious emit parameters
+- [ ] VU-38 A component with no props or no emits doesn't call that macro
 
 ## UI
 - [ ] VU-09 `EasyToolTip` is used, never raw `v-tooltip`
@@ -27,6 +28,7 @@ Run this per changed `.vue` / `.ts` file. Every item must be answered ✅, ❌ (
 - [ ] VU-13 Paginated or lazy lists use the generic loadable resource (`v-infinite-scroll`)
 - [ ] VU-14 Network errors go through `handleNetworkError`
 - [ ] VU-15 Important titles and primary actions are centered
+- [ ] VU-39 Interactive and asserted elements have a stable `data-testid` named `<what>-<kind>`, and inputs and buttons have accessible names (labels, button text)
 - [ ] VU-31 Elements with more than one attribute have one attribute per line, with `>` / `/>`, text content, and the closing tag each on their own line
 
 ## Styling

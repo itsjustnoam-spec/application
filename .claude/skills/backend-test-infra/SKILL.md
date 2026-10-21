@@ -73,3 +73,5 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 - Run: `uv run pytest --cov=<package> --cov-report=xml`
 - Changed lines only: `uv run diff-cover coverage.xml --compare-branch=<base> --fail-under=100`
 - Uncovered changed lines are either tested or listed as exempt in `test-plan.md` with a reason.
+
+Reviewers use `references/checklist.md`.

@@ -13,12 +13,14 @@ Run this per changed Playwright file. Every item must be answered ✅, ❌ (with
 - [ ] BR-13 Mocked paths, methods, statuses, and shapes match `spec.md` §5
 - [ ] BR-14 Mutation mocks validate the payload (or the journey's visible result proves the right payload was sent). No request assertions.
 - [ ] BR-15 No real services, staging, or third-party URLs, and no unfrozen dates or randomness
+- [ ] BR-16 `playwright.config.ts` sets `serviceWorkers: 'block'`, runs Chromium only unless the spec requires more, and `tests/e2e/**` is excluded from the Vitest `include`
 
 ## Locators & assertions
 - [ ] BR-20 Locator priority is followed: role+name, then label, then text/placeholder, then test id (last resort). No CSS classes, XPath, or `nth()` without a reason.
 - [ ] BR-21 Only web-first assertions (`await expect(locator).toBeVisible()` etc.), never `expect(await x.isVisible())`
 - [ ] BR-22 No `waitForTimeout`, no `networkidle`, and every Playwright call is awaited
 - [ ] BR-23 Each test ends by asserting the visible outcome of the journey
+- [ ] BR-24 `expect.soft` is used only for several independent fields of one result
 
 ## Structure
 - [ ] BR-30 File is at `tests/e2e/<feature>/<journey>.spec.ts`, with one `test.describe('<Feature>')`

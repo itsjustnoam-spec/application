@@ -71,6 +71,8 @@ Run `python ~/.claude/scripts/check_python_conventions.py <files>` first: it che
 
 ## Tooling
 - [ ] PY-28 Dependencies added with `uv add`, and commands run through `uv run`
+- [ ] PY-50 `python ~/.claude/scripts/mypy_strict.py` passes on the changed package (never silenced with `-> None`)
+- [ ] PY-51 When ruff's `PIE790` (unnecessary `pass`) is enabled, the project's ruff config ignores it
 
 ## midnight_models
 - [ ] PY-48 (auto) No `raise` in `midnight_models`: errors are raised only in the applications

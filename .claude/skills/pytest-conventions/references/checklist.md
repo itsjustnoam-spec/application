@@ -20,6 +20,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-10 No `for` loops in tests. Uses `@pytest.mark.parametrize`.
 - [ ] TS-11 Every test asserts something meaningful (no missing asserts, no `assert True`, not only "the mock was called" when a real result exists)
 - [ ] TS-12 Tests check behavior, not private implementation details
+- [ ] TS-35 Each test reads top to bottom (DAMP), without helper abstractions that hide what it arranges or checks
 
 ## Fixtures
 - [ ] TS-14 Fixture scope is `function` unless the setup is expensive and read-only
@@ -28,6 +29,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-30 (auto) Every object a test relies on but doesn't test comes from the `env` fixture in `tests/conftest.py`; no other fixture or helper, root or domain, creates objects (no `make_*` factories)
 - [ ] TS-31 The object under test is created through the app's manager or the API, a manager is never called to create something the test isn't about, and any variant a test needs is a named member of `env`
 - [ ] TS-29 No tests for migrations, and no tests that only check which input a model or schema accepts
+- [ ] TS-36 No tests of framework or library behavior (that FastAPI routes, that SQLAlchemy saves), trivial getters, or constants
 
 ## Isolation & mocking
 - [ ] TS-17 No shared mutable state between tests, and tests pass in any order

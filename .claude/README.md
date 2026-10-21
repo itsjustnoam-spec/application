@@ -4,13 +4,13 @@ A spec-first Claude Code workflow for a Vue/Vuetify + FastAPI microservices mono
 
 ```
 /feature "<what you want>"
-  1 Explore & discover patterns → context.md, patterns.md
+  1 Explore & discover patterns: two explorers (backend-first, frontend-first), merged → context.md, patterns.md
   2 Grill (batches of ≤4 questions, each with a recommendation) → grill-notes.md
   3 Spec + plan → ★ you approve (the only stop)
   4 Implement task by task (hooks check conventions after every edit)
   5 Test plan → test-plan.md, reviewed once by review-test-plan (a hook blocks tests that aren't in it)
   6 Write tests: backend, component, integration, browser + changed-line coverage
-  7 Review in parallel: conventions · spec · bugs · tests
+  7 Review in parallel: conventions ×2 (whole skills split between them, checklists checked rule by rule) · spec · bugs · tests
   8 Triage + fix (max 3 rounds; every round kept in review/round-<n>/)
   9 summary.md
 ```
@@ -30,14 +30,14 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 | `commands/review-mrs.md` | Learns from GitLab merge requests via the GitLab MCP → improvements document (`/review-mrs`) |
 | `commands/map-library.md` | Audits a library's docs against its code and maps the skills it needs (`/map-library <path>`). Standalone: not part of `/feature` |
 | `agents/doc-auditor.md`, `agents/skill-mapper.md` | Used only by `/map-library` |
-| `agents/explorer.md` | Pattern discovery before planning |
-| `agents/review-*.md` | The four reviewers |
+| `agents/explorer.md` | Pattern discovery before planning (two run in parallel from different starting points) |
+| `agents/review-*.md` | The reviewers (`review-conventions` runs twice, each with its own skills) |
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
 | `skills/vitest-conventions` | Frontend component tests (Vue Test Utils) and integration tests (real store/router + MSW) |
 | `skills/browser-test-conventions` | Playwright browser tests with a fully mocked backend |
 | `skills/sql-conventions` | Explicit transactions, rolled back with `transaction.rollback()` (never `session.rollback()`) |
 | `agents/review-test-plan.md` | One-pass review of `test-plan.md` before tests are written |
-| `skills/backend-test-infra` | Integration vs API layers; Postgres, Mongo, proxy, RabbitMQ, Temporal test setup |
+| `skills/backend-test-infra` | Integration vs API layers; Postgres, Mongo, proxy, RabbitMQ, Temporal test setup (with `references/checklist.md`) |
 | `skills/git-worktree` | Creating, entering, setting up, and removing a worktree per feature, for parallel work |
 | `workflow/grill-with-docs.md`, `write-spec.md`, `test-plan.md` | Phase guides that `/feature` reads (plain files, not skills) |
 | `workflow/workflow-improvement.md` | Where an improvement belongs, the document template, how to apply changes safely (read by `/retro` and `/review-mrs`) |
