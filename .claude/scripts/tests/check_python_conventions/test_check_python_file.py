@@ -1,9 +1,10 @@
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from check_python_conventions import check_python_file
+from check_python_conventions import check_changed_python_file, check_python_file
 
 HEADER = '"""\nService manager for entities.\n\n:author: Noam\n:date: 16/10/26\n"""\n'
 
@@ -169,6 +170,21 @@ def test_check_python_file_empty_file_returns_no_violations(write_python_file: C
     ("STATUSES = [AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED]\n", "PY-44"),
     ("STATUSES = frozenset(\n    {AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED},\n)\n", "PY-44"),
     ("STATUSES = [\n    AssetStatus.OUT_OF_SERVICE, AssetStatus.RETIRED,\n]\n", "PY-44"),
+    ("value = 1  # explain the value\n", "PY-52"),
+    ("# explain the next line\nvalue = 1\n", "PY-52"),
+    ("value = compute()  # noqa: E501\n", "PY-53"),
+    ("value = compute()  # type: ignore[arg-type]\n", "PY-53"),
+    ("value = manager._build_query()\n", "PY-54"),
+    ("from app.entities import _build_query\n", "PY-54"),
+    ("STATUS_KEY = 'status'\n", "PY-55"),
+    ("DIALOG_WIDTH = '40rem'\n", "PY-55"),
+    ("print('the entity could not be saved')\n", "PY-34"),
+    ("API_URL = 'https://api.example.com/v1'\n", "PY-33"),
+    ("connect('localhost')\n", "PY-33"),
+    ("class Site(SQLModel):\n    @field_validator('name')\n    def strip_name(cls, name: str) -> str:\n        return name\n", "PY-46"),
+    ("if kind == 'a':\n    run_a()\nelif kind == 'b':\n    run_b()\nelif kind == 'c':\n    run_c()\n", "PY-47"),
+    ("class Asset(SQLModel, table=True):\n    __tablename__ = 'assets'\n\n    name: str = Field(index=True)\n", "SQL-04"),
+    ("value = Wrapper(max(first, second, third))\n", "PY-24"),
 ])
 def test_check_python_file_violating_snippet_reports_rule(
     write_python_file: Callable[..., Path],
@@ -366,3 +382,93 @@ def test_check_python_file_raise_in_application_is_allowed(write_python_file: Ca
     reported_rule_ids = rule_ids(path)
 
     assert "PY-48" not in reported_rule_ids
+
+
+@pytest.mark.parametrize("snippet,unexpected_rule_id", [
+    ("value = self._build_query()\n", "PY-54"),
+    ("value = super()._build_query()\n", "PY-54"),
+    ("value = point._replace(x=1)\n", "PY-54"),
+    ("value = entity.__class__\n", "PY-54"),
+    ("MESSAGE = 'the entity could not be saved'\n", "PY-34"),
+    ("print('Site not found')\n", "PY-34"),
+    ("PAGE_SIZE = 50\n", "PY-55"),
+    ("if kind == 'a':\n    run_a()\nelif kind == 'b':\n    run_b()\n", "PY-47"),
+    ('def make_alias(name: str) -> str:\n    """\n    Alias the name.\n    """\n    return name\n', "PY-41"),
+])
+def test_check_python_file_allowed_snippet_does_not_report_rule(
+    write_python_file: Callable[..., Path],
+    snippet: str,
+    unexpected_rule_id: str,
+):
+    path = write_python_file(HEADER + "# ----- Imports ----- #\n\nimport os\n\n# ----- Functions ----- #\n\n\n" + snippet)
+
+    reported_rule_ids = rule_ids(path)
+
+    assert unexpected_rule_id not in reported_rule_ids
+
+
+def test_check_python_file_session_suffix_in_test_reports_ts28(write_python_file: Callable[..., Path]):
+    path = write_python_file("def test_save(db_session):\n    db_session.add(1)\n", "test_save.py")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert "TS-28" in reported_rule_ids
+
+
+def test_check_python_file_http_session_in_test_is_allowed(write_python_file: Callable[..., Path]):
+    path = write_python_file("def test_save(http_session):\n    http_session.get(1)\n", "test_save.py")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert "TS-28" not in reported_rule_ids
+
+
+def run_git(repository: Path, *arguments: str):
+    subprocess.run(
+        ["git", *arguments],
+        cwd=repository,
+        check=True,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+    )
+
+
+def create_repository(tmp_path: Path) -> Path:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    run_git(repository, "init", "-q")
+    run_git(repository, "config", "user.email", "test@example.com")
+    run_git(repository, "config", "user.name", "Test")
+    (repository / "README.md").write_text("readme\n", encoding="utf-8")
+    run_git(repository, "add", ".")
+    run_git(repository, "commit", "-q", "-m", "base")
+    return repository
+
+
+def test_check_changed_python_file_reports_only_changed_lines(tmp_path: Path):
+    repository = create_repository(tmp_path)
+    path = repository / "module.py"
+    path.write_text("import os\nold = 1  # old comment\n", encoding="utf-8")
+    run_git(repository, "add", ".")
+    run_git(repository, "commit", "-q", "-m", "module")
+    path.write_text("import os\nold = 1  # old comment\nnew = 2  # new comment\n", encoding="utf-8")
+
+    violations = check_changed_python_file(path, "HEAD")
+
+    assert [
+        (violation.line, violation.rule_id)
+        for violation in violations
+    ] == [(3, "PY-52")]
+
+
+def test_check_changed_python_file_new_file_reports_whole_file(tmp_path: Path):
+    repository = create_repository(tmp_path)
+    path = repository / "module.py"
+    path.write_text("import os\n", encoding="utf-8")
+
+    violations = check_changed_python_file(path, "HEAD")
+
+    assert "PY-07" in [
+        violation.rule_id
+        for violation in violations
+    ]

@@ -13,6 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from changed_lines import ChangedLines, get_changed_lines
 from check_python_conventions import FUNCTION_NODE_TYPES, function_returns_value
 
 # ----- Consts ----- #
@@ -23,8 +24,12 @@ UNTYPED_CALL_PATTERN = re.compile(
 )
 SKIPPED_DIRECTORY_NAMES = {
     ".venv",
+    "venv",
     "node_modules",
     ".git",
+    ".claude",
+    ".mypy_cache",
+    "site-packages",
 }
 MYPY_LINE_PATTERN = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?:\d+:)? (?P<severity>error|note): ",
@@ -215,11 +220,60 @@ def filter_mypy_output(output_lines: list[str]) -> list[str]:
     return kept_lines
 
 
+def split_since_argument(arguments: list[str]) -> tuple[str | None, list[str]]:
+    """
+    Take the `--since <ref>` option out of the command-line arguments.
+
+    :param arguments: The script's arguments.
+    :return: The ref given with --since (None without it), and the arguments left for mypy.
+    """
+    if "--since" not in arguments:
+        return None, arguments
+
+    since_index = arguments.index("--since")
+    if since_index + 1 >= len(arguments):
+        return "auto", arguments[:since_index]
+
+    since = arguments[since_index + 1]
+    remaining_arguments = arguments[:since_index] + arguments[since_index + 2:]
+    return since, remaining_arguments
+
+
+def keep_changed_lines(output_lines: list[str], since: str) -> list[str]:
+    """
+    Keep only the mypy findings on lines the branch added or changed.
+
+    :param output_lines: Filtered mypy output lines.
+    :param since: The git ref the branch is compared to, or `auto`.
+    :return: The lines that report a new or changed line, plus every line that isn't a finding.
+    """
+    changed_lines_by_path: dict[str, ChangedLines] = {}
+    kept_lines: list[str] = []
+    for output_line in output_lines:
+        line_match = MYPY_LINE_PATTERN.match(output_line)
+        if line_match is None:
+            kept_lines.append(output_line)
+            continue
+
+        file_name = line_match.group("path")
+        line_number = int(line_match.group("line"))
+        if file_name not in changed_lines_by_path:
+            changed_lines_by_path[file_name] = get_changed_lines(
+                Path(file_name),
+                since,
+            )
+
+        if changed_lines_by_path[file_name].includes(line_number):
+            kept_lines.append(output_line)
+    return kept_lines
+
+
 def main() -> int:
     """
     Run mypy --strict and print the errors that matter.
     """
-    mypy_arguments = sys.argv[1:] if len(sys.argv) > 1 else ["."]
+    since, arguments = split_since_argument(sys.argv[1:])
+    mypy_arguments = arguments if len(arguments) > 0 else ["."]
     completed = subprocess.run(
         build_mypy_command(mypy_arguments),
         check=False,
@@ -239,6 +293,9 @@ def main() -> int:
         return MYPY_UNAVAILABLE_EXIT_CODE
 
     kept_lines = filter_mypy_output(output_lines)
+    if since is not None:
+        kept_lines = keep_changed_lines(kept_lines, since)
+
     error_count = sum(
         1
         for kept_line in kept_lines

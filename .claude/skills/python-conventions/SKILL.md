@@ -1,6 +1,6 @@
 ---
 name: python-conventions
-description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint (imperative mood), naming, page/section headers, class and SQLModel layout, StrEnum, Annotated pydantic validators, readable if conditions, mappings over if chains, blank lines after if blocks, multiline calls, collection literals and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, the midnight_models library, uv usage, and references the pytest-conventions and sql-conventions skills.
+description: Use when creating, modifying, refactoring, or testing Python backend code. Enforces typing standards, docstrings on every function and endpoint (imperative mood), naming, page/section headers, class and SQLModel layout, StrEnum, Annotated pydantic validators, readable if conditions, mappings over if chains, blank lines after if blocks, multiline calls, collection literals and comprehensions, FastAPI dependencies, custom exceptions, .env configuration, string constants, no comments, no lint suppressions or private access, the midnight_models library, uv usage, and references the pytest-conventions and sql-conventions skills.
 ---
 
 # Python Backend Conventions
@@ -35,8 +35,8 @@ Use **`uv`** for every package and environment operation:
     - Use type annotations on local variables **only when it is not clear what type the variable is** (e.g., empty collections like `items: list[UserRecord] = []`, complex union returns, or when initializing from untyped external returns).
     - If you are not sure whether the type is clear, **always add the type annotation**.
 - **Static Verification**:
-    - Run `uv run mypy --strict` at the end of each task to verify type correctness across all modified files.
-    - Never add `-> None` to silence mypy: run it through `~/.claude/scripts/mypy_strict.py`, which drops only the errors the no-`-> None` rule causes.
+    - Check types only with `python ~/.claude/scripts/mypy_strict.py --since auto <package>` (run from the service's directory), never with plain mypy. It runs `mypy --strict`, drops only the errors the no-`-> None` rule causes, and reports only the lines the branch wrote.
+    - Never add `-> None` to silence mypy.
 - **Optional Returns**: In a function annotated `-> X | None`, write `return None` explicitly. mypy rejects a bare `return` there ("Return value expected").
 
 ```python
@@ -46,7 +46,7 @@ def save_user_profile(user_id: str, email: str):
     Save the profile of a user.
     """
     user_record: dict[str, str] = {"id": user_id, "email": email}
-    active_tokens: list[str] = []  # Empty list where type is not obvious, type annotation required
+    active_tokens: list[str] = []
     user_store.insert(user_record)
 
 
@@ -55,7 +55,7 @@ def deactivate_user(user: UserRecord):
     Mark an active user as inactive.
     """
     if not user.is_active:
-        return  # Bare return for an early exit
+        return
 
     user.is_active = False
 
@@ -166,6 +166,7 @@ DOCSTRING EXPLANATION
 - **Every function has a docstring**: every function and method in application code has one, including small helpers, managers, and endpoints. Exceptions: `__init__`, and test functions and fixtures (their names explain them).
 - **Which fields**: functions with business logic get `:param:`, `:return:` (when they return a value), and `:raises:` (when they raise). Small helpers without business logic may have only the description.
 - **Never mention past implementations**: Explain *why* the code works this way *now*, never what it used to do.
+- **No code comments**: never write `#` comments. Names, types, and docstrings explain the code. The only `#` lines are the section banners (§3).
 - **Description Sentence**: The description is a short, concise sentence explaining what the function does, ending with a period (`.`). It must **never** mention raising errors (e.g. no "or raise an error if not found"). Exceptions are documented exclusively in `:raises:`.
 - **Imperative mood**: function, method, and endpoint descriptions are written as a command: `Lock the resource.`, `List sites matching the search text.`, never `Locks the resource.` or `Lists sites ...`. Class and exception docstrings describe the thing, so they keep their form (`A site where assets are installed.`, `Raised when ...`).
 - **Boolean returns**: describe what the value means, not when it's true or false. Write `:return: Whether the asset is overdue.`, never `:return: True when the asset is overdue, False otherwise.` The same applies to the description of a function that returns a `bool`: `Check whether the name is taken.`
@@ -310,6 +311,7 @@ SORTABLE_COLUMNS = [AssetSort.NAME, AssetSort.NEXT_DUE_DATE]
     2. `__tablename__`, on the line right after the docstring
     3. the fields
     4. `__table_args__` (constraints, indexes) and any other table configuration, **at the end of the class**
+- Indexes are declared in `__table_args__`, never on the field (see `sql-conventions`).
 
 ```python
 # GOOD:
@@ -396,7 +398,7 @@ class SiteInput(BaseModel):
 ## 9. String Constants
 
 - **Strings of more than 3 words** (messages, SQL, templates, multi-line text) become named constants in the `Consts` section, so they're easy to find and change.
-- **Strings of 3 words or fewer** (keys, labels, `"Site not found"`) stay inline where they're used. Moving them into constants only hides them and makes quick changes slower.
+- **Strings of 3 words or fewer** (keys, labels, `"Site not found"`) stay inline where they're used. Moving them into constants only hides them and makes quick changes slower. A constant that holds a string of 3 words or fewer is a violation.
 
 ---
 
@@ -459,7 +461,7 @@ Database access (sessions, transactions, queries) follows the **`sql-conventions
 - **Never raise Python base exceptions** (`Exception`, `ValueError`, `KeyError`, `RuntimeError`, etc.).
 - Always define and raise custom application exceptions that clearly represent the domain failure.
 - Custom exception class names **must** end with `Error` (e.g. `NotFoundError`, `DatabaseTransactionError`, never `NotFound`).
-- **Empty classes end with `pass`**: a class whose body would otherwise be only its docstring (typically an exception that just inherits) always has `pass` on the line after the docstring. Never leave a class with only a docstring. If ruff's `PIE790` ("unnecessary pass") is enabled, ignore it in the project's ruff config.
+- **Empty classes end with `pass`**: a class whose body would otherwise be only its docstring (typically an exception that just inherits) always has `pass` on the line after the docstring. Never leave a class with only a docstring.
 
 ```python
 # GOOD:
@@ -503,3 +505,11 @@ Testing is governed by the dedicated **`pytest-conventions`** skill. Whenever wr
 - **Never raise errors in `midnight_models`.** It only describes data. Raising errors (and deciding what a failure means) belongs to the applications that use the models.
 - **Every new model is exported from the package's `__init__.py`**, so applications import it from the package (`from midnight_models import Site`), not from the module that defines it.
 - **No tests in `midnight_models`** (see `pytest-conventions`). The models are tested through the applications that use them.
+
+---
+
+## 15. Lint Suppressions and Private Members
+
+- **Never silence a tool.** No `# noqa`, `# type: ignore`, `# pylint: disable=...`, `# pyright: ignore`, or similar. Fix the code the tool reports.
+- **Never use another class's or module's private members** (names starting with `_`): no `manager._build_query()`, no `from app.sites import _parse_row`. Use the public function. If none exists, make the needed function public in the module that owns it.
+- Inside a class, `self._name` and `cls._name` are fine.

@@ -46,15 +46,6 @@ import { mountWithPlugins } from '../../../utils/mount'
 vi.mock('@/api/entities')
 
 describe('EntityList', () => {
-  it('shows an empty state when there are no entities', async () => {
-    vi.mocked(fetchEntities).mockResolvedValue([])
-
-    const wrapper = mountWithPlugins(EntityList)
-    await flushPromises()
-
-    expect(wrapper.get('[data-testid="entities-empty-state"]').isVisible()).toBe(true)
-  })
-
   it('emits select with the entity id when an entity row is clicked', async () => {
     const pump = makeEntity({ id: 7, name: 'Pump' })
     vi.mocked(fetchEntities).mockResolvedValue([pump])

@@ -2,13 +2,12 @@
 name: review-bugs
 description: Hunts for bugs and unhandled edge cases in the feature's added and changed code across the Vue frontend, FastAPI services, PostgreSQL/SQLModel, MongoDB, RabbitMQ, and Temporal. Read-only except for its own review file.
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
 ---
 
 You look for **bugs**: code that will do the wrong thing at runtime. You don't judge style, naming, or spec coverage.
 
 ## Inputs (given in your prompt)
-- Feature directory `docs/features/<slug>/`, base branch `<base>`, and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
+- Feature directory `docs/features/<slug>/`, the base commit `<base>` (the `Base:` line of `progress.md`), and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
 - On a re-review (round 2 or later): the previous round's directory. Read its findings and `triage.md` first. For every finding marked `fix`, check whether it's resolved and report any that aren't with `Recurring: F-<id> from round <n-1>`. Don't re-raise findings marked `dismiss` unless you have new evidence, and say what's new.
 
 ## Steps
@@ -17,7 +16,7 @@ You look for **bugs**: code that will do the wrong thing at runtime. You don't j
 3. **Walk every edge case** `EC-n` through the code path and confirm it's handled as specified.
 4. Go through the checklist below for each changed file that it applies to.
 5. **Verify before reporting.** For each suspected bug, write the concrete scenario: the input/state, the line that misbehaves, and the wrong result. If you can't write the scenario, it's not a finding.
-6. Write `<review directory>/bugs.md` (never overwrite an earlier round's file), then reply with one line: `bugs: <n> blocker, <n> major, <n> minor`.
+6. Write `<review directory>/bugs-review.md` (never overwrite an earlier round's file), then reply with one line: `bugs: <n> blocker, <n> major, <n> minor`.
 
 ## Checklist
 **Python / FastAPI**

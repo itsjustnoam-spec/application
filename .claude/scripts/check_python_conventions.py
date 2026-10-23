@@ -9,16 +9,57 @@ Checks Python files against the house conventions that ruff and mypy cannot expr
 import argparse
 import ast
 import builtins
+import io
 import itertools
 import re
 import sys
+import tokenize
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeGuard
 
+from changed_lines import get_changed_lines
+
 # ----- Consts ----- #
 
 UTF8_BOM = b"\xef\xbb\xbf"
+SUPPRESSION_PATTERN = re.compile(
+    r"#\s*(noqa|type:\s*ignore|pylint:\s*disable|pyright:\s*ignore|mypy:|ruff:|pragma:)",
+    re.IGNORECASE,
+)
+COMMENT_MESSAGE = "Remove the comment: code has no comments, only section banners."
+SUPPRESSION_MESSAGE = "Don't silence a linter or type checker: fix the code instead."
+PRIVATE_ACCESS_ALLOWLIST = frozenset(
+    {
+        "_asdict",
+        "_field_defaults",
+        "_fields",
+        "_make",
+        "_replace",
+    },
+)
+CONSTANT_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
+SHORT_STRING_MAX_WORDS = 3
+LONG_STRING_MESSAGE = "A string of more than 3 words is written inline: move it to a named constant in the Consts section."
+FIELD_INDEX_MESSAGE = "Declare the index in __table_args__ (Index(...)), not with index=True on the field."
+SINCE_HELP = "Report only lines added or changed since this git ref ('auto': the feature's base or the merge base)."
+HARDCODED_ADDRESS_PATTERN = re.compile(
+    r"^(?:[a-z][a-z0-9+.-]*://|localhost\b|127\.0\.0\.1\b)",
+    re.IGNORECASE,
+)
+FIELD_VALIDATOR_NAMES = frozenset(
+    {
+        "field_validator",
+        "validator",
+    },
+)
+IF_CHAIN_MIN_BRANCHES = 3
+INDEXED_FIELD_CALL_NAMES = frozenset(
+    {
+        "Field",
+        "Column",
+    },
+)
 BANNER_LIKE_PATTERN = re.compile(r"^\s*#\s*-{3,}")
 BANNER_PATTERN = re.compile(r"^# ----- ([A-Z][A-Za-z0-9 ]*) ----- #$")
 AUTHOR_PATTERN = re.compile(r"^:author: \S", re.MULTILINE)
@@ -83,7 +124,18 @@ COMPREHENSION_NODE_TYPES = (
     ast.GeneratorExp,
 )
 DEPENDS_NAME = "Depends"
-SESSION_NAME_PART = "session"
+SESSION_RECEIVER_NAMES = frozenset(
+    {
+        "session",
+        "db_session",
+    },
+)
+NON_SESSION_RECEIVER_PREFIXES = (
+    "http",
+    "aiohttp",
+    "client",
+    "mock",
+)
 ROLLBACK_METHOD = "rollback"
 SESSION_WRITE_METHODS = {
     "add",
@@ -99,6 +151,13 @@ MODELS_LIBRARY_NAME = "midnight_models"
 ENVIRONMENT_FIXTURE_NAME = "env"
 THIRD_PERSON_SUFFIX = "s"
 NON_THIRD_PERSON_ENDINGS = ("ss", "us", "is")
+NON_THIRD_PERSON_WORDS = frozenset(
+    {
+        "alias",
+        "bias",
+        "canvas",
+    },
+)
 ES_PLURAL_ENDINGS = ("ches", "shes", "sses", "xes", "zzes")
 FIRST_WORD_PATTERN = re.compile(r"^([A-Za-z]+)\b")
 RETURN_FIELD_PREFIX = ":return:"
@@ -852,20 +911,29 @@ def is_inside_f_string(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool:
     return False
 
 
-def is_argument_of_call_on_same_line(node: ast.Call, parents: dict[ast.AST, ast.AST]) -> bool:
+def is_argument_of_call_on_same_line(
+    node: ast.Call,
+    parents: dict[ast.AST, ast.AST],
+    line_bytes: list[bytes],
+) -> bool:
     """
-    Check whether the call is an argument of an enclosing call that starts on the same line.
+    Check whether the call is an argument of an enclosing call that starts on the same line and must be split.
 
     :param node: The call being checked.
     :param parents: Child-to-parent node map of the module.
-    :return: Whether the enclosing call owns this line, so only it has to be split.
+    :param line_bytes: The file's lines encoded as UTF-8.
+    :return: Whether the enclosing call owns this line and must be split itself, so only it is reported.
     """
     child: ast.AST = node
     current = parents.get(node)
     while current is not None:
         owner_line = get_argument_owner_line(current, child)
-        if owner_line == node.lineno:
-            return True
+        if owner_line == node.lineno and is_call(current):
+            return call_requires_multiline(
+                current,
+                get_call_arguments(current),
+                line_bytes,
+            )
 
         child = current
         current = parents.get(current)
@@ -990,7 +1058,11 @@ def check_multiline_calls(
         ):
             continue
 
-        if is_argument_of_call_on_same_line(node, parents):
+        if is_argument_of_call_on_same_line(
+            node,
+            parents,
+            line_bytes,
+        ):
             continue
 
         if node.lineno in reported_lines:
@@ -1428,6 +1500,22 @@ def check_empty_classes(path: Path, tree: ast.Module) -> list[Violation]:
     return violations
 
 
+def is_session_receiver(receiver_name: str) -> bool:
+    """
+    Check whether a name is a database session.
+
+    :param receiver_name: The name a method is called on.
+    :return: Whether the name is `session`, `db_session`, or another `*_session` that isn't an HTTP client or a mock.
+    """
+    if receiver_name in SESSION_RECEIVER_NAMES:
+        return True
+
+    is_session_suffix = receiver_name.endswith("_session")
+    client_prefixes = NON_SESSION_RECEIVER_PREFIXES
+    is_other_client = receiver_name.startswith(client_prefixes)
+    return is_session_suffix and not is_other_client
+
+
 def get_session_method_call(node: ast.AST) -> str | None:
     """
     Return the method name when a node calls a method on a session.
@@ -1442,7 +1530,7 @@ def get_session_method_call(node: ast.AST) -> str | None:
     if receiver_name is None:
         return None
 
-    if SESSION_NAME_PART not in receiver_name.lower():
+    if not is_session_receiver(receiver_name):
         return None
 
     return node.func.attr
@@ -1581,6 +1669,9 @@ def is_third_person_verb(word: str) -> bool:
     """
     lowered_word = word.lower()
     if not lowered_word.endswith(THIRD_PERSON_SUFFIX):
+        return False
+
+    if lowered_word in NON_THIRD_PERSON_WORDS:
         return False
 
     return not lowered_word.endswith(NON_THIRD_PERSON_ENDINGS)
@@ -1864,6 +1955,428 @@ def check_models_library_raises(path: Path, tree: ast.Module) -> list[Violation]
     return violations
 
 
+def check_comments(path: Path, source: str) -> list[Violation]:
+    """
+    Check that the code has no comments other than section banners.
+
+    :param path: The file being checked.
+    :param source: The file's text.
+    :return: One violation per comment, marked as a suppression when it silences a tool.
+    """
+    violations: list[Violation] = []
+    try:
+        source_lines = io.StringIO(source).readline
+        tokens = list(tokenize.generate_tokens(source_lines))
+    except (tokenize.TokenError, SyntaxError):
+        return violations
+
+    for token in tokens:
+        if token.type != tokenize.COMMENT:
+            continue
+
+        line_number = token.start[0]
+        comment = token.string
+        is_shebang = line_number == 1 and comment.startswith("#!")
+        is_banner = BANNER_LIKE_PATTERN.match(comment) is not None
+        if is_shebang or is_banner:
+            continue
+
+        if SUPPRESSION_PATTERN.search(comment) is not None:
+            violations.append(
+                Violation(
+                    path,
+                    line_number,
+                    "PY-53",
+                    SUPPRESSION_MESSAGE,
+                ),
+            )
+            continue
+
+        violations.append(
+            Violation(
+                path,
+                line_number,
+                "PY-52",
+                COMMENT_MESSAGE,
+            ),
+        )
+    return violations
+
+
+def is_private_name(name: str) -> bool:
+    """
+    Check whether a name is private (`_name` or `__name`, but not `__dunder__`).
+
+    :param name: An attribute or imported name.
+    :return: Whether the name is meant for use only inside its own class or module.
+    """
+    is_dunder = name.startswith("__") and name.endswith("__")
+    return name.startswith("_") and name != "_" and not is_dunder
+
+
+def is_own_receiver(receiver: ast.expr) -> bool:
+    """
+    Check whether an attribute is read from the class itself (`self`, `cls`, or `super()`).
+
+    :param receiver: The expression before the dot.
+    :return: Whether the access happens inside the class that owns the attribute.
+    """
+    if isinstance(receiver, ast.Name):
+        return receiver.id in SELF_ARGUMENT_NAMES
+
+    return is_call(receiver) and get_called_name(receiver) == "super"
+
+
+def check_private_access(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that private members of other classes and modules are never used.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per private attribute used from outside, or private name imported.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            violations += [
+                Violation(
+                    path,
+                    node.lineno,
+                    "PY-54",
+                    f"Don't import the private name '{alias.name}': use a public function or make it public.",
+                )
+                for alias in node.names
+                if is_private_name(alias.name)
+            ]
+            continue
+
+        if not isinstance(node, ast.Attribute):
+            continue
+
+        is_allowed = node.attr in PRIVATE_ACCESS_ALLOWLIST
+        if not is_private_name(node.attr) or is_allowed:
+            continue
+
+        if is_own_receiver(node.value):
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-54",
+            f"Don't use the private member '{node.attr}' from outside its class or module.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def count_words(text: str) -> int:
+    """
+    Count the whitespace-separated words of a string.
+    """
+    return len(text.split())
+
+
+def iter_constant_assignments(statements: list[ast.stmt]) -> list[tuple[str, ast.expr]]:
+    """
+    Collect the UPPER_CASE constants assigned in a block of statements.
+
+    :param statements: A module or class body.
+    :return: Each constant's name and assigned value.
+    """
+    constants: list[tuple[str, ast.expr]] = []
+    for statement in statements:
+        if isinstance(statement, ast.Assign):
+            if len(statement.targets) != 1:
+                continue
+
+            target = statement.targets[0]
+            value: ast.expr | None = statement.value
+        elif isinstance(statement, ast.AnnAssign):
+            target = statement.target
+            value = statement.value
+        else:
+            continue
+
+        name = get_target_name(target)
+        if name is None or value is None:
+            continue
+
+        if CONSTANT_NAME_PATTERN.match(name) is not None:
+            constants.append((name, value))
+    return constants
+
+
+def is_string_constant(node: ast.AST) -> TypeGuard[ast.Constant]:
+    """
+    Check whether a node is a plain string literal.
+    """
+    if not isinstance(node, ast.Constant):
+        return False
+
+    return isinstance(node.value, str)
+
+
+def check_short_string_constants(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that module constants never hold strings of 3 words or fewer.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per module constant whose value is a short string.
+    """
+    violations: list[Violation] = []
+    for name, value in iter_constant_assignments(tree.body):
+        if not is_string_constant(value):
+            continue
+
+        if count_words(str(value.value)) > SHORT_STRING_MAX_WORDS:
+            continue
+
+        violation = Violation(
+            path,
+            value.lineno,
+            "PY-55",
+            f"'{name}' holds a string of 3 words or fewer: write the string inline where it's used.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def collect_allowed_string_nodes(tree: ast.Module) -> set[int]:
+    """
+    Collect the string nodes that may hold long text: docstrings and constant values.
+
+    :param tree: The parsed module.
+    :return: The ids of every node inside a docstring or an UPPER_CASE constant's value.
+    """
+    allowed_nodes: set[int] = set()
+    for owner in ast.walk(tree):
+        if not isinstance(owner, DOCSTRING_OWNER_NODE_TYPES):
+            continue
+
+        docstring_node = get_docstring_node(owner)
+        if docstring_node is not None:
+            allowed_nodes.add(id(docstring_node))
+
+        if isinstance(owner, (ast.Module, ast.ClassDef)):
+            allowed_nodes.update(
+                id(value_node)
+                for _, value in iter_constant_assignments(owner.body)
+                for value_node in ast.walk(value)
+            )
+    return allowed_nodes
+
+
+def check_long_inline_strings(
+    path: Path,
+    tree: ast.Module,
+    parents: dict[ast.AST, ast.AST],
+) -> list[Violation]:
+    """
+    Check that strings of more than 3 words are named constants.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :param parents: The parent of every node in the module.
+    :return: One violation per inline string literal of more than 3 words.
+    """
+    violations: list[Violation] = []
+    allowed_nodes = collect_allowed_string_nodes(tree)
+    for node in ast.walk(tree):
+        if not is_string_constant(node) or id(node) in allowed_nodes:
+            continue
+
+        if count_words(str(node.value)) <= SHORT_STRING_MAX_WORDS:
+            continue
+
+        if is_inside_f_string(node, parents):
+            continue
+
+        if is_inside_annotation(node, parents):
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-34",
+            LONG_STRING_MESSAGE,
+        )
+        violations.append(violation)
+    return violations
+
+
+def check_hardcoded_addresses(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that no URL or host is written in the code.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per string literal that starts with a URL scheme, localhost, or 127.0.0.1.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not is_string_constant(node):
+            continue
+
+        if HARDCODED_ADDRESS_PATTERN.match(str(node.value)) is None:
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-33",
+            f"'{node.value}' is hardcoded: read it from .env through the settings.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def check_field_validators(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that pydantic fields are validated with Annotated validators, not validator methods.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per `@field_validator` or `@validator` decorator.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, FUNCTION_NODE_TYPES):
+            continue
+
+        violations += [
+            Violation(
+                path,
+                decorator.lineno,
+                "PY-46",
+                f"'@{get_called_name(decorator)}' validates a field: use Annotated[..., BeforeValidator(...)] "
+                "or AfterValidator(...) on the field instead.",
+            )
+            for decorator in node.decorator_list
+            if get_called_name(decorator) in FIELD_VALIDATOR_NAMES
+        ]
+    return violations
+
+
+def get_compared_subject(test: ast.expr) -> str | None:
+    """
+    Return what an `if` compares, when it compares one value to one constant (`kind == "a"`).
+
+    :param test: The condition of an `if` or `elif`.
+    :return: The compared expression as source text, or None for any other condition.
+    """
+    if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+        return None
+
+    if not isinstance(test.ops[0], (ast.Eq, ast.Is)):
+        return None
+
+    compared_value = test.comparators[0]
+    if not isinstance(compared_value, (ast.Constant, ast.Attribute)):
+        return None
+
+    return ast.unparse(test.left)
+
+
+def check_if_chains(
+    path: Path,
+    tree: ast.Module,
+    parents: dict[ast.AST, ast.AST],
+) -> list[Violation]:
+    """
+    Check that behavior chosen by a type or key is a mapping, not an if/elif chain.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :param parents: The parent of every node in the module.
+    :return: One violation per chain of 3+ branches that compare the same value to constants.
+    """
+    violations: list[Violation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+
+        parent = parents.get(node)
+        if isinstance(parent, ast.If) and parent.orelse == [node]:
+            continue
+
+        subjects: list[str | None] = []
+        current: ast.stmt = node
+        while isinstance(current, ast.If):
+            subjects.append(get_compared_subject(current.test))
+            if len(current.orelse) != 1:
+                break
+
+            current = current.orelse[0]
+        first_subject = subjects[0]
+        is_short_chain = len(subjects) < IF_CHAIN_MIN_BRANCHES
+        if is_short_chain or first_subject is None:
+            continue
+
+        distinct_subjects = set(subjects)
+        if len(distinct_subjects) > 1:
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "PY-47",
+            f"{len(subjects)} branches compare '{first_subject}': use a dict lookup (key → value or handler) instead.",
+        )
+        violations.append(violation)
+    return violations
+
+
+def is_index_keyword(keyword: ast.keyword) -> bool:
+    """
+    Check whether a keyword argument is `index=True`.
+    """
+    if keyword.arg != "index":
+        return False
+
+    if not isinstance(keyword.value, ast.Constant):
+        return False
+
+    return keyword.value.value is True
+
+
+def check_field_indexes(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that table models declare indexes in __table_args__, never on the field.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per `index=True` inside a table model's Field(...) or Column(...).
+    """
+    violations: list[Violation] = []
+    for class_node in ast.walk(tree):
+        if not isinstance(class_node, ast.ClassDef):
+            continue
+
+        if not is_table_model(class_node):
+            continue
+
+        for node in ast.walk(class_node):
+            if not is_call(node):
+                continue
+
+            if get_called_name(node) not in INDEXED_FIELD_CALL_NAMES:
+                continue
+
+            violations += [
+                Violation(
+                    path,
+                    keyword.lineno,
+                    "SQL-04",
+                    FIELD_INDEX_MESSAGE,
+                )
+                for keyword in node.keywords
+                if is_index_keyword(keyword)
+            ]
+    return violations
+
+
 def check_python_file(path: Path) -> list[Violation]:
     """
     Run every convention check on one Python file.
@@ -1922,6 +2435,15 @@ def check_python_file(path: Path) -> list[Violation]:
     violations += check_empty_classes(path, tree)
     violations += check_session_rollback(path, tree)
     violations += check_string_enums(path, tree)
+    violations += check_comments(path, source)
+    violations += check_private_access(path, tree)
+    violations += check_field_validators(path, tree)
+    violations += check_field_indexes(path, tree)
+    violations += check_if_chains(
+        path,
+        tree,
+        parents,
+    )
     violations += check_collection_literals(
         path,
         tree,
@@ -1947,6 +2469,13 @@ def check_python_file(path: Path) -> list[Violation]:
             parents,
         )
         violations += check_module_header(path, tree)
+        violations += check_short_string_constants(path, tree)
+        violations += check_hardcoded_addresses(path, tree)
+        violations += check_long_inline_strings(
+            path,
+            tree,
+            parents,
+        )
         violations += check_banners(
             path,
             tree,
@@ -1960,6 +2489,22 @@ def check_python_file(path: Path) -> list[Violation]:
         )
 
     return sorted(violations, key=lambda violation: violation.line)
+
+
+def check_changed_python_file(path: Path, base: str) -> list[Violation]:
+    """
+    Run every convention check on one file, keeping only violations on lines the branch wrote.
+
+    :param path: The file to check.
+    :param base: The git ref the branch is compared to, or `auto`.
+    :return: Every violation of a new file, or the violations on added and changed lines of an existing one.
+    """
+    changed_lines = get_changed_lines(path, base)
+    return [
+        violation
+        for violation in check_python_file(path)
+        if changed_lines.includes(violation.line)
+    ]
 
 
 def collect_python_files(raw_paths: list[str]) -> list[Path]:
@@ -1996,10 +2541,22 @@ def main() -> int:
         nargs="+",
         help="Python files or directories to check.",
     )
+    parser.add_argument(
+        "--since",
+        default=None,
+        help=SINCE_HELP,
+    )
     parsed_arguments = parser.parse_args()
     violations: list[Violation] = []
     for python_file in collect_python_files(parsed_arguments.paths):
-        violations += check_python_file(python_file)
+        if parsed_arguments.since is None:
+            violations += check_python_file(python_file)
+            continue
+
+        violations += check_changed_python_file(
+            python_file,
+            parsed_arguments.since,
+        )
     if len(violations) == 0:
         return 0
 

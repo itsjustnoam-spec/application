@@ -1,6 +1,6 @@
 ---
 name: vue-conventions
-description: Use when creating, modifying, refactoring, or reviewing Vue 3, Vuetify, TypeScript, and Tailwind frontend code. Enforces SFC block layout, script splitting, no exports from .vue files, Props/Emits interfaces, script setup ordering, refs over let, explicit checks (no ??), if over ternary calls, no void, EasyToolTip, loading states, error handling, and styling rules.
+description: Use when creating, modifying, refactoring, or reviewing Vue 3, Vuetify, TypeScript, and Tailwind frontend code. Enforces SFC block layout, constants and interfaces in <script lang="ts">, no exports from .vue files, Props/Emits interfaces, script setup ordering, refs over let, fully explicit conditions (no ??, ?., !!, || defaults), if over ternary calls, no void, no comments, theme colors only, EasyToolTip, loading states, error handling, and styling rules.
 ---
 
 # Vue 3, Vuetify & TypeScript Frontend Conventions
@@ -35,13 +35,13 @@ Every Vue SFC must follow this exact top-to-bottom block order:
 
 Separate static type declarations from reactive runtime logic using two `<script>` tags:
 
-1. `<script lang="ts">`: Contains component-specific interfaces (including the component's `Props` and `Emits` interfaces), types, enums, and pure constants. Nothing in it is exported (see §1).
+1. `<script lang="ts">`: Contains component-specific interfaces (including the component's `Props` and `Emits` interfaces), types, enums, and **all** constants (timeouts, debounce delays, magic numbers, long strings). Constants never go in `<script setup>`. Nothing in it is exported (see §1).
 2. `<script setup lang="ts">`: Contains component runtime logic and reactive state.
 
 ```vue
 <template>
   <div class="flex flex-col gap-4">
-    <!-- Component UI -->
+    <span>{{ user.name }}</span>
   </div>
 </template>
 
@@ -57,21 +57,25 @@ interface Props {
   initialStatus: boolean
 }
 
-// Emits: updated user ID and selection flag
 interface Emits {
   'update': [string, boolean]
   'close': []
 }
 
 const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
+const DEBOUNCE_DELAY_MS = 300
 </script>
 
 <script setup lang="ts">
-// Component runtime logic (strictly ordered)
+const emit = defineEmits<Emits>()
+
+const props = defineProps<Props>()
 </script>
 
 <style scoped>
-/* Only if Tailwind or Vuetify cannot express the style */
+.user-card-avatar {
+  aspect-ratio: 1;
+}
 </style>
 ```
 
@@ -81,14 +85,15 @@ const DEFAULT_AVATAR_FALLBACK = '/assets/default-avatar.png'
 
 The contents of `<script setup lang="ts">` must follow this exact sequence, with single empty lines separating each section:
 
-1. **Constants**: Component-local constants (timeout intervals, debounce delays, magic numbers, large strings).
-2. **`defineEmits` & `defineProps`**:
-3. **`ref`s / reactive state**:
-4. **`computed` properties**:
-5. **Const functions**: `const fn = () => {}`.
-6. **Function declarations**: `function fn() {}`.
-7. **Watchers (`watch`, `watchEffect`)**:
-8. **Lifecycle hooks (`onBeforeMount`, `onMounted`, `onUnmounted`, ...)**:
+1. **`defineEmits` & `defineProps`**:
+2. **`ref`s / reactive state**:
+3. **`computed` properties**:
+4. **Const functions**: `const fn = () => {}`.
+5. **Function declarations**: `function fn() {}`.
+6. **Watchers (`watch`, `watchEffect`)**:
+7. **Lifecycle hooks (`onBeforeMount`, `onMounted`, `onUnmounted`, ...)**:
+
+Constants are not a section here: they live in `<script lang="ts">` (§2).
 
 Every item sits in its own section: never declare a ref after a function, or a computed after a watcher.
 
@@ -96,26 +101,19 @@ Every item sits in its own section: never declare a ref after a function, or a c
 
 ```vue
 <script setup lang="ts">
-const DEBOUNCE_DELAY_MS = 300
-const MAX_SELECTION_COUNT = 5
-
-// Emits & Props (interfaces are declared in the <script lang="ts"> block)
 const emit = defineEmits<Emits>()
 
 const props = defineProps<Props>()
 
-// Refs
 const isActionLoading = ref<boolean>(false)
 const searchFilter = ref<string>('')
 
-// Computed
 const hasActiveFilter = computed<boolean>(() => searchFilter.value.trim().length > 0)
 
-// Const functions
 const executeUserUpdate = async () => {
   isActionLoading.value = true
   try {
-    // async work
+    await saveUserSelection(props.user.id)
     emit('update', props.user.id, true)
   } catch (error: unknown) {
     handleNetworkError(error)
@@ -124,17 +122,14 @@ const executeUserUpdate = async () => {
   }
 }
 
-// Function declarations
 function clearSearchFilter() {
   searchFilter.value = ''
 }
 
-// Watchers
 watch(searchFilter, () => {
   debouncedSearch()
 })
 
-// Lifecycle
 onMounted(() => {
   loadInitialData()
 })
@@ -152,7 +147,6 @@ onMounted(() => {
   - In `defineEmits`, do **NOT** name tuple parameters; specify types only.
   - BAD: `'update': [userId: string, isSelected: boolean]`
   - GOOD: `'update': [string, boolean]`
-  - If parameter meanings are not obvious from their types, add a descriptive comment directly above the emit declaration.
 
 ---
 
@@ -198,7 +192,7 @@ The same applies to self-closing components: each attribute on its own line, and
 
 ## 6. Styling, Themes & CSS
 
-- **Never Hardcode Colors**: Always use Vuetify themes (`rgb(var(--v-theme-primary))`, `text-primary`, `bg-surface`, etc.).
+- **Colors come only from the theme** defined in the project's `vuetify.ts`: theme names (`color="primary"`, `text-primary`, `bg-surface`) or `rgb(var(--v-theme-primary))` in CSS. Never hard-code a color anywhere (template, script, or style): no hex (`#ff0000`), no `rgb()` / `hsl()` with literal values, no named colors (`red`, `white`), no Vuetify palette colors (`color="red"`, `bg-red-lighten-1`), and no Tailwind color classes (`text-red-500`, `bg-white`). When no theme color fits, add a new key to the theme in `vuetify.ts`.
 - **Semantic Theme Keys**:
   - Never reuse existing theme colors for differing semantic intentions.
   - If a new semantic UI state is introduced, define a new semantic theme key in the theme configuration, even if its initial hex color value matches an existing theme key.
@@ -215,6 +209,7 @@ The same applies to self-closing components: each attribute on its own line, and
 ## 7. General Clean Code Standards
 
 - **Full & Explicit Checks (No Loose Falsy Checks)**:
+  - Every condition says exactly what it checks, in script **and** in templates (`v-if`, `v-else-if`, `v-show`, `:disabled`, ternaries). `v-if="user"` and `v-if="!items.length"` are loose checks: write `v-if="user !== null"` and `v-if="items.length === 0"`.
   - Always perform full, explicit condition checks instead of loose truthy/falsy checks.
   - **Never** write `if (!test)` or `if (test)` on objects, strings, numbers, arrays, or nullable/optional variables.
   - Fully check what you actually want to evaluate:
@@ -223,12 +218,12 @@ The same applies to self-closing components: each attribute on its own line, and
     - Empty array / collection: `if (test.length === 0)`
     - Numeric check: `if (test === 0)`
   - **Boolean Exception**: Only when a variable is strictly of type `boolean` (`true` or `false`), you may use `if (test)` or `if (!test)`.
-- **No `??`**: never use the nullish coalescing operator (`??` or `??=`). Write the explicit `=== null` / `=== undefined` check instead, so the reader sees exactly which values are handled.
+- **No shortcut operators**: never use `??`, `??=`, `?.`, `!!`, or `||` / `&&` to pick a value (`user.name || 'Unknown'`, `items || []`). Write a full `if` with the explicit `=== null` / `=== undefined` / `.length === 0` check, so the reader sees exactly which values are handled. `&&` and `||` between booleans in a condition are fine (`if (isOpen && isReady)`).
 - **`if` over ternary for calls**: when the choice is which function to call (or whether to call one), use a full `if` / `else`, never a ternary (`isEditing ? updateAsset() : createAsset()`).
 - **No `void` before calls**: call the function as it is (`loadPage()`), or `await` it when the order matters. Never write `void loadPage()`.
 - **Prefer `ref` over `let`**: component state in `<script setup>` is a `ref` (`const selectedSiteId = ref<number | null>(null)`), not a reassigned `let`. A `let` isn't reactive, so the template and watchers never see its changes.
-- **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants.
-- **Strings**: strings of **more than 3 words** (messages, long URL paths, multi-line text) become named constants. Strings of **3 words or fewer** (labels, keys, `'Save asset'`) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower.
+- **Extract Constants**: Never leave magic numbers scattered in template or script bodies; extract them into named constants in `<script lang="ts">`.
+- **Strings**: strings of **more than 3 words** (messages, long URL paths, multi-line text) become named constants. Strings of **3 words or fewer** (labels, keys, `'Save asset'`) stay inline where they're used: moving them into constants only hides them and makes quick text changes slower. A constant that holds a string of 3 words or fewer is a violation.
 - **Mappings over long if chains**: behavior that depends on a type or key is a lookup in an object or `Record` (type → value, handler, or component), not one `if` per type. Adding a type then means adding one entry.
 - **Configuration in `.env`**: API base URLs, links to other systems, ports, keys, and every other environment-specific value live in the app's `.env` files (`VITE_*`) and are read through `import.meta.env` in one config module. Never hardcode them.
 - **Exports at the bottom**: in `.ts` files, never export at the declaration (`export const`, `export function`, `export interface`, `export type`, `export enum`, `export class`). Declare everything first, then end the file with one export section (`.vue` files export nothing, see §1):
@@ -241,11 +236,11 @@ The same applies to self-closing components: each attribute on its own line, and
   ```
   The only exception is `export default`, where a tool requires it (e.g. `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`); keep it as the file's last statement.
 - **Indicative Variable Naming**: Use clear, descriptive variable and function names (e.g., `isUserDeletionPending`, `loadUserProfileDetails`), never generic names like `data`, `item`, or `load`.
-- **Minimal Docstrings**: Use docstrings very sparingly in frontend code — only when explaining complex mathematical logic or non-obvious third-party integrations. Clean, typed, well-named code is self-documenting.
+- **No comments**: no `//`, `/* */`, `<!-- -->`, and no JSDoc blocks, in script, template, or style. Clean, typed, well-named code is self-documenting.
 - **No Trailing `return`**: Functions that return nothing must not end with a bare `return`. Use `return` only for an early exit. Never write `return undefined` or `return null` to mean "nothing".
 
 ---
 
 ## 8. Testing
 
-Frontend tests follow the **`vitest-conventions`** skill (component tests with Vue Test Utils, integration tests with MSW) and the **`browser-test-conventions`** skill (Playwright with a mocked backend). Frontend tests cover **only core behavior**: shared code (used by more than one component) and important flows. There's no frontend coverage target (see `vitest-conventions`, "What Gets a Frontend Test"). Give interactive and asserted elements a stable `data-testid` (`<what>-<kind>`, e.g. `save-entity-button`) and accessible names (labels on inputs, text on buttons). Both kinds of test rely on them. Reviewers use `references/checklist.md`.
+Frontend tests follow the **`vitest-conventions`** skill (component tests with Vue Test Utils, integration tests with MSW) and the **`browser-test-conventions`** skill (Playwright with a mocked backend). Frontend tests cover **only core behavior**: shared code (used by more than one component) and important flows. There's no frontend coverage target (see `vitest-conventions`, "What Gets a Frontend Test"). Add a stable `data-testid` (`<what>-<kind>`, e.g. `save-entity-button`) only to elements a planned test queries or asserts. When the test plan has no frontend tests, add none. Inputs and buttons always have accessible names (labels on inputs, text on buttons). Reviewers use `references/checklist.md`.

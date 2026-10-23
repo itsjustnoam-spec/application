@@ -53,7 +53,7 @@ Every test file must follow this strict sequence:
 2. **Local Fixtures**: Module-specific fixtures immediately following imports.
 3. **Test Functions**: Standalone functions (`def test_*`).
    - **No classes in test files** unless strictly necessary.
-   - **No code comments in test files** unless strictly necessary to document a non-obvious upstream workaround. Tests must be self-explanatory.
+   - **No code comments in test files.** Tests must be self-explanatory.
 
 ---
 

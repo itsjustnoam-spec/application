@@ -180,3 +180,46 @@ def test_guard_test_plan_worktree_uses_its_own_active_feature(
 
     assert completed.returncode == 2
     assert "parts-reservations" in completed.stderr
+
+
+def test_guard_test_plan_prefix_of_a_planned_name_blocks(make_feature: Callable[..., Path], run_hook: Callable[..., object]):
+    project = make_feature("| T-1 | `test_read_entity_missing_id_raises_entity_not_found_error_twice` | ... |\n")
+
+    completed = run_hook("guard_test_plan.py", write_payload(project, "test_reader.py", NEW_TEST_SOURCE))
+
+    assert completed.returncode == 2
+
+
+def test_guard_test_plan_backticked_planned_name_allows(make_feature: Callable[..., Path], run_hook: Callable[..., object]):
+    project = make_feature("| T-1 | `test_read_entity_missing_id_raises_entity_not_found_error` | ... |\n")
+
+    completed = run_hook("guard_test_plan.py", write_payload(project, "test_reader.py", NEW_TEST_SOURCE))
+
+    assert completed.returncode == 0
+
+
+def test_guard_test_plan_unplanned_each_test_blocks(make_feature: Callable[..., Path], run_hook: Callable[..., object]):
+    project = make_feature("| T-1 | test_other | ... |\n")
+    source = "it.each([\n  [1],\n  [2],\n])('formats %s as a date', (value) => {\n  expect(value).toBe(value)\n})\n"
+
+    completed = run_hook("guard_test_plan.py", write_payload(project, "format.spec.ts", source))
+
+    assert completed.returncode == 2
+    assert "formats %s as a date" in completed.stderr
+
+
+def test_guard_test_plan_escaped_quote_in_planned_name_allows(make_feature: Callable[..., Path], run_hook: Callable[..., object]):
+    project = make_feature("| T-1 | `shows the site's name` | ... |\n")
+    source = "it('shows the site\\'s name', () => {\n  expect(1).toBe(1)\n})\n"
+
+    completed = run_hook("guard_test_plan.py", write_payload(project, "SiteCard.spec.ts", source))
+
+    assert completed.returncode == 0
+
+
+def test_guard_test_plan_suffix_test_module_is_guarded(make_feature: Callable[..., Path], run_hook: Callable[..., object]):
+    project = make_feature("| T-1 | test_other | ... |\n")
+
+    completed = run_hook("guard_test_plan.py", write_payload(project, "reader_test.py", NEW_TEST_SOURCE))
+
+    assert completed.returncode == 2

@@ -118,6 +118,6 @@ Claude Code refuses a Skill tool call to a skill that has `disable-model-invocat
 | Rules Claude must apply on its own whenever it touches that kind of code (`*-conventions` incl. `sql-conventions`, `backend-test-infra`) | Skill, model-invoked (no flag) | Claude and the review agents load them automatically, inside or outside `/feature` |
 | Know-how Claude should reach for at the right moment (`git-worktree`) | Skill, model-invoked (no flag) | The description is what triggers it |
 | Steps used only inside a command (`grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement`) | **Plain file in `~/.claude/workflow/`**, not a skill | They'd misfire if loaded on their own, but the commands must be able to read them. A plain file has no invocation rules to block it |
-| Commands the user starts on purpose (`feature`, `retro`, `review-mrs`, `map-library`) | Command with `disable-model-invocation: true` | Long-running, they write files, and the user decides when to start them |
+| Commands the user starts on purpose (`feature`, `retro`, `review-mrs`) | Command with `disable-model-invocation: true` | Long-running, they write files, and the user decides when to start them |
 
 **Never** give a skill `disable-model-invocation: true` if a command or another skill depends on it. Make it a workflow guide instead. State the chosen form and the reason in the improvements document for every new item.

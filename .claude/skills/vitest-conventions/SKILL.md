@@ -36,7 +36,7 @@ There's **no coverage target** for frontend code. Coverage of new frontend code 
 ## 1. Core Principles (all layers)
 
 1. **Test behavior through the public interface:** props, emitted events, slots, rendered output, and user interaction. Never assert internal refs, call component methods, or reach into `wrapper.vm`. Logic that needs deep testing goes into a util with its own fe-unit test.
-2. **Arrange-Act-Assert, visibly:** separate the three blocks with single blank lines. No `// Arrange` comments, and no comments in tests unless they document a non-obvious workaround.
+2. **Arrange-Act-Assert, visibly:** separate the three blocks with single blank lines. No `// Arrange` comments, and no comments in tests at all.
 3. **One behavior per test:** multiple `expect`s only when they check the same outcome.
 4. **No loops or conditionals in tests:** use `it.each` for variations.
 5. **DAMP over DRY:** a test reads top to bottom. Factories and mount helpers are fine; hiding the arrange step behind clever abstractions isn't.

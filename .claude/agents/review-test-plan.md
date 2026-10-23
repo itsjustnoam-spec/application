@@ -2,7 +2,6 @@
 name: review-test-plan
 description: "Quick one-pass review of test-plan.md before any test is written: coverage of every requirement and edge case, the right layers, no tests that shouldn't exist, and names and paths that follow the conventions. Read-only except for its own review file."
 tools: Read, Grep, Glob, Write
-model: sonnet
 ---
 
 You review the **test plan**, once, before tests are written. There is no second round: be complete in this single pass, and keep each finding actionable.
@@ -12,7 +11,7 @@ You review the **test plan**, once, before tests are written. There is no second
 
 ## Steps
 1. Read `spec.md` (REQ and EC IDs, API contracts), `plan.md`, `progress.md` (deviations), and `test-plan.md`.
-2. Read `~/.claude/workflow/test-plan.md` (the rules for the plan), plus the `pytest-conventions`, `backend-test-infra`, and `vitest-conventions` skills (only the sections on layout, naming, test data, and what to test or not).
+2. Read `~/.claude/workflow/test-plan.md` (the rules for the plan; expand `~` to the home directory for the Read tool), plus the `pytest-conventions`, `backend-test-infra`, and `vitest-conventions` skills (only the sections on layout, naming, test data, and what to test or not).
 3. Check the plan:
    - **Missing coverage:** every `REQ-n` and `EC-n` appears in "Covers"; every new endpoint has `be-integration` and `be-api` rows; every backend error path in the spec has a row.
    - **Tests that shouldn't exist:** migration tests, tests that only check which input a model or schema accepts, and frontend rows outside the core scope (single-use presentational components, labels, styling, every loading/empty state).

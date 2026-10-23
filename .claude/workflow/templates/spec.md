@@ -35,6 +35,7 @@ Status: DRAFT | APPROVED (<date>)
 
 ## 8. Frontend
 - Views/components: <name — purpose — parent>
+- Reused components and helpers: <existing code this feature calls instead of writing again>
 - States: loading / empty / error / success for each async action
 - Types (`src/models/`): <TS interfaces mirroring the schemas>
 - Tooltips: <where `EasyToolTip` + `mdi-information` is needed>
@@ -42,11 +43,17 @@ Status: DRAFT | APPROVED (<date>)
 ## 9. Decisions
 - D-1 <decision> (grill U-n)
 
+## 9a. Technical choices
+<!-- From the grill's approach questions: what was chosen, and the alternatives that were offered. -->
+- <area>: <chosen option> (D-n). Alternatives: <option — why not>
+
 ## 10. Patterns to follow
 - <area> → P-n (`reference file`)
 
-## 11. Git
-- Branch: BTRC-<JIRA-ISSUE>-<what-we-do> · Commits: <per task | single> · PR: <yes/no>
+## 11. Git & review
+- Branch: <slug> · Commits: <per task | single> · MR: <yes/no>
+- Push and follow the pipeline at the end: <yes/no>
+- Playwright check of the UI in review: <yes/no, or N/A without a frontend part>
 
 ## 12. Open questions
 <must be empty before approval>

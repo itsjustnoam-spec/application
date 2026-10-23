@@ -7,7 +7,7 @@ Run this per changed backend test file, together with the pytest checklist. Ever
 - [ ] BT-02 Unit tests (no I/O) exist only for pure helpers with real logic
 
 ## Databases
-- [ ] BT-03 Tests use a separate test database whose URL comes from `.env`, and the root `conftest.py` fails fast when it could be the application's database (the name must end in `_test`)
+- [ ] BT-03 Tests use a separate test database whose URL comes from `.env`, running in this branch's own containers (never a database or service that was already running), and the root `conftest.py` fails fast when it could be the application's database (the name must end in `_test`)
 - [ ] BT-04 PostgreSQL tests run on real PostgreSQL (not SQLite), with one connection and transaction per test rolled back at teardown, the session joined with `join_transaction_mode="create_savepoint"`, and a `session`-scoped engine
 - [ ] BT-05 MongoDB tests use a real Mongo when the code relies on indexes, aggregation, or transactions; a separate test database with a unique name per test or collections dropped at teardown; indexes created with the app's own setup function
 

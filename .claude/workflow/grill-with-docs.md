@@ -4,7 +4,7 @@ Find out exactly what the user wants **before** anything is planned, so that aft
 
 ## Inputs
 - The feature description.
-- `docs/features/<slug>/context.md` and `patterns.md`, written by the explorer. Read both first.
+- `docs/features/<slug>/context.md` and `patterns.md`, merged from the explorers. Read both first.
 - `docs/CONTEXT.md` (domain glossary) and `docs/adr/` (decision log) if they exist.
 
 ## Ground rules
@@ -12,7 +12,8 @@ Find out exactly what the user wants **before** anything is planned, so that aft
 2. **Batch questions.** Use `AskUserQuestion` with **up to 4 related questions per round**.
 3. **Always recommend.** Each question has 2–4 options, and the first option is your recommendation, labeled "(Recommended)", with a one-line reason in its description. Ground recommendations in the existing patterns.
 4. **Be concrete.** Ask "When an entity with the same name exists, should create return 409 or overwrite it?", never "How should errors be handled?".
-5. **Challenge the language.** If the user uses a term that conflicts with `docs/CONTEXT.md` or the code (e.g. "item" when the code says "entity"), ask which one is meant, and record the answer in the glossary.
+5. **Ask only what changes the spec.** At most 4 rounds of questions before the readback (the approach round counts as one). Don't ask what the conventions, the patterns, or an earlier answer already decide.
+6. **Challenge the language.** If the user uses a term that conflicts with `docs/CONTEXT.md` or the code (e.g. "item" when the code says "entity"), ask which one is meant, and record the answer in the glossary.
 
 ## The unknowns ledger
 Keep a running list in `docs/features/<slug>/grill-notes.md`:
@@ -22,7 +23,14 @@ Keep a running list in `docs/features/<slug>/grill-notes.md`:
 ## Decisions
 - D-1 <decision> (from U-1)
 ```
-Before every round, add any assumption you are silently making as an unknown. The grill ends only when **no unknown is open or assumed**. Each assumption is either confirmed by the user (it becomes a decision) or asked about.
+**Every time you pick a default or think "probably", add it as an unknown** with status `assumed: <what you'd do>`. The grill ends only when **no unknown is open or assumed**: each assumption is either asked about or listed in the readback for the user to confirm. When the user says "you decide", record `decided: delegated, <the conservative option>` and list it in the readback.
+
+## Approach questions (one round)
+After the first round, when you know what will be built, ask about the **technical choices that have real alternatives**: a library, where new code lives, a new component vs extending an existing one, the shape of the data, sync vs async, reusing existing code vs writing new code. For each one:
+- Say what you're going to use and why: "I'm going to use X, because …. Do you agree it's the best option?" X is the first option, labeled "(Recommended)".
+- Offer 1–3 real alternatives as the other options, each with a one-line trade-off in its description.
+
+Ask at most 4 of these, in one round, and only about choices that matter for the spec. Skip choices the conventions or the existing patterns already decide. Record each answer as a decision `D-n`; the spec lists them under "Technical choices".
 
 ## Coverage checklist
 Go through every item and mark it covered or N/A in the notes. The order is a suggestion; group related items into one round.
@@ -39,9 +47,10 @@ Go through every item and mark it covered or N/A in the notes. The order is a su
 - [ ] Patterns: for every inconsistency `I-n` in `patterns.md`, which side to follow, and confirmation of every pattern that will be reused
 - [ ] Non-goals: what explicitly won't be built
 - [ ] Backward compatibility: existing clients, existing data, other services' consumers
-- [ ] Tests: anything special beyond the defaults (backend: integration + API layers, 100% of new code; frontend: only shared code and important behavior, with no coverage target). Which **user journeys** deserve a browser test (Playwright, mocked backend)? Recommend one happy path per new journey plus its main failure.
+- [ ] Tests: anything special beyond the defaults (backend: integration + API layers, 100% of new code; frontend: only shared code and important behavior, with no coverage target). Don't plan browser tests unless the user asks for them.
+- [ ] Playwright UI check (**only when the feature has a frontend part**): ask one question, "Should I check the UI in the browser with Playwright during review?", with the options "No Playwright" and "Yes, check the UI in review", each with a one-line description. Without a frontend part, skip this question and record N/A.
 - [ ] Missing tooling from `context.md` (e.g. diff-cover): add it as part of this feature, or skip that check?
-- [ ] Git: the Jira issue (the branch is `BTRC-<JIRA-ISSUE>-<what-we-do>` in kebab case, e.g. `BTRC-1234-add-authentication`, inside a worktree too), commit per task or one commit at the end, open an MR or not
+- [ ] Git: commit per task or one commit at the end, open an MR or not, and **whether to push at the end**: ask "When the feature is done, may I push on my own and follow the pipeline until it passes?" with the options "Yes, push and follow the pipeline (Recommended)" and "No, I'll push myself"
 
 ## Readback
 When the ledger is empty, write a **readback** of 5–8 bullets: what will be built, what won't, and the riskiest decision. Ask one final question: "Is this what you want?" with the options "Yes, write the spec (Recommended)" and "No, I'll correct it". Loop until the user says yes.

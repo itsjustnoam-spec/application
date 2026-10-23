@@ -6,7 +6,7 @@ Run this per changed frontend Vitest file. Every item must be answered ✅, ❌ 
 - [ ] VT-01 File is in the right place for its layer (`tests/unit/<mirror>` for component/unit, `tests/integration/<feature>/` for integration) and ends in `.spec.ts`
 - [ ] VT-02 One `describe` named after the unit (component) or `<Feature>: <flow>` (integration)
 - [ ] VT-03 `it(...)` strings read as "<expected behavior> when <condition>" and match `test-plan.md` exactly
-- [ ] VT-04 Arrange / Act / Assert separated by blank lines, with no comments
+- [ ] VT-04 (auto, VU-40) Arrange / Act / Assert separated by blank lines, with no comments
 - [ ] VT-05 One behavior per test, with no loops or conditionals (`it.each` for variations)
 - [ ] VT-06 Test data comes from typed factories in `tests/mocks/factories/`, overriding only the relevant fields
 - [ ] VT-07 Elements selected by `data-testid`, never by Vuetify classes or DOM structure

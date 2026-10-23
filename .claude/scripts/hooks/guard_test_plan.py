@@ -22,9 +22,12 @@ PYTHON_TEST_PATTERN = re.compile(
     re.MULTILINE,
 )
 FRONTEND_TEST_PATTERN = re.compile(
-    r"""^\s*(?:it|test)(?:\.(?:only|skip|todo|fixme|fail|fails|slow|concurrent))?\s*\(\s*(['"`])(.+?)\1""",
+    r"""^\s*(?:it|test)(?:\.(?:only|skip|todo|fixme|fail|fails|slow|concurrent))?"""
+    r"""(?:\.each\s*(?s:\(.*?\))\s*)?\s*\(\s*(['"`])((?:\\.|(?!\1).)+)\1""",
     re.MULTILINE,
 )
+PLANNED_NAME_PATTERN = re.compile(r"`([^`]+)`")
+ESCAPED_CHARACTER_PATTERN = re.compile(r"\\(.)")
 FRONTEND_TEST_SUFFIXES = (".spec.ts", ".test.ts", ".spec.js", ".test.js")
 EDIT_TOOL_NAMES = ("Edit", "MultiEdit")
 
@@ -47,7 +50,10 @@ def is_python_test_file(path: Path) -> bool:
     """
     Check whether a path is a pytest test module.
     """
-    return path.suffix == ".py" and path.name.startswith("test_")
+    file_name = path.name
+    has_test_prefix = file_name.startswith("test_")
+    is_test_name = has_test_prefix or file_name.endswith("_test.py")
+    return path.suffix == ".py" and is_test_name
 
 
 def is_frontend_test_file(path: Path) -> bool:
@@ -68,9 +74,28 @@ def extract_test_names(path: Path, source: str) -> list[str]:
 
     test_matches = FRONTEND_TEST_PATTERN.finditer(source)
     return [
-        test_match.group(2)
+        ESCAPED_CHARACTER_PATTERN.sub(r"\1", test_match.group(2))
         for test_match in test_matches
     ]
+
+
+def read_planned_names(test_plan: str) -> set[str]:
+    """
+    Collect the test names a test plan lists.
+
+    :param test_plan: The text of test-plan.md.
+    :return: Every backticked value and every table cell of the plan, stripped.
+    """
+    planned_names = set(PLANNED_NAME_PATTERN.findall(test_plan))
+    for line in test_plan.splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+
+        planned_names.update(
+            cell.strip().strip("`")
+            for cell in line.split("|")
+        )
+    return planned_names
 
 
 def read_existing_source(path: Path) -> str:
@@ -182,10 +207,11 @@ def main() -> int:
         )
 
     test_plan = test_plan_path.read_text(encoding="utf-8")
+    planned_names = read_planned_names(test_plan)
     unplanned_names = [
         test_name
         for test_name in added_test_names
-        if test_name not in test_plan
+        if test_name not in planned_names
     ]
     if len(unplanned_names) == 0:
         return 0

@@ -11,7 +11,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-04 Order is imports, then local fixtures, then test functions
 - [ ] TS-27 (auto) No page docstring and no section banners in test files
 - [ ] TS-05 No test classes (unless strictly necessary), and no unittest `setUp`/`tearDown`
-- [ ] TS-06 No comments (no `# Arrange` / `# Act` / `# Assert` labels either), unless documenting an upstream workaround
+- [ ] TS-06 (auto, PY-52) No comments (no `# Arrange` / `# Act` / `# Assert` labels either)
 
 ## Test body
 - [ ] TS-07 Arrange / Act / Assert are visibly separated by single blank lines

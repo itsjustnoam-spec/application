@@ -29,10 +29,11 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 - Tests **always** run against their own database (Postgres database / Mongo database), never the one the application uses, unless the user explicitly says otherwise. That way test writes and cleanups can't touch application data, and the app can keep running while tests run.
 - The test database's name and URL come from `.env` (e.g. `TEST_DATABASE_URL`, `TEST_MONGO_DB`) like every other connection setting. They're never hardcoded.
 - Guard in the root `conftest.py`: fail fast if the configured test database name doesn't differ from the application's (e.g. it must end in `_test`).
+- **Own services, never existing ones.** Tests never run against a database or service that is already running: it belongs to the user or to another branch. Start this branch's own throwaway containers first (`git-worktree` §3), point the test settings at them, and remove them when the work is done.
 
 ## 2a. PostgreSQL (CRUD service)
 
-- Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Use the project's test database (docker-compose service or testcontainers) as found in the reference tests.
+- Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Run it in this branch's own containers (§2), set up like the project's existing docker-compose service.
 - Isolation: one connection and transaction per test, rolled back at teardown; the test's `Session` binds to that connection with `join_transaction_mode="create_savepoint"`, so the app's own commits and nested transactions stay inside it. The engine is `session`-scoped.
 - Data setup: the `env` fixture (see `pytest-conventions` §8).
 - Migrations aren't tested; they're verified by running them (see `sql-conventions`).
@@ -71,7 +72,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 ## 8. Coverage
 
 - Run: `uv run pytest --cov=<package> --cov-report=xml`
-- Changed lines only: `uv run diff-cover coverage.xml --compare-branch=<base> --fail-under=100`
-- Uncovered changed lines are either tested or listed as exempt in `test-plan.md` with a reason.
+- Changed lines only: `uv run diff-cover coverage.xml --compare-branch=<Base from progress.md>`. It's a report, not a gate: some lines are exempt by rule, and diff-cover can't know that.
+- Every uncovered changed line in the report is either tested or listed as exempt in `test-plan.md` with a reason. `review-tests` compares the two.
 
 Reviewers use `references/checklist.md`.

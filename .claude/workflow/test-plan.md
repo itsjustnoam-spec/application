@@ -4,7 +4,7 @@ Write `docs/features/<slug>/test-plan.md` from `~/.claude/workflow/templates/tes
 
 ## Inputs
 - `spec.md` (REQ and EC IDs), `plan.md`, `progress.md` (deviations).
-- The diff of the implementation: `git diff <base>...HEAD` plus uncommitted changes.
+- The diff of the implementation: `git diff <base>` (the `Base:` SHA in `progress.md`, which includes uncommitted changes) plus untracked files.
 - The reference test files from `patterns.md`.
 
 ## Rules
@@ -25,7 +25,7 @@ Write `docs/features/<slug>/test-plan.md` from `~/.claude/workflow/templates/tes
    | `fe-unit` | Vitest | **Shared** frontend utils, composables, stores, and the API client |
    | `fe-component` | Vitest + Vue Test Utils | Only **shared** components or components with important behavior: their contract (`vitest-conventions/references/component-tests.md`) |
    | `fe-integration` | Vitest + Vue Test Utils + MSW | The **important** flows of new or changed views: main flow, failures of important actions (`vitest-conventions/references/integration-tests.md`) |
-   | `browser` | Playwright, mocked backend | **Important** user journeys (happy path), and behavior that is unreliable in jsdom (`browser-test-conventions`) |
+   | `browser` | Playwright, mocked backend | Only when the user asked for browser tests in the grill: important user journeys (`browser-test-conventions`) |
 
    **Frontend rows are deliberately few** (see `vitest-conventions`, "What Gets a Frontend Test"): no rows for single-use presentational components, labels, styling, or every loading/empty/error state. Backend rows stay complete.
 
@@ -39,10 +39,10 @@ Write `docs/features/<slug>/test-plan.md` from `~/.claude/workflow/templates/tes
 - [ ] Every new endpoint has both `be-integration` and `be-api` rows
 - [ ] Backend test files follow `tests/<domain>/test_<operation>_<domain>.py`, with manager and API rows of one operation in the same file
 - [ ] No rows for migrations or plain schema/model validation
-- [ ] Frontend rows cover only shared code and important behavior; important flows have `fe-integration` rows, and important journeys have one `browser` row
+- [ ] Frontend rows cover only shared code and important behavior; important flows have `fe-integration` rows; `browser` rows exist only when the user asked for them
 - [ ] Anything moved from jsdom to `browser` because jsdom can't handle it says so in "What it tests"
 - [ ] Every row's expected result is concrete
 - [ ] Names follow the naming conventions exactly
 
 ## After writing the tests
-Run the tests, and the backend changed-line coverage (commands are in the root `CLAUDE.md`). The frontend has no coverage gate. Record the results at the bottom of `test-plan.md` under "Results". If a planned test turns out to be impossible or wrong, update its row with the reason instead of silently dropping it.
+Run the tests on this branch's own services, and the backend changed-line coverage report (commands are in the root `CLAUDE.md`). The frontend has no coverage gate. Record the results at the bottom of `test-plan.md` under "Results". If a planned test turns out to be impossible or wrong, update its row with the reason instead of silently dropping it.

@@ -2,13 +2,12 @@
 name: review-spec
 description: "Verifies the implementation matches the approved spec.md: every requirement and edge case is implemented, the contracts match exactly, and nothing was built outside the spec. Read-only except for its own review file."
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
 ---
 
 You check that **the code does what `spec.md` says: all of it, and only that**. You don't judge style or test quality.
 
 ## Inputs (given in your prompt)
-- Feature directory `docs/features/<slug>/`, base branch `<base>`, and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
+- Feature directory `docs/features/<slug>/`, the base commit `<base>` (the `Base:` line of `progress.md`), and the review directory to write to (`docs/features/<slug>/review/round-<n>/`).
 - On a re-review (round 2 or later): the previous round's directory. Read its findings and `triage.md` first. For every finding marked `fix`, check whether it's resolved and report any that aren't with `Recurring: F-<id> from round <n-1>`. Don't re-raise findings marked `dismiss` unless you have new evidence, and say what's new.
 
 ## Steps
@@ -16,10 +15,10 @@ You check that **the code does what `spec.md` says: all of it, and only that**. 
 2. Get the full diff: `git diff <base>` plus the new files from `git ls-files --others --exclude-standard`. Ignore `docs/features/`.
 3. **Traceability matrix:** for every `REQ-n` and `EC-n`, find where it's implemented (`file:line`) and mark it `done`, `partial`, or `missing`. Read the code. Don't infer from names.
 4. **Contract check:** for every endpoint in spec §5, compare the method, path, request fields, response fields, status codes, and error mapping against the code, field by field. Do the same for the proxy route, the message schemas (§7), and the TS types against the backend schemas (§8).
-5. **Scope creep:** list anything in the diff that no REQ, EC, or task explains (extra endpoints, fields, refactors).
+5. **Scope creep:** list anything in the diff that no REQ, EC, or task explains (extra endpoints, fields, refactors), and every change to existing lines that the feature didn't need (reformatting, renames, convention fixes in old code).
 6. **Deviations:** for each `DEV-n` in `progress.md`, judge whether the choice is consistent with the spec's intent.
 7. **Plan:** confirm every `TASK-n` is done and that its pattern was used.
-8. Write `<review directory>/spec.md` (never overwrite an earlier round's file), then reply with one line: `spec: <n> missing, <n> partial, <n> contract mismatches, <n> scope creep`.
+8. Write `<review directory>/spec-review.md` (never overwrite an earlier round's file), then reply with one line: `spec: <n> missing, <n> partial, <n> contract mismatches, <n> scope creep`.
 
 ## Output file
 ```markdown
