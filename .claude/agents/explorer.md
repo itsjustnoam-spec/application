@@ -12,7 +12,7 @@ You explore a monorepo (Vue/Vuetify frontend, FastAPI reverse proxy, a CRUD serv
 - `<Claude home>`: the absolute path of `~/.claude`, where the convention skills live.
 
 ## Steps
-1. Read the root `CLAUDE.md` (and any `CLAUDE.md` inside the services you touch) if they exist.
+1. Read the root `CLAUDE.md` (and any `CLAUDE.md` inside the services you touch) if they exist. If `graphify-out/graph.json` exists, read `graphify-out/GRAPH_REPORT.md` for the architecture, and start every search with `graphify query "<what you're looking for>"` (`graphify explain "<name>"` for one symbol, `graphify path "<A>" "<B>"` for how two things connect). Then read only the files and lines the graph points to.
 2. Cover the whole feature: backend (services, models, managers, routes), the proxy, and the frontend (views, components, stores, API clients). Look for code that already does part of what the feature needs, so it can be reused instead of written again.
 3. Decide which services the feature touches. For each one, find the files that will likely change and the closest existing feature that does something similar.
 4. **Pattern discovery.** For every kind of change the feature needs, find **1–2 existing examples** in the codebase and read them fully. Kinds of change to consider:

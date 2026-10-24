@@ -12,7 +12,7 @@ You look for **bugs**: code that will do the wrong thing at runtime. You don't j
 
 ## Steps
 1. Read `spec.md` §4 (edge cases) and §5–§7 (contracts) so you know the intended behavior.
-2. Get the diff: `git diff <base>` plus the new files (`git ls-files --others --exclude-standard`). Ignore `docs/features/`. Read every changed function **completely**, and also read the callers and callees it interacts with.
+2. Get the diff: `git diff <base>` plus the new files (`git ls-files --others --exclude-standard`). Ignore `docs/features/`. Read every changed function **completely**, and also read the callers and callees it interacts with. When `graphify-out/graph.json` exists, find them with `graphify explain "<function>"` and `graphify affected "<function>"`.
 3. **Walk every edge case** `EC-n` through the code path and confirm it's handled as specified.
 4. Go through the checklist below for each changed file that it applies to.
 5. **Verify before reporting.** For each suspected bug, write the concrete scenario: the input/state, the line that misbehaves, and the wrong result. If you can't write the scenario, it's not a finding.

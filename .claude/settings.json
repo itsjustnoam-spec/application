@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$HOME/.claude/scripts/hooks/graphify_session.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
@@ -8,6 +19,26 @@
             "type": "command",
             "command": "python \"$HOME/.claude/scripts/hooks/guard_test_plan.py\"",
             "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$HOME/.claude/scripts/hooks/graphify_guard.py\" search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$HOME/.claude/scripts/hooks/graphify_guard.py\" read",
+            "timeout": 10
           }
         ]
       }

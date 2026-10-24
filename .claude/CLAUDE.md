@@ -23,6 +23,12 @@
 - Never silence a linter or type checker (`noqa`, `type: ignore`, `eslint-disable`, `@ts-ignore`, ...). Fix the code instead.
 - Never use another class's or module's private members (names starting with `_`). Use the public API, or make the needed function public where it's defined.
 
+## Find code with graphify
+- Projects keep a code knowledge graph in `graphify-out/` (committed; a session-start hook updates it in the background, code only, no LLM). When `graphify-out/graph.json` exists, run `graphify query "<question>"` before your first grep, search, or source-file read for a codebase question.
+- Use `graphify path "<A>" "<B>"` for how two things connect, `graphify explain "<name>"` for one function or class, `graphify affected "<name>"` for what a change impacts, and `graphify-out/GRAPH_REPORT.md` only for the overall architecture.
+- Read files only for the lines the graph pointed to. Grep only when the graph has no answer. Put this rule in every subagent prompt that explores code.
+- After changing code, run `graphify update .` (code only, a few seconds) so the graph stays current. Changes to `graphify-out/` in a diff are expected: never report them as a problem.
+
 ## Work toward a checkable goal
 - Turn the task into checks that prove it's done (tests, a command, a visible result), run them, and report the real outcome. If a check fails or was skipped, say so.
 
