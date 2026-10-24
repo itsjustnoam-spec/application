@@ -1,5 +1,5 @@
 ---
-description: "Spec-first feature workflow. Explore patterns with three explorers, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan with a one-pass review, tests, parallel reviews (two for conventions, one for quality, optionally one in the browser), up to 3 fix rounds, summary, push."
+description: "Spec-first feature workflow. Explore patterns with three explorers, grill, spec and plan, ONE approval gate, then autonomous implementation, test plan with a one-pass review, tests, parallel reviews (general, tests, conventions, and optionally the UI in the browser), up to 3 fix rounds, summary, push."
 disable-model-invocation: true
 argument-hint: "[--no-worktree] <Jira issue> <feature description> | resume <branch>"
 ---
@@ -26,7 +26,7 @@ Request: `$ARGUMENTS`
 
 **Write files with the Write or Edit tools**, never with shell heredocs or redirects. The hooks only check files written through Write/Edit.
 
-**Running agents.** Call the Agent tool once per agent, with `subagent_type` set to the agent's name (`explorer`, `review-conventions`, ...). Never use a general-purpose agent in place of a named one. Agents that run in parallel are all called in **one** message. Every agent prompt gives literal values, never "see progress.md": the feature directory, the `Base:` SHA, the review directory, and `<Claude home>` (the absolute path of `~/.claude`, from `echo $HOME/.claude`). Every agent prompt also includes this rule, word for word: "**Find code with graphify first.** When `graphify-out/graph.json` exists, run `graphify query "<question>"` before your first grep, search, or source-file read; use `graphify path "<A>" "<B>"` for how two things connect, `graphify explain "<name>"` for one function or class, and `graphify affected "<name>"` for what a change impacts. Read files only for the lines the graph pointed to; grep only when the graph has no answer."
+**Running agents.** Call the Agent tool once per agent, with `subagent_type` set to the agent's name (`explorer`, `general-reviewer`, ...). Never use a general-purpose agent in place of a named one. Agents that run in parallel are all called in **one** message. Every agent prompt gives literal values, never "see progress.md": the feature directory, the `Base:` SHA, the review directory, and `<Claude home>` (the absolute path of `~/.claude`, from `echo $HOME/.claude`). Every agent prompt also includes this rule, word for word: "**Find code with graphify first.** When `graphify-out/graph.json` exists, run `graphify query "<question>"` before your first grep, search, or source-file read; use `graphify path "<A>" "<B>"` for how two things connect, `graphify explain "<name>"` for one function or class, and `graphify affected "<name>"` for what a change impacts. Read files only for the lines the graph pointed to; grep only when the graph has no answer."
 
 You orchestrate the phases below **in order**. Each phase writes files to `docs/features/<slug>/`. Later phases read those files, not the chat, so keep them accurate. There is **one** human gate (phase 3). Before it, ask as much as needed. After it, **never ask the user anything**. Decide conservatively, log it as a `DEV-n` line under "Deviations" in `progress.md`, and keep going.
 
@@ -102,22 +102,27 @@ Set `Phase: REVIEW-ROUND-1`.
 **The rounds, in order:** review 1 → triage 1 → fix 1 → review 2 → triage 2 → fix 2 → review 3 → triage 3 → fix 3 → review 4 → triage 4. Review 4 is the last: its triage marks each valid finding `open` and fixes nothing. Every earlier triage uses only `fix` and `dismiss`.
 
 **Every review round runs the same way:**
-1. Run the "Test commands" of `progress.md` and write their full output to `<review directory>/test-run.txt`. `review-tests` reads it instead of running everything again.
-2. Run the reviewers (below) in parallel, in one message.
+1. **Checks first, once.** Write `<review directory>/checks.txt` with the full output of:
+   - the "Test commands" of `progress.md` (every test layer, and the diff-cover report)
+   - `python ~/.claude/scripts/lint_changed.py --since <base> <every changed file>` (the convention checkers and eslint, on the lines the branch wrote)
+   - `python ~/.claude/scripts/mypy_strict.py --since <base> <package>`, from each changed Python service's directory
+
+   The reviewers read this file and never run these tools themselves, so they all start from the same results.
+2. Run the reviewers below **in parallel, in one message**.
 3. Wait for all of them, then go to phase 8 for the triage.
 
-**Split the conventions work between two reviewers, by whole skills:**
-- reviewer 1, the code skills: `python-conventions`, `sql-conventions`, `vue-conventions`
-- reviewer 2, the test skills: `pytest-conventions`, `backend-test-infra`, `vitest-conventions`, `browser-test-conventions`
+**The reviewers.** Give each one the feature directory, `<base>`, `<Claude home>`, and the review directory (`docs/features/<slug>/review/round-1/`), as literal values, plus the skill list where it has one. For example, `tests-reviewer` gets: "Skills: pytest-conventions, backend-test-infra. Feature directory: docs/features/BTRC-1234-add-authentication/. Base: 3f2a…. Claude home: /home/you/.claude. Review directory: docs/features/BTRC-1234-add-authentication/review/round-1/."
 
-Leave out skills that apply to no changed file (see the file table in `review-conventions`). If one list ends up empty, run only the other reviewer. Record both lists in `progress.md`, so later rounds reuse them.
+| Agent | Runs | Writes | Checks |
+|---|---|---|---|
+| `general-reviewer` | always | `general-review.md` | The code against the spec (REQs, edge cases, contracts, scope, deviations), runtime bugs, and duplicated or unused code |
+| `tests-reviewer` | always (missing tests are its findings) | `tests-review.md` | Code the tests don't cover, tests that check nothing or break the rules, and the test-convention checklists. Skills: the ones of `pytest-conventions`, `backend-test-infra`, `vitest-conventions` that apply to the changed test files |
+| `conventions-reviewer` | when application code changed | `conventions-review.md` | Every non-test convention on the lines the branch wrote, pattern adherence, suppressions, private members, and old lines changed only to apply a convention. Skills: the ones of `python-conventions`, `sql-conventions`, `vue-conventions` that apply to the changed files |
+| `ui-reviewer` | only when `progress.md` says `Playwright check: yes` and the frontend changed | `ui-review.md` | The UI and UX of the spec's journeys in the browser |
 
-Run these agents **in parallel**, giving each the feature directory, `<base>`, `<Claude home>`, and the review directory `docs/features/<slug>/review/round-1/`, as literal values. For example, the second conventions reviewer gets: "Reviewer 2. Skills: pytest-conventions, backend-test-infra. Feature directory: docs/features/BTRC-1234-add-authentication/. Base: 3f2a…. Claude home: /home/you/.claude. Review directory: docs/features/BTRC-1234-add-authentication/review/round-1/."
-- `review-conventions` twice: as reviewer 1 and as reviewer 2, each with its skill list
-- `review-spec` · `review-bugs` · `review-tests` · `review-quality`
-- `review-ui`, only when `progress.md` says `Playwright check: yes` and the frontend changed. First start the app on this branch's own services (the backend on the containers from `git-worktree` §3, and the frontend dev server on a free port), then give the agent the frontend URL. Stop the app after the round.
+Record the two skill lists in `progress.md`, so later rounds reuse them. Before `ui-reviewer`, start the app on this branch's compose project (the backend on its containers from `git-worktree` §3, the frontend dev server on a free port), give the agent the frontend URL, and stop the app after the round.
 
-Wait for all of them. Each writes `<review directory>/<name>-review.md` (`conventions-1-review.md`, `conventions-2-review.md`, `spec-review.md`, `bugs-review.md`, `tests-review.md`, `quality-review.md`, `ui-review.md`). In triage and `history.md`, `conventions-1` and `conventions-2` are two separate reviewers. **Never overwrite or delete an earlier round's files.** They are the review history that `/retro` learns from.
+**Never overwrite or delete an earlier round's files.** They are the review history that `/retro` learns from.
 
 ## Phase 8: Triage & fix (max 3 fix rounds)
 For round `n` (starting at 1):
@@ -132,7 +137,7 @@ For round `n` (starting at 1):
 3. If no finding was marked `fix`, go to phase 9.
    Changes to `graphify-out/` are expected in every branch (the graph is committed and updated after code changes). Dismiss any finding about them.
 4. Set `Phase: FIX-ROUND-<n>`. Fix every `fix` finding: blockers first, then majors, then minors. A fix that needs a new test gets its `test-plan.md` row first. Then run the checks of phase 4 step 4 and every test layer again, on everything the fixes touched.
-5. Set `Phase: REVIEW-ROUND-<n+1>` and run review round `n+1` the same way as phase 7 (`test-run.txt` first), with the review directory `review/round-<n+1>/` and the previous round's directory. Re-run only the reviewers that had `fix` findings (a conventions reviewer with the same number and skill list as before), plus `review-quality` whenever the fixes changed code. They confirm each fix and don't re-raise dismissed findings without new evidence.
+5. Set `Phase: REVIEW-ROUND-<n+1>` and run review round `n+1` the same way as phase 7 (`checks.txt` first), with the review directory `review/round-<n+1>/` and the previous round's directory. Re-run a reviewer when it had `fix` findings, or when the fixes touched its area: application code for `general-reviewer` and `conventions-reviewer`, tests for `tests-reviewer`, the frontend for `ui-reviewer`. Each gets the same skill list as before. They confirm each fix and don't re-raise dismissed findings without new evidence.
 6. Repeat from step 1 for round `n+1`. After fix 3 comes review 4 and triage 4: mark each valid finding `open`, fix nothing, and go to phase 9.
 
 ## Phase 9: Summary and git

@@ -161,6 +161,20 @@ SESSION_WRITE_METHODS = {
 CONFTEST_FILE_NAME = "conftest.py"
 MODELS_LIBRARY_NAME = "midnight_models"
 ENVIRONMENT_FIXTURE_NAME = "env"
+APP_HELPER_MODULE_PARTS = frozenset(
+    {
+        "managers",
+        "manager",
+        "services",
+        "utils",
+        "readers",
+        "converters",
+    },
+)
+ROOT_ENV_MESSAGE = (
+    "The env fixture belongs in tests/<domain>/conftest.py, not in tests/conftest.py: "
+    "the root conftest only sets up the database, the session, and the clients."
+)
 THIRD_PERSON_SUFFIX = "s"
 NON_THIRD_PERSON_ENDINGS = ("ss", "us", "is")
 NON_THIRD_PERSON_WORDS = frozenset(
@@ -1892,13 +1906,24 @@ def check_collection_literals(
     return violations
 
 
+def is_root_conftest(path: Path) -> bool:
+    """
+    Check whether a file is the root tests/conftest.py.
+
+    :param path: The test file being checked.
+    :return: Whether it's a conftest.py directly inside a folder named tests.
+    """
+    is_conftest = path.name == CONFTEST_FILE_NAME
+    return is_conftest and path.parent.name == "tests"
+
+
 def check_environment_fixture(path: Path, tree: ast.Module) -> list[Violation]:
     """
-    Check that test data is created only by the env fixture.
+    Check that test data is created only by a domain conftest's env fixture.
 
     :param path: The test file being checked.
     :param tree: The parsed module.
-    :return: One violation per conftest session write outside the env fixture.
+    :return: One violation per env fixture in the root conftest, and per conftest session write outside env.
     """
     violations: list[Violation] = []
     if path.name != CONFTEST_FILE_NAME:
@@ -1908,7 +1933,19 @@ def check_environment_fixture(path: Path, tree: ast.Module) -> list[Violation]:
         if not isinstance(statement, FUNCTION_NODE_TYPES):
             continue
 
-        if statement.name == ENVIRONMENT_FIXTURE_NAME:
+        is_env = statement.name == ENVIRONMENT_FIXTURE_NAME
+        if is_env and is_root_conftest(path):
+            violations.append(
+                Violation(
+                    path,
+                    statement.lineno,
+                    "TS-30",
+                    ROOT_ENV_MESSAGE,
+                ),
+            )
+            continue
+
+        if is_env:
             continue
 
         for node in ast.walk(statement):
@@ -1927,6 +1964,53 @@ def check_environment_fixture(path: Path, tree: ast.Module) -> list[Violation]:
                 f"move this session.{method_name}() into it.",
             )
             violations.append(violation)
+    return violations
+
+
+def is_app_helper_import(node: ast.ImportFrom) -> bool:
+    """
+    Check whether an import brings in the application's managers, services, or utils.
+
+    :param node: An import statement in a test file.
+    :return: Whether an absolute, non-test module path has a managers/services/utils part.
+    """
+    if node.level > 0 or node.module is None:
+        return False
+
+    module_parts = node.module.split(".")
+    if module_parts[0] == "tests":
+        return False
+
+    return not APP_HELPER_MODULE_PARTS.isdisjoint(module_parts)
+
+
+def check_test_setup_imports(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that test setup files build objects from models only, never with the app's managers or utils.
+
+    :param path: The test file being checked.
+    :param tree: The parsed module.
+    :return: One violation per import of an app manager, service, or utils module in a test conftest.py or utils.py.
+    """
+    violations: list[Violation] = []
+    if path.name not in (CONFTEST_FILE_NAME, "utils.py"):
+        return violations
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+
+        if not is_app_helper_import(node):
+            continue
+
+        violation = Violation(
+            path,
+            node.lineno,
+            "TS-37",
+            f"Test setup imports '{node.module}': build env objects from models only, never with the app's "
+            "managers or utils.",
+        )
+        violations.append(violation)
     return violations
 
 
@@ -2553,6 +2637,7 @@ def check_python_file(path: Path) -> list[Violation]:
         )
         violations += check_session_use_in_tests(path, tree)
         violations += check_environment_fixture(path, tree)
+        violations += check_test_setup_imports(path, tree)
 
     if not is_test_file(path):
         violations += check_function_docstrings(path, tree)

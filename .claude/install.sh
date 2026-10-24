@@ -27,6 +27,12 @@ retired_files = (
     "commands/map-library.md",
     "agents/doc-auditor.md",
     "agents/skill-mapper.md",
+    "agents/review-spec.md",
+    "agents/review-bugs.md",
+    "agents/review-quality.md",
+    "agents/review-conventions.md",
+    "agents/review-tests.md",
+    "agents/review-ui.md",
 )
 
 

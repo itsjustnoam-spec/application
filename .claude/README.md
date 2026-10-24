@@ -11,7 +11,7 @@ A spec-first Claude Code workflow for Vue/Vuetify + FastAPI microservice project
   4 Implement task by task (hooks check the lines just written)
   5 Test plan → test-plan.md, reviewed once by review-test-plan (a hook blocks tests that aren't in it)
   6 Write tests on the branch's own Docker services + changed-line coverage report
-  7 Review in parallel: conventions ×2 (code skills / test skills) · spec · bugs · tests · quality · ui (optional, Playwright)
+  7 Checks run once (checks.txt), then review in parallel: general · tests · conventions · ui (optional, Playwright)
   8 Triage + fix (max 3 rounds; every round kept in review/round-<n>/)
   9 summary.md with every open problem, then push and follow the pipeline (if you said yes in the grill), remove the branch's compose project, Phase: DONE
 ```
@@ -33,10 +33,10 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 | `commands/retro.md` | End-of-session retrospective → improvements document (`/retro`) |
 | `commands/review-mrs.md` | Learns from GitLab merge requests via the GitLab MCP → improvements document (`/review-mrs`) |
 | `agents/explorer.md` | Pattern and reusable-code discovery before planning (three run in parallel) |
-| `agents/review-conventions.md` | Conventions reviewer (runs twice: code skills and test skills), filling in the checklists rule by rule |
-| `agents/review-quality.md` | Duplication (exact and near), unused code, silenced linters, private members, changes the feature didn't need |
-| `agents/review-spec.md`, `review-bugs.md`, `review-tests.md` | Spec coverage, bugs, and test quality |
-| `agents/review-ui.md` | Walks the spec's journeys in the browser with the Playwright MCP server (only when you agreed in the grill) |
+| `agents/general-reviewer.md` | The code against the spec, runtime bugs, and duplicated or unused code |
+| `agents/tests-reviewer.md` | Untested code, tests that check nothing or break the rules, and the test-convention checklists |
+| `agents/conventions-reviewer.md` | Every non-test convention on the lines the branch wrote, rule by rule, plus suppressions, private members, and old lines changed only to apply a convention |
+| `agents/ui-reviewer.md` | The UI and UX of the spec's journeys in the browser, with the Playwright MCP server (only when you agreed in the grill) |
 | `agents/review-test-plan.md` | One-pass review of `test-plan.md` before tests are written |
 | `skills/python-conventions`, `pytest-conventions`, `vue-conventions` | House conventions (with `references/checklist.md` for reviewers) |
 | `skills/sql-conventions` | Table models (indexes in `__table_args__`) and explicit transactions |

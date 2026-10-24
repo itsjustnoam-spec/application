@@ -358,6 +358,43 @@ def test_check_python_file_conftest_factory_outside_env_reports_ts30(
     assert reported_rule_ids == ["TS-30"]
 
 
+def test_check_python_file_env_in_root_conftest_reports_ts30(tmp_path: Path):
+    path = tmp_path / "tests" / "conftest.py"
+    path.parent.mkdir()
+    path.write_text("def env(db_session):\n    db_session.add(Site(name='a'))\n", encoding="utf-8")
+
+    reported_rule_ids = rule_ids(path)
+
+    assert reported_rule_ids == ["TS-30"]
+
+
+@pytest.mark.parametrize("file_name,source,expected_rule_ids", [
+    ("conftest.py", "from atlas.managers.sites import create_site\n", ["TS-37"]),
+    ("utils.py", "from atlas.utils.convert import to_site_read\n", ["TS-37"]),
+    ("conftest.py", "from atlas.models import Site\n", []),
+    ("conftest.py", "from tests.utils import Environment\n", []),
+    ("utils.py", "from .conftest import env\n", []),
+    ("test_create_site.py", "from atlas.managers.sites import create_site\n", []),
+])
+def test_check_python_file_test_setup_imports(
+    tmp_path: Path,
+    file_name: str,
+    source: str,
+    expected_rule_ids: list[str],
+):
+    path = tmp_path / "tests" / "sites" / file_name
+    path.parent.mkdir(parents=True)
+    path.write_text(source, encoding="utf-8")
+
+    reported_rule_ids = [
+        rule_id
+        for rule_id in rule_ids(path)
+        if rule_id == "TS-37"
+    ]
+
+    assert reported_rule_ids == expected_rule_ids
+
+
 def test_check_python_file_banner_text_inside_string_is_ignored(
     write_python_file: Callable[..., Path],
 ):

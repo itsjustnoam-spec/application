@@ -1,6 +1,6 @@
 ---
 name: pytest-conventions
-description: Use when writing, maintaining, reviewing, or debugging Python tests with pytest. Enforces the tests/<domain>/test_<operation> layout, test data only through the env fixture in conftest and the app's own managers, what not to test (migrations, plain validation), AAA structure, fixture patterns, parametrization, DAMP test naming, 100% coverage, and strict isolation.
+description: Use when writing, maintaining, reviewing, or debugging Python tests with pytest. Enforces the tests/<domain>/test_<operation> layout, test data only through each domain's env fixture built from models (never the app's managers or utils), one behavior per test, what not to test (migrations, plain validation), AAA structure, fixture patterns, parametrization, DAMP test naming, 100% coverage, and strict isolation.
 ---
 
 # Pytest Testing Conventions
@@ -12,7 +12,7 @@ Opinionated, comprehensive testing patterns for Python and pytest. Incorporates 
 ## 1. Core Principles
 
 1. **Test behavior, not implementation**: Focus on what the code does and its observable contract, not internal private implementation details.
-2. **One assertion concept per test**: A test verifies a single outcome or behavior. Multiple `assert` statements are permitted only when validating properties of the same single result.
+2. **One behavior per test**: A test checks one core behavior, through the one application function under test (see §8). Multiple `assert` statements are permitted only when validating properties of the same single result.
 3. **DAMP over DRY in tests**: Descriptive And Meaningful Phrases over rigid Don't Repeat Yourself. Tests should be readable from top to bottom without jumping through complex helper abstractions.
 4. **Narrow fixture scopes**: Default to `function` scope. Widen to `module` or `session` only for expensive, read-only setup (e.g. database engines, mock servers).
 5. **Isolation and order-independence**: Zero shared mutable state across tests. Tests must pass regardless of execution order and run cleanly in parallel (e.g. with `pytest-xdist`).
@@ -27,11 +27,10 @@ Tests are grouped by **domain** (a thing in the application, such as `sites` or 
 
 ```
 tests/
-  conftest.py                   # Root fixtures: engine, session, clients, and the env fixture
-  utils.py                      # The Environment dataclass that env returns, shared helpers
+  conftest.py                   # Root fixtures: engine, session, clients. No env, no objects
   <domain>/                     # e.g. sites, asset_types, entities
-    conftest.py                 # This domain's fixtures (clients, frozen clocks, ...); they never create objects
-    utils.py                    # This domain's non-fixture helpers (builders of request bodies, assertions)
+    conftest.py                 # This domain's env fixture (the only place objects are created) and other fixtures
+    utils.py                    # This domain's Environment dataclass, the model builders env uses, request-body builders
     test_create_<domain>.py     # e.g. test_create_site.py: manager + API tests for creating
     test_update_<domain>.py
     test_list_<domain>.py
@@ -80,7 +79,7 @@ Fixtures cascade downwards from root `tests/conftest.py` into domain `conftest.p
 
 ### No Factory Fixtures
 
-Don't write fixtures or helpers that create objects (`make_site(...)`, `make_asset(...)`, `create_test_user(...)`). Every object a test needs comes from the `env` fixture, or is created by the test itself through the application's managers (see §8).
+Don't write fixtures or helpers that tests call to create objects (`make_site(...)`, `make_asset(...)`, `create_test_user(...)`). Every object a test needs comes from its domain's `env` fixture (see §8).
 
 ---
 
@@ -129,18 +128,23 @@ Never assert generic `Exception` or `ValueError` when domain exceptions are defi
 
 ## 8. Test Data: the `env` Fixture
 
-All the data a test relies on, but doesn't test, comes from **one fixture, `env`**, in `tests/conftest.py`. It builds a small, named world (sites, asset types, assets, ...) for every test, inside the test's rolled-back transaction, and returns it as an `Environment` dataclass (declared in `tests/utils.py`), so tests read `env.north_site` or `env.retired_compressor`.
+All the data a test relies on, but doesn't test, comes from **the `env` fixture of the test's domain**, in `tests/<domain>/conftest.py`. It builds a small, named world (sites, asset types, assets, ...) before each test, inside the test's rolled-back transaction, and returns it as an `Environment` dataclass, so tests read `env.north_site` or `env.retired_compressor`. The root `tests/conftest.py` only sets up the database, the session, and the clients: it has no `env`.
 
-- **`env` is the only place that creates objects in the database for tests.** It may add them through the session or the application's managers.
-- **The object under test is created through the application's own functions.** A test about creating or changing something calls the manager (`create_asset(...)`, `archive_site(...)`) or the API. That's the only creation allowed outside `env`.
-- **Never call a manager to create something just to test something else with it.** When creating isn't what the test is about, the object comes from `env`.
-- **No factory fixtures and no creating helpers** (`make_site`, `make_asset`, ...), in any `conftest.py` or `utils.py`, root or domain. A domain's `conftest.py` and `utils.py` hold fixtures and helpers for that domain's tests, but objects still come only from `env`.
-- **A test never uses the session directly**: no `session.add`, `session.get`, `session.exec`, `session.commit`, or any other session call in a test body. A test only passes the session to the application's functions. To check the result, it uses the application's read functions or the API.
-- **When a test needs something `env` doesn't have**, add it to `env` under a name that says what's special about it (`archived_site`, `retired_compressor`, `asset_due_yesterday`). Don't build it in the test.
-- Tests never depend on what another test created. `env` is function-scoped, so every test starts from the same world.
+- **Objects are created only for `env`, and only in the domain's own `conftest.py` or `utils.py`.** The `env` fixture lives in `tests/<domain>/conftest.py`; the objects it returns are built there or in `tests/<domain>/utils.py` (with the domain's `Environment` dataclass). Nothing else, in any file, creates objects for tests.
+- **Build objects from the application's models only.** `env` and its builders construct models directly (`Site(...)`, `Asset(...)`) and add them with the session. Never use the application's managers, services, converters, or utils to set up data: if one of them has a bug, every test that relies on it fails, and the bug looks like it's somewhere else. Importing the app's models, types, and enums is fine.
+- **Never create objects inside a test.** Creating them in `env` keeps the tests fast: the setup and the per-test rollback already exist, and every object a test builds itself adds time to the run.
+- **No factory fixtures and no creating helpers that tests call** (`make_site`, `make_asset`, ...). `env` is the only thing a test uses to get objects.
+- **A test never uses the session directly**: no `session.add`, `session.get`, `session.exec`, `session.commit`, or any other session call in a test body. A test only passes the session to the application's functions.
+- **When a test needs something `env` doesn't have**, add it to the domain's `env` under a name that says what's special about it (`archived_site`, `retired_compressor`, `asset_due_yesterday`). Don't build it in the test.
+- Tests never depend on what another test created. `env` is function-scoped, and every test's changes are rolled back, so every test starts from the same world.
+
+### One thing per test
+
+- **Each test checks one core behavior, and calls the application function under test** (the manager, or the API endpoint). A test about creating calls the create manager or endpoint; a test about updating takes its object from `env` and calls the update manager. Never create something and then update it in the same test: if create has a bug, the update test fails too.
+- **Calling a second application function is allowed only in an edge case**, and only while the test still checks one thing (e.g. archiving twice to check the second call is rejected).
 
 ```python
-# tests/utils.py
+# tests/sites/utils.py
 @dataclass
 class Environment:
     north_site: Site
@@ -149,10 +153,17 @@ class Environment:
     compressor: Asset
 
 
-# tests/conftest.py
+def build_north_site() -> Site:
+    """
+    Build the active site most site tests use.
+    """
+    return Site(name="North Depot", address="1 Main Street", timezone="Europe/Berlin")
+
+
+# tests/sites/conftest.py
 @pytest.fixture
 def env(db_session: Session) -> Environment:
-    north_site = Site(name="North Depot", address="1 Main Street", timezone="Europe/Berlin")
+    north_site = build_north_site()
     archived_site = Site(name="Old Depot", address="2 Main Street", timezone="UTC", archived=True)
     pump = AssetType(name="Pump", category=AssetCategory.MECHANICAL, inspection_interval_days=30)
     compressor = Asset(name="Compressor", serial_number="SN-1", site=north_site, asset_type=pump)
@@ -174,14 +185,14 @@ def env(db_session: Session) -> Environment:
 
 
 # GOOD:
-def test_archive_asset_active_asset_hides_it_from_list(db_session: Session, env: Environment):
-    archive_asset(db_session, env.compressor.id)
+def test_archive_asset_active_asset_returns_archived_asset(db_session: Session, env: Environment):
+    archived_asset = archive_asset(db_session, env.compressor.id)
 
-    assert list_assets(db_session).total == 0
+    assert archived_asset.archived is True
 
 
 def test_create_asset_valid_input_returns_asset(db_session: Session, env: Environment):
-    asset_input = build_asset_input(site_id=env.north_site.id, asset_type_id=env.pump.id)
+    asset_input = AssetInput(name="Pump 2", site_id=env.north_site.id, asset_type_id=env.pump.id)
 
     asset = create_asset(db_session, asset_input)
 
@@ -189,17 +200,26 @@ def test_create_asset_valid_input_returns_asset(db_session: Session, env: Enviro
 
 
 # BAD:
-def test_archive_asset_active_asset_hides_it_from_list(db_session: Session, make_asset):
-    asset = make_asset(name="Compressor")  # factory fixture instead of env
+def test_update_asset_new_name_renames_asset(db_session: Session, env: Environment):
+    asset = create_asset(db_session, AssetInput(name="Pump 2", site_id=env.north_site.id, asset_type_id=env.pump.id))
+    updated_asset = update_asset(db_session, asset.id, AssetUpdate(name="Pump 3"))
+    ...
+
+
+@pytest.fixture
+def env(db_session: Session) -> Environment:
+    north_site = create_site(db_session, SiteInput(name="North Depot"))
     ...
 
 
 def test_list_assets_archived_site_is_hidden(db_session: Session):
     site = Site(name="North plant", timezone="UTC")
-    db_session.add(site)  # object created and saved directly in the test
+    db_session.add(site)
     db_session.commit()
     ...
 ```
+
+In the BAD examples: the update test creates its asset through `create_asset` instead of taking it from `env`; the `env` fixture builds its site with the app's `create_site` manager instead of the `Site` model; the last test creates and saves an object itself.
 
 ---
 

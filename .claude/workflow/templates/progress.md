@@ -20,9 +20,9 @@ Ports: <service → host port, one per service>
 - Backend (<service>): `uv run pytest --cov=<package> --cov-report=xml` then `uv run diff-cover coverage.xml --compare-branch=<Base>`
 - Frontend (<app>): `npx vitest run`
 
-## Conventions reviewers
-- Reviewer 1: <skills>
-- Reviewer 2: <skills>
+## Reviewer skills
+- conventions-reviewer: <the non-test skills that apply>
+- tests-reviewer: <the test skills that apply>
 
 ## Tasks
 - [ ] TASK-1 <title>

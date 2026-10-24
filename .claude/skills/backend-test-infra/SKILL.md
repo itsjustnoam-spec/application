@@ -35,7 +35,7 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 - Test against **real PostgreSQL**, not SQLite. JSON columns, constraints, `ON CONFLICT`, and case sensitivity behave differently. Run it in this branch's own containers (§2), set up like the project's existing docker-compose service.
 - Isolation: one connection and transaction per test, rolled back at teardown; the test's `Session` binds to that connection with `join_transaction_mode="create_savepoint"`, so the app's own commits and nested transactions stay inside it. The engine is `session`-scoped.
-- Data setup: the `env` fixture (see `pytest-conventions` §8).
+- Data setup: each domain's `env` fixture in `tests/<domain>/conftest.py`, built from models only (see `pytest-conventions` §8). The root `tests/conftest.py` holds only the engine, the session, and the clients.
 - Migrations aren't tested; they're verified by running them (see `sql-conventions`).
 
 ## 3. FastAPI test client (API layer)
@@ -73,6 +73,6 @@ description: Use when writing or reviewing backend tests that touch PostgreSQL, 
 
 - Run: `uv run pytest --cov=<package> --cov-report=xml`
 - Changed lines only: `uv run diff-cover coverage.xml --compare-branch=<Base SHA from progress.md>`. It's a report, not a gate: some lines are exempt by rule, and diff-cover can't know that.
-- Every uncovered changed line in the report is either tested or listed as exempt in `test-plan.md` with a reason. `review-tests` compares the two.
+- Every uncovered changed line in the report is either tested or listed as exempt in `test-plan.md` with a reason. `tests-reviewer` compares the two.
 
 Reviewers use `references/checklist.md`.

@@ -5,7 +5,7 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 ## Location & naming
 - [ ] TS-01 File path is `tests/<domain>/test_<operation>_<domain>.py`; manager and API tests of the same operation are in the same file (no `tests/routers/`, `tests/managers/`, `tests/schemas/`)
 - [ ] TS-02 Test names follow `test_<unit>_<condition>_<expected>`
-- [ ] TS-03 Shared fixtures and helpers live in `tests/conftest.py` and `tests/utils.py`; a domain's own fixtures and helpers (request-body builders, assertions) live in `tests/<domain>/conftest.py` and `tests/<domain>/utils.py`
+- [ ] TS-03 `tests/conftest.py` holds only the shared database, session, and client fixtures; a domain's `env`, its `Environment` dataclass, its model builders, and its other helpers (request-body builders, assertions) live in `tests/<domain>/conftest.py` and `tests/<domain>/utils.py`
 
 ## File structure
 - [ ] TS-04 Order is imports, then local fixtures, then test functions
@@ -26,8 +26,10 @@ Run this per changed test file. Every item must be answered ✅, ❌ (with `file
 - [ ] TS-14 Fixture scope is `function` unless the setup is expensive and read-only
 - [ ] TS-15 Setup that needs cleanup uses a `yield` fixture
 - [ ] TS-28 (auto) Test bodies never call a session method (`add`, `get`, `exec`, `commit`, ...); they only pass the session to the app's functions
-- [ ] TS-30 (auto) Every object a test relies on but doesn't test comes from the `env` fixture in `tests/conftest.py`; no other fixture or helper, root or domain, creates objects (no `make_*` factories)
-- [ ] TS-31 The object under test is created through the app's manager or the API, a manager is never called to create something the test isn't about, and any variant a test needs is a named member of `env`
+- [ ] TS-30 (auto for the root conftest and for session writes) Every object a test relies on comes from its domain's `env` fixture in `tests/<domain>/conftest.py`, built there or in `tests/<domain>/utils.py`; the root `tests/conftest.py` has no `env`; no other fixture or helper creates objects (no `make_*` factories)
+- [ ] TS-31 Test bodies never create objects: a test takes what it needs from `env`, and any variant it needs is a named member of `env`
+- [ ] TS-37 (auto) `env` and its builders use only the app's models, never its managers, services, converters, or utils
+- [ ] TS-38 Each test checks one core behavior and calls the one app function under test (no "create, then update" in one test); a second app function is called only in an edge case, while the test still checks one thing
 - [ ] TS-29 No tests for migrations, and no tests that only check which input a model or schema accepts
 - [ ] TS-36 No tests of framework or library behavior (that FastAPI routes, that SQLAlchemy saves), trivial getters, or constants
 
