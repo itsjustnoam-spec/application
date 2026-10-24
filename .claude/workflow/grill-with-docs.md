@@ -47,8 +47,8 @@ Go through every item and mark it covered or N/A in the notes. The order is a su
 - [ ] Patterns: for every inconsistency `I-n` in `patterns.md`, which side to follow, and confirmation of every pattern that will be reused
 - [ ] Non-goals: what explicitly won't be built
 - [ ] Backward compatibility: existing clients, existing data, other services' consumers
-- [ ] Tests: anything special beyond the defaults (backend: integration + API layers, 100% of new code; frontend: only shared code and important behavior, with no coverage target). Don't plan browser tests unless the user asks for them.
-- [ ] Playwright UI check (**only when the feature has a frontend part**): ask one question, "Should I check the UI in the browser with Playwright during review?", with the options "No Playwright" and "Yes, check the UI in review", each with a one-line description. Without a frontend part, skip this question and record N/A.
+- [ ] Tests: anything special beyond the defaults (backend: integration + API layers, 100% of new code; frontend: only shared code and important behavior, with no coverage target). There are no browser (Playwright) tests for now: don't ask about them.
+- [ ] Playwright UI check: ask only when **both** hold: the feature has a frontend part, and a tool whose name contains `playwright` is available in this session (the Playwright MCP server). Ask one question, "Should I check the UI in the browser with Playwright during review?", with the options "No Playwright" and "Yes, check the UI in review", each with a one-line description. Without a frontend part record `N/A`; without the Playwright tools record `no (Playwright MCP not connected)` and don't ask.
 - [ ] Missing tooling from `context.md` (e.g. diff-cover): add it as part of this feature, or skip that check?
 - [ ] Git: commit per task or one commit at the end, open an MR or not, and **whether to push at the end**: ask "When the feature is done, may I push on my own and follow the pipeline until it passes?" with the options "Yes, push and follow the pipeline (Recommended)" and "No, I'll push myself"
 
@@ -61,5 +61,10 @@ When the ledger is empty, write a **readback** of 5–8 bullets: what will be bu
 - Everything else stays in `grill-notes.md`.
 
 ## Output
+`grill-notes.md` ends with these two lines, exactly in this form, because the spec and `progress.md` copy them:
+```
+Push: yes | no
+Playwright check: yes | no | N/A
+```
 - `docs/features/<slug>/grill-notes.md` with every unknown decided.
 - Any updates to `docs/CONTEXT.md` and `docs/adr/`.

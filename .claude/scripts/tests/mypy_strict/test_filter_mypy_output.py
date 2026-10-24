@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from mypy_strict import filter_mypy_output
+from mypy_strict import filter_mypy_output, find_untyped_none_returning_names
 
 SOURCE = '''def save(x: int):
     print(x)
@@ -100,3 +100,13 @@ def test_filter_mypy_output_untyped_call_to_unknown_function_is_kept(
     kept_lines = filter_mypy_output(output_lines)
 
     assert kept_lines == output_lines
+
+
+def test_find_untyped_none_returning_names_works_inside_a_worktree(tmp_path: Path):
+    service = tmp_path / ".claude" / "worktrees" / "BTRC-1-x" / "service"
+    service.mkdir(parents=True)
+    (service / "helpers.py").write_text("def helper():\n    print(1)\n", encoding="utf-8")
+
+    function_names = find_untyped_none_returning_names(service)
+
+    assert function_names == {"helper"}

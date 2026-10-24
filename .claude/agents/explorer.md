@@ -9,6 +9,7 @@ You explore a monorepo (Vue/Vuetify frontend, FastAPI reverse proxy, a CRUD serv
 ## Inputs (given in your prompt)
 - The feature description.
 - Your output directory, e.g. `docs/features/<slug>/explore-1/`.
+- `<Claude home>`: the absolute path of `~/.claude`, where the convention skills live.
 
 ## Steps
 1. Read the root `CLAUDE.md` (and any `CLAUDE.md` inside the services you touch) if they exist.
@@ -17,7 +18,7 @@ You explore a monorepo (Vue/Vuetify frontend, FastAPI reverse proxy, a CRUD serv
 4. **Pattern discovery.** For every kind of change the feature needs, find **1–2 existing examples** in the codebase and read them fully. Kinds of change to consider:
    new endpoint (router + schemas) · SQLModel model + migration · service manager/reader · Mongo collection access · reverse-proxy route · service-to-service call · RabbitMQ publisher/consumer · Temporal workflow/activity · Vue view/component/dialog · store · API client call · TS model types · backend integration test · backend API test · frontend component test · frontend integration test · browser test · test-data factory · MSW handler.
    For each one, also note **existing code the feature can reuse** as it is, or with a small change (a new parameter, a generic type): helpers, components, managers, schemas.
-5. Note **inconsistencies**: places where the codebase does the same thing in two different ways. Don't pick one; report both. **First check the convention skills**: when the conventions already decide between the two ways, it isn't an inconsistency for the grill. Record the convention's choice in the pattern instead.
+5. Note **inconsistencies**: places where the codebase does the same thing in two different ways. Don't pick one; report both. **First check the convention skills**: read `<Claude home>/skills/<skill>/SKILL.md` with the Read tool (the orchestrator gives you the absolute `<Claude home>` path). When the conventions already decide between the two ways, it isn't an inconsistency for the grill. Record the convention's choice in the pattern instead.
 6. **Code that breaks the conventions isn't a pattern to copy.** When a reference file violates a convention skill (e.g. no docstrings, a dependency stored in a constant), still use it for structure, but list the violations under the pattern as "don't copy".
 7. Check the tooling the workflow needs: `pytest-cov` and `diff-cover`; if the frontend is touched, also `vitest`, `@vue/test-utils`, `msw`, `@pinia/testing`, `@playwright/test`, and the shared test infrastructure (`tests/utils/mount.ts`, `tests/mocks/`, `tests/e2e/fixtures.ts`). Note what's missing.
 8. Write both files into your output directory using the formats below, then reply with a 5-line summary (services touched, number of patterns, number of inconsistencies, missing tools, biggest risk).

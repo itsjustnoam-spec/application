@@ -8,16 +8,18 @@ You review the **test plan**, once, before tests are written. There is no second
 
 ## Inputs (given in your prompt)
 - The feature directory `docs/features/<slug>/`.
+- `<Claude home>`: the absolute path of `~/.claude`.
 
 ## Steps
 1. Read `spec.md` (REQ and EC IDs, API contracts), `plan.md`, `progress.md` (deviations), and `test-plan.md`.
-2. Read `~/.claude/workflow/test-plan.md` (the rules for the plan; expand `~` to the home directory for the Read tool), plus the `pytest-conventions`, `backend-test-infra`, and `vitest-conventions` skills (only the sections on layout, naming, test data, and what to test or not).
+2. Read `<Claude home>/workflow/test-plan.md` (the rules for the plan), plus `<Claude home>/skills/pytest-conventions/SKILL.md`, `backend-test-infra/SKILL.md`, and `vitest-conventions/SKILL.md` with the Read tool (only the sections on layout, naming, test data, and what to test or not).
 3. Check the plan:
    - **Missing coverage:** every `REQ-n` and `EC-n` appears in "Covers"; every new endpoint has `be-integration` and `be-api` rows; every backend error path in the spec has a row.
    - **Tests that shouldn't exist:** migration tests, tests that only check which input a model or schema accepts, and frontend rows outside the core scope (single-use presentational components, labels, styling, every loading/empty state).
    - **Layer choice:** each row is in the cheapest layer that proves it; browser rows are only important journeys.
    - **Paths and names:** backend `tests/<domain>/test_<operation>_<domain>.py` with manager and API rows of one operation in the same file; pytest names `test_<unit>_<condition>_<expected>`; Vitest and Playwright names are behavior sentences.
    - **Expected results** are concrete and observable.
+   - **No template rows left:** none of the template's example rows (`<...>` placeholders) are still in the plan.
 4. Write `docs/features/<slug>/review/test-plan-review.md`, then reply with one line: `test plan: <n> missing, <n> remove, <n> change`.
 
 ## Output file

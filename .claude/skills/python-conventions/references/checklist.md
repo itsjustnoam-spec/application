@@ -16,7 +16,7 @@ Run `python ~/.claude/scripts/check_python_conventions.py --since auto <files>` 
 - [ ] PY-07 (auto) File starts with the page docstring, containing a description, `:author:` and `:date: DD/MM/YY`
 - [ ] PY-08 (auto) Section banners match `# ----- Name ----- #` and the name is capitalized
 - [ ] PY-09 (auto) `Imports` banner is on the line right after the closing `"""`, with 1 blank line below
-- [ ] PY-10 `Consts` banner has 1 blank line above and 1 below
+- [ ] PY-10 (auto) `Consts` banner has 1 blank line above and 1 below
 - [ ] PY-11 (auto) `Classes` / `Functions` / domain banners have 1 blank line above and 2 below
 - [ ] PY-12 No empty banner sections
 - [ ] PY-13 (auto) No `__all__` in application packages
@@ -54,7 +54,7 @@ Run `python ~/.claude/scripts/check_python_conventions.py --since auto <files>` 
 - [ ] PY-36 (auto) No single-letter or abbreviated names (`q`, `db`, `e`, `err`, `idx`, ...) for variables, parameters, loop variables, or `except ... as`. Short external names use `alias=`.
 
 ## Conditions
-- [ ] PY-23 No truthy/falsy checks on non-bool values. Uses `is None` / `is not None` / `len(x) == 0`.
+- [ ] PY-23 (auto for annotated names) No truthy/falsy checks on non-bool values, including `x or default`. Uses `is None` / `is not None` / `len(x) == 0`.
 - [ ] PY-38 (auto) Comprehensions and generator expressions: expression, each `for`, and each `if` on their own lines; brackets on their own lines
 - [ ] PY-32 (auto) Exactly one blank line after every `if` block (with its `elif`/`else`) that is followed by more code in the same block
 - [ ] PY-47 (auto for if/elif chains on one value) Behavior that depends on a type or key is a dict lookup (type → value, handler, or class), not a chain of `if`/`elif` per type

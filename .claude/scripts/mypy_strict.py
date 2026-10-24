@@ -7,6 +7,7 @@ Runs mypy --strict and drops only the missing-return-annotation errors of functi
 # ----- Imports ----- #
 
 import ast
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -49,10 +50,21 @@ MYPY_ARGUMENTS = [
 
 def build_mypy_command(mypy_arguments: list[str]) -> list[str]:
     """
-    Build the mypy command, preferring uv, then mypy, then python -m mypy.
+    Build the mypy command, preferring uv, then `python -m uv`, then mypy, then python -m mypy.
     """
     if shutil.which("uv") is not None:
         return [
+            "uv",
+            "run",
+            "mypy",
+            *MYPY_ARGUMENTS,
+            *mypy_arguments,
+        ]
+
+    if importlib.util.find_spec("uv") is not None:
+        return [
+            sys.executable,
+            "-m",
             "uv",
             "run",
             "mypy",
@@ -140,7 +152,8 @@ def find_untyped_none_returning_names(root: Path) -> set[str]:
     """
     function_names: set[str] = set()
     for python_file in root.rglob("*.py"):
-        if SKIPPED_DIRECTORY_NAMES.intersection(python_file.parts):
+        relative_parts = python_file.relative_to(root).parts
+        if SKIPPED_DIRECTORY_NAMES.intersection(relative_parts):
             continue
 
         try:

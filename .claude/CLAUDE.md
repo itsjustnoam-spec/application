@@ -12,12 +12,14 @@
 - Before writing something new, search for existing code that already does it, or would with a small change (a new parameter, a generic type). Reuse it instead of writing it again.
 
 ## Make surgical changes
-- Never change an existing line the task doesn't need: no refactors, renames, reformatting, re-dating, or "fixing" of old code, even when it breaks a convention and even in a file you add code to. Conventions apply to the lines you write.
+- Never change an existing line the task doesn't need: no refactors, renames, reformatting, re-dating, or "fixing" of old code, even when it breaks a convention and even in a file you add code to. Conventions apply to the lines you write. Two exceptions:
+  - In a `.vue` file you add code to, fix the structure rules in the whole file: `Props` / `Emits` interfaces in `<script lang="ts">`, constants out of `<script setup>`, no exports.
+  - Changing existing code so it can be reused instead of duplicated (one more parameter, a generic type) is allowed.
 - Match the style of the code around you, unless a convention skill says otherwise.
 - Delete what your change replaced or made unused. Leave nothing unused behind.
 
 ## Clean code
-- No code comments. Names, types, and docstrings explain the code.
+- No code comments. Names, types, and docstrings explain the code. Python's section banners (`# ----- Imports ----- #`) aren't comments: keep them where `python-conventions` requires them.
 - Never silence a linter or type checker (`noqa`, `type: ignore`, `eslint-disable`, `@ts-ignore`, ...). Fix the code instead.
 - Never use another class's or module's private members (names starting with `_`). Use the public API, or make the needed function public where it's defined.
 
@@ -25,7 +27,7 @@
 - Turn the task into checks that prove it's done (tests, a command, a visible result), run them, and report the real outcome. If a check fails or was skipped, say so.
 
 ## Tests use their own services
-- Never run tests against databases or services that are already running: they belong to the user or to other branches. Start your own throwaway containers first (`docker compose -p <branch>` on free ports, copying the setup of the project's `docker-compose.yml` and running containers), point the test settings at them, and remove them when you're done.
+- Tests use only the Docker compose project named after your branch, in lowercase (`docker compose -p btrc-1234-add-authentication`). Never use other containers: they belong to the user or to other branches. If your project isn't running, create it from the project's own `docker-compose.yml` (the current directory's, or the main checkout's root) with an override that frees the fixed ports (`git-worktree` skill §3), point the test settings at it, and remove it when you're done.
 
 ## Git
 - Branch names: `BTRC-<JIRA-ISSUE>-<what-we-do>`, e.g. `BTRC-1234-add-authentication`. The same name inside a worktree: never `worktree-add-authentication` or `worktree-BTRC-1234-add-authentication`. If you don't know the Jira issue, ask.

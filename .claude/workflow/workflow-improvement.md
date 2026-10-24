@@ -105,7 +105,7 @@ Apply each picked recommendation and set its **Status** to `applied` (or `skippe
 - **New command:** `~/.claude/commands/<name>.md` with `description`, `argument-hint`, and `disable-model-invocation: true`.
 - **Hook or script change:** add or update tests in `~/.claude/scripts/tests/`, and run them (`uv run --with pytest pytest ~/.claude/scripts/tests`) before reporting it as applied. A broken hook blocks every edit.
 - **YAML frontmatter:** wrap a `description` in double quotes if it contains `: `, otherwise the frontmatter fails to parse and the item loads with no metadata.
-- After applying, list every file you changed.
+- After applying, list every file you changed, and tell the user: "These changes are in `~/.claude`. Copy them into the repo's `.claude/` folder and commit them there, or the next `install.sh` will stop and ask about them."
 
 ---
 

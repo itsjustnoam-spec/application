@@ -40,6 +40,18 @@ PRIVATE_ACCESS_ALLOWLIST = frozenset(
 )
 CONSTANT_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 SHORT_STRING_MAX_WORDS = 3
+SKIPPED_DIRECTORY_NAMES = frozenset(
+    {
+        ".venv",
+        "venv",
+        "site-packages",
+        "node_modules",
+        ".git",
+        ".mypy_cache",
+        "__pycache__",
+    },
+)
+TRUTHINESS_MESSAGE = "'{name}' is a {annotation}, not a bool: write the full check (is None, len(...) == 0, == 0)."
 LONG_STRING_MESSAGE = "A string of more than 3 words is written inline: move it to a named constant in the Consts section."
 FIELD_INDEX_MESSAGE = "Declare the index in __table_args__ (Index(...)), not with index=True on the field."
 SINCE_HELP = "Report only lines added or changed since this git ref ('auto': the feature's base or the merge base)."
@@ -2377,6 +2389,89 @@ def check_field_indexes(path: Path, tree: ast.Module) -> list[Violation]:
     return violations
 
 
+def collect_annotated_names(function_node: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, str]:
+    """
+    Map the names a function annotates (parameters and annotated locals) to their annotations.
+
+    :param function_node: The function to inspect.
+    :return: Each annotated name and its annotation as source text.
+    """
+    arguments = [
+        *function_node.args.posonlyargs,
+        *function_node.args.args,
+        *function_node.args.kwonlyargs,
+    ]
+    annotations = {
+        argument.arg: ast.unparse(argument.annotation)
+        for argument in arguments
+        if argument.annotation is not None
+    }
+    for node in iter_own_body_nodes(function_node):
+        if not isinstance(node, ast.AnnAssign):
+            continue
+
+        name = get_target_name(node.target)
+        if name is not None:
+            annotations[name] = ast.unparse(node.annotation)
+    return annotations
+
+
+def collect_truthiness_operands(function_node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.expr]:
+    """
+    Collect the expressions a function uses for their truthiness.
+
+    :param function_node: The function to inspect.
+    :return: The tests of if/while/ternaries, the operands of `not`, and the operands of `and`/`or`.
+    """
+    operands: list[ast.expr] = []
+    for node in iter_own_body_nodes(function_node):
+        if isinstance(node, (ast.If, ast.While, ast.IfExp)):
+            operands.append(node.test)
+        elif isinstance(node, ast.UnaryOp):
+            if isinstance(node.op, ast.Not):
+                operands.append(node.operand)
+        elif isinstance(node, ast.BoolOp):
+            operands += node.values
+    return operands
+
+
+def check_truthiness(path: Path, tree: ast.Module) -> list[Violation]:
+    """
+    Check that non-bool values are never used for their truthiness.
+
+    :param path: The file being checked.
+    :param tree: The parsed module.
+    :return: One violation per annotated non-bool name used as a condition or with not/and/or.
+    """
+    violations: list[Violation] = []
+    for function_node in ast.walk(tree):
+        if not isinstance(function_node, FUNCTION_NODE_TYPES):
+            continue
+
+        annotations = collect_annotated_names(function_node)
+        for operand in collect_truthiness_operands(function_node):
+            if not isinstance(operand, ast.Name):
+                continue
+
+            annotation = annotations.get(operand.id)
+            if annotation is None or annotation == "bool":
+                continue
+
+            message = TRUTHINESS_MESSAGE.format(
+                name=operand.id,
+                annotation=annotation,
+            )
+            violations.append(
+                Violation(
+                    path,
+                    operand.lineno,
+                    "PY-23",
+                    message,
+                ),
+            )
+    return violations
+
+
 def check_python_file(path: Path) -> list[Violation]:
     """
     Run every convention check on one Python file.
@@ -2436,6 +2531,7 @@ def check_python_file(path: Path) -> list[Violation]:
     violations += check_session_rollback(path, tree)
     violations += check_string_enums(path, tree)
     violations += check_comments(path, source)
+    violations += check_truthiness(path, tree)
     violations += check_private_access(path, tree)
     violations += check_field_validators(path, tree)
     violations += check_field_indexes(path, tree)
@@ -2507,6 +2603,18 @@ def check_changed_python_file(path: Path, base: str) -> list[Violation]:
     ]
 
 
+def is_outside_skipped_directories(python_file: Path, root: Path) -> bool:
+    """
+    Check whether a file found under a directory sits outside virtualenvs and caches.
+
+    :param python_file: A file found under the root.
+    :param root: The directory that was searched.
+    :return: Whether no folder between the root and the file is a skipped one.
+    """
+    relative_parts = python_file.relative_to(root).parts
+    return SKIPPED_DIRECTORY_NAMES.isdisjoint(relative_parts)
+
+
 def collect_python_files(raw_paths: list[str]) -> list[Path]:
     """
     Collect the Python files in the given files and directories.
@@ -2515,7 +2623,11 @@ def collect_python_files(raw_paths: list[str]) -> list[Path]:
     for raw_path in raw_paths:
         path = Path(raw_path)
         if path.is_dir():
-            python_files.extend(sorted(path.rglob("*.py")))
+            python_files += [
+                python_file
+                for python_file in sorted(path.rglob("*.py"))
+                if is_outside_skipped_directories(python_file, path)
+            ]
         elif path.suffix == ".py" and path.is_file():
             python_files.append(path)
     return python_files

@@ -1,17 +1,24 @@
 # Progress: <feature name>
 
 Phase: EXPLORE
-<!-- One value only. In order: EXPLORE, GRILL, SPEC, IMPLEMENT, TEST-PLAN, TESTS, REVIEW-ROUND-<n>, FIX-ROUND-<n> (n ≤ 3), DONE. -->
+<!-- One value only. In order: EXPLORE, GRILL, SPEC, IMPLEMENT, TEST-PLAN, TESTS, REVIEW-ROUND-1 to 4, FIX-ROUND-1 to 3, SUMMARY, GIT, DONE. -->
 
-Base: <commit SHA from `git merge-base HEAD origin/<base branch>`>
+Base: <the full 40-character SHA from `git merge-base`, nothing after it>
 Base branch: <main>
 Worktree: <.claude/worktrees/<slug>, or none>
-Push: <yes | no, from the grill>
-Playwright check: <yes | no, from the grill>
+Push: <yes | no, copied from grill-notes.md>
+Playwright check: <yes | no | N/A, copied from grill-notes.md>
 
 ## Test services
-<!-- This branch's own Docker services (git-worktree §3): compose project, file, and host ports. -->
-- Compose project: <slug> · file: `docs/features/<slug>/docker-compose.yml` · ports: <service → port>
+<!-- The compose project named after this branch (git-worktree §3). -->
+Compose project: <branch name in lowercase>
+Compose files: <the project's compose file> + `docs/features/<slug>/compose.override.yml`
+Ports: <service → host port, one per service>
+
+## Test commands
+<!-- Filled in once, before the first test run, with the real paths and ports. Phases 6–8 rerun exactly these. -->
+- Backend (<service>): `uv run pytest --cov=<package> --cov-report=xml` then `uv run diff-cover coverage.xml --compare-branch=<Base>`
+- Frontend (<app>): `npx vitest run`
 
 ## Conventions reviewers
 - Reviewer 1: <skills>

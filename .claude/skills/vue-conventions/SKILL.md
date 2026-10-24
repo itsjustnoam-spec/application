@@ -38,6 +38,8 @@ Separate static type declarations from reactive runtime logic using two `<script
 1. `<script lang="ts">`: Contains component-specific interfaces (including the component's `Props` and `Emits` interfaces), types, enums, and **all** constants (timeouts, debounce delays, magic numbers, long strings). Constants never go in `<script setup>`. Nothing in it is exported (see §1).
 2. `<script setup lang="ts">`: Contains component runtime logic and reactive state.
 
+These structure rules (§2, and `Props` / `Emits` in §4) apply to the whole of every `.vue` file you add code to, also to its old parts. Every other rule applies only to the lines you write.
+
 ```vue
 <template>
   <div class="flex flex-col gap-4">

@@ -39,16 +39,25 @@ git worktree add .claude/worktrees/<branch> <branch>
 
 A worktree is a fresh checkout: gitignored things don't exist there.
 - **Dependencies:** run `uv sync` in each Python service you'll touch, and `npm install` in each frontend app you'll touch. The root `CLAUDE.md` lists the exact commands.
-- **`.env` files:** the repo-root `.worktreeinclude` lists them (gitignore syntax), and Claude Code copies them into every worktree it creates. For a worktree created with plain `git worktree add`, copy them by hand.
+- **`.env` files** aren't in git, so a new worktree has none. Copy them from the main checkout (the first path in `git worktree list`): list them with `git -C <main checkout> ls-files --others --ignored --exclude-standard | grep -E '(^|/)\.env(\..*)?$' | grep -v node_modules`, then copy each one to the same path in the worktree.
 - **Feature files:** `docs/features/` is gitignored, so each worktree has its own folder and its own `.active` marker. Run `/feature` and `/feature resume <branch>` **inside** the worktree.
-- **Docker services** (Postgres, Mongo, RabbitMQ, Temporal): **never use the ones already running.** They belong to the user's main checkout or to other branches, and tests against them change their data. Before the first test run, start this worktree's own:
-  1. **Copy the existing setup, don't invent one.** Read the project's `docker-compose.yml` (also in the main checkout: `git worktree list` shows its path) and, when it doesn't say enough, the running containers (`docker ps`, `docker inspect <container>`): images and versions, environment variables, init scripts, health checks.
-  2. Write `docs/features/<branch>/docker-compose.yml` (that folder is git-ignored) with only the services the tests need. Publish each port on a free host port (`"127.0.0.1::5432"`, no fixed host port) and use no named volumes.
-  3. Start it: `docker compose -p <branch> -f docs/features/<branch>/docker-compose.yml up -d --wait`.
-  4. Read the host ports: `docker compose -p <branch> -f docs/features/<branch>/docker-compose.yml port <service> <container port>`.
-  5. Point the test settings in this worktree's own `.env` at those ports (e.g. `TEST_DATABASE_URL`), never at the main checkout's services.
-  6. Record the compose project name, the file, and the ports in `progress.md`.
-  7. When the feature is done: `docker compose -p <branch> -f docs/features/<branch>/docker-compose.yml down -v`. Always pass `-p <branch>`, so nothing else is touched.
+- **Docker services** (Postgres, Mongo, RabbitMQ, Temporal): tests use **only the compose project named after this branch**. Never use any other container: the others belong to the user's main checkout or to other branches, and tests against them change their data.
+  1. **The project name** is the branch name in lowercase (Docker rejects capitals): `BTRC-1234-add-authentication` → `btrc-1234-add-authentication`. Call it `<project>`, write it on the `Compose project:` line of `progress.md`, and use exactly that name in every command below.
+  2. **If it's already running, use it:** `docker compose ls --filter name=<project>`. When it's listed, skip to step 6.
+  3. **Otherwise create it from the project's own compose file**, never a new one: the `docker-compose.yml` (or `compose.yml`) in the current directory, or else the one in the project root of the main checkout (outside the worktree: the first path in `git worktree list`). Call it `<compose file>`.
+  4. **Write an override** at `docs/features/<branch>/compose.override.yml` (that folder is git-ignored) for each service the tests need, so this copy never clashes with the running one:
+     ```yaml
+     services:
+       postgres:
+         container_name: !reset null
+         ports: !override
+           - "127.0.0.1::5432"
+     ```
+     `ports: !override` replaces the fixed host ports with free ones (keep the container port), and `container_name: !reset null` drops a fixed name when the service has one. Named volumes are already per project. When a service has no `healthcheck`, add one in the override (Postgres: `pg_isready -U <user> -d <db>`; Mongo: `mongosh --quiet --eval "db.runCommand({ping: 1})"`), so `--wait` waits until it accepts connections.
+  5. **Start only those services:** `docker compose -p <project> -f <compose file> -f docs/features/<branch>/compose.override.yml up -d --wait <service> <service>`.
+  6. **Read the host ports:** `docker compose -p <project> port <service> <container port>`.
+  7. Point the test settings in this worktree's own `.env` at those ports (e.g. `TEST_DATABASE_URL`). Write the compose file, the override, and the ports in `progress.md`.
+  8. When the feature is done: `docker compose -p <project> down -v`. Always pass `-p <project>`, so nothing else is touched.
 
 ## 4. Pushing
 

@@ -12,7 +12,7 @@ Produce `spec.md` and `plan.md` in `docs/features/<slug>/` from the templates in
 - **Contracts are exact:** field names, types, nullability, status codes, message schemas. The TS types must mirror the Pydantic/SQLModel schemas field for field.
 - **Every decision is traceable:** each `REQ`/`EC` cites the `D-n` it comes from, when it comes from a decision.
 - **Technical choices:** list every approach decision from the grill under "Technical choices", with the alternatives that were offered.
-- **Git & review:** copy the push answer and the Playwright answer from the grill.
+- **Git & review:** copy the `Push:` and `Playwright check:` lines from the end of `grill-notes.md`, word for word.
 - **Open questions must be empty.** If you discover a new unknown while writing, stop and go back to the grill for it.
 
 ## Writing `plan.md`

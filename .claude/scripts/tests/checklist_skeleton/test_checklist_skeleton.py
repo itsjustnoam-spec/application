@@ -45,3 +45,22 @@ def test_find_unanswered_items_reports_missing_and_todo_items():
     unanswered_ids = find_unanswered_items(["sql-conventions"], review_text)
 
     assert unanswered_ids == ["SQL-04", "SQL-05", "SQL-02", "SQL-03"]
+
+
+def test_find_unanswered_items_bare_marks_are_not_answers():
+    review_text = (
+        "- SQL-04 Indexes in __table_args__\n"
+        "  - ✅\n"
+        "- SQL-05 Table model layout\n"
+        "  - N/A\n"
+        "- SQL-01 No session.rollback()\n"
+        "  - ❌ (F-C1-2)\n"
+        "- SQL-02 The unit of work owns the transaction\n"
+        "  - ✅ checker: no violations on the lines this branch wrote\n"
+        "- SQL-03 Nested transactions for expected failures\n"
+        "  - N/A: no expected failures in the changed managers\n"
+    )
+
+    unanswered_ids = find_unanswered_items(["sql-conventions"], review_text)
+
+    assert unanswered_ids == ["SQL-04", "SQL-05", "SQL-01"]

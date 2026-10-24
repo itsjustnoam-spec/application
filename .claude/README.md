@@ -13,7 +13,7 @@ A spec-first Claude Code workflow for Vue/Vuetify + FastAPI microservice project
   6 Write tests on the branch's own Docker services + changed-line coverage report
   7 Review in parallel: conventions ×2 (code skills / test skills) · spec · bugs · tests · quality · ui (optional, Playwright)
   8 Triage + fix (max 3 rounds; every round kept in review/round-<n>/)
-  9 summary.md with every open problem, then push and follow the pipeline (if you said yes in the grill)
+  9 summary.md with every open problem, then push and follow the pipeline (if you said yes in the grill), remove the branch's compose project, Phase: DONE
 ```
 
 Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume an interrupted run with `/feature resume <slug>`.
@@ -54,7 +54,7 @@ Everything for a feature lives in `docs/features/<slug>/` (git-ignored). Resume 
 ## Setup
 
 1. **Requirements:** `python` (3.10+) on PATH for the hooks, and Docker for the test services. Per Python service: `uv`, plus `mypy`, `pytest-cov`, and `diff-cover` as dev dependencies. Frontend: ESLint, Vitest + Vue Test Utils + MSW + `@pinia/testing` already set up in the project. For the optional UI check in review, the Playwright MCP server connected to Claude Code.
-2. **Install:** from this repo's `.claude/` folder, run `bash install.sh`. It copies `CLAUDE.md`, `agents/`, `commands/`, `skills/`, `workflow/`, and `scripts/` into `~/.claude/` (without caches), and adds the hooks to your existing `~/.claude/settings.json` without touching your other settings. Run it again after every `git pull`.
+2. **Install:** from this repo's `.claude/` folder, run `bash install.sh`. It copies `CLAUDE.md`, `agents/`, `commands/`, `skills/`, `workflow/`, and `scripts/` into `~/.claude/` (without caches), and adds the hooks to your existing `~/.claude/settings.json` without touching your other settings. It removes files the repo no longer has. Run it again after every `git pull`. If a file in `~/.claude` changed since the last install (for example through `/retro`), it lists the file and stops: copy the change into the repo's `.claude/` first, then run `bash install.sh --force`.
 3. **Keep a root `CLAUDE.md` in each project** with the architecture, where things live, and the run/test commands. `/feature` reads it, and `/retro` recommends additions to it over time.
 
 ## LiteLLM
@@ -115,17 +115,8 @@ Both follow `workflow/workflow-improvement.md`.
 - Branches and worktree folders are named `BTRC-<JIRA-ISSUE>-<what-we-do>` (e.g. `BTRC-1234-add-authentication`), never `worktree-...`.
 - `/feature` always works in its own worktree (pass `--no-worktree` to stay in the current checkout). It creates the worktree with git and enters it with `EnterWorktree` (`path`), because `EnterWorktree` with a name, and `claude -w`, would name the branch `worktree-<name>`.
 - From a terminal: `git fetch origin`, then `git worktree add .claude/worktrees/<branch> -b <branch> origin/main`, then run `claude` inside `.claude/worktrees/<branch>`. To resume later, run `claude` there again, then `/feature resume <branch>`.
-- **Each branch runs its own Docker services for tests** (`docker compose -p <branch>` on free ports, set up like the project's `docker-compose.yml`), so tests never touch your databases or another branch's. See `skills/git-worktree/SKILL.md` for setup and cleanup.
+- **Tests use only the compose project named after the branch**, in lowercase (`docker compose -p btrc-1234-add-authentication`). When it isn't running, Claude creates it from the project's own `docker-compose.yml` with an override that frees the fixed ports, so tests never touch your containers or another branch's. See `skills/git-worktree/SKILL.md` §3.
 
 ## Model invocation
 
-`disable-model-invocation: true` means Claude can't load the item on its own: its description isn't in context, and Claude Code **refuses a Skill tool call to it** and tells Claude not to do the steps another way. That's why nothing the workflow depends on may carry the flag.
-
-| Item | Form / setting | Why |
-|---|---|---|
-| `python-conventions`, `pytest-conventions`, `sql-conventions`, `vue-conventions`, `vitest-conventions`, `browser-test-conventions`, `backend-test-infra` | Skill, model-invoked | Claude must pick them up by itself whenever it writes that kind of code, inside or outside `/feature`, and the review agents read them |
-| `git-worktree` | Skill, model-invoked | Claude should reach for it when you start parallel work; `/feature` loads it in phase 0 |
-| `grill-with-docs`, `write-spec`, `test-plan`, `workflow-improvement` | **Plain files in `workflow/`**, not skills | Only meaningful inside their command. As flagged skills they got refused mid-workflow and stopped `/feature` at phase 5. As plain files they can't misfire on their own and can't be blocked |
-| `/feature`, `/retro`, `/review-mrs` | Command, `true` | Long-running and write files, so you start them on purpose |
-
-When you add something, decide its form with `workflow/workflow-improvement.md` §6. `/retro` does this for everything it proposes.
+Which items are skills, plain workflow files, or commands, and why, is in `workflow/workflow-improvement.md` §6. `/retro` uses it for everything it proposes.

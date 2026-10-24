@@ -19,7 +19,9 @@ from check_vue_conventions import FRONTEND_SUFFIXES, check_changed_vue_file
 
 SKILLS_DIRECTORY = Path(__file__).resolve().parent.parent / "skills"
 CHECKLIST_ITEM_PATTERN = re.compile(r"^- \[ \] ([A-Z]+-\d+) (.*)$")
-ANSWER_PATTERN = re.compile(r"^\s+- (?:✅|❌|N/A)")
+ANSWER_PATTERN = re.compile(
+    r"^\s+- (?:(?:✅|❌)\s+(?:checker:|.*`[^`]*[./][^`]*`)|N/A\S*\s+\S.{9,})",
+)
 DESCRIPTION = "Print the checklist skeleton for a conventions reviewer, or validate a finished review file."
 SKILLS_HELP = "Comma-separated convention skills, e.g. python-conventions,sql-conventions."
 FILES_HELP = "The changed files the reviewer checks."

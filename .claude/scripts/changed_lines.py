@@ -18,7 +18,7 @@ HUNK_HEADER_PATTERN = re.compile(
     re.MULTILINE,
 )
 BASE_LINE_PATTERN = re.compile(
-    r"^Base:\s*`?([0-9A-Za-z][\w./-]*)`?\s*$",
+    r"^Base:\s*`?([0-9a-fA-F]{7,40})\b",
     re.MULTILINE,
 )
 BASE_CANDIDATES = (
